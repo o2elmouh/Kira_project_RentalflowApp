@@ -1,0 +1,153 @@
+import { useState } from 'react'
+import { Car, Users, FileText, Receipt, TrendingUp, PlusCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { getFleet, getClients, getContracts, getInvoices } from '../utils/storage'
+
+const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+
+function inMonth(dateStr, year, month) {
+  if (!dateStr) return false
+  const d = new Date(dateStr)
+  return d.getFullYear() === year && d.getMonth() === month
+}
+
+function StatCard({ icon: Icon, label, value, color, sub }) {
+  return (
+    <div className="card stat-card">
+      <div className="stat-icon" style={{ color }}>
+        <Icon size={22} />
+      </div>
+      <div>
+        <div className="stat-value">{value}</div>
+        <div className="stat-label">{label}</div>
+        {sub != null && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>{sub}</div>}
+      </div>
+    </div>
+  )
+}
+
+export default function Dashboard({ onNav }) {
+  const now = new Date()
+  const [year,  setYear]  = useState(now.getFullYear())
+  const [month, setMonth] = useState(now.getMonth())
+
+  const fleet     = getFleet()
+  const clients   = getClients()
+  const contracts = getContracts()
+  const invoices  = getInvoices()
+
+  // Fleet stats are always current (not time-filtered)
+  const available = fleet.filter(v => v.status === 'available').length
+  const rented    = fleet.filter(v => v.status === 'rented').length
+
+  // Filter contracts & invoices by selected month
+  const filteredContracts = contracts.filter(c => inMonth(c.createdAt, year, month))
+  const filteredInvoices  = invoices.filter(i  => inMonth(i.createdAt, year, month))
+  const filteredClients   = clients.filter(c   => inMonth(c.createdAt, year, month))
+
+  const revenue = filteredInvoices.reduce((s, i) => s + (i.totalTTC || 0), 0)
+  const active  = filteredContracts.filter(c => c.status === 'active').length
+
+  const prevMonth = () => {
+    if (month === 0) { setMonth(11); setYear(y => y - 1) }
+    else setMonth(m => m - 1)
+  }
+  const nextMonth = () => {
+    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth()
+    if (isCurrentMonth) return
+    if (month === 11) { setMonth(0); setYear(y => y + 1) }
+    else setMonth(m => m + 1)
+  }
+
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth()
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <h2>Dashboard</h2>
+          <p>Aperçu de vos opérations de location</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => onNav('new-rental')}>
+          <PlusCircle size={15} /> New Rental
+        </button>
+      </div>
+
+      <div className="page-body">
+        {/* Month / Year filter */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <button className="btn btn-ghost btn-sm" onClick={prevMonth}>
+            <ChevronLeft size={15} />
+          </button>
+          <div style={{ minWidth: 160, textAlign: 'center' }}>
+            <span style={{ fontWeight: 700, fontSize: 16 }}>{MONTHS[month]} {year}</span>
+            {isCurrentMonth && (
+              <span className="badge badge-green" style={{ marginLeft: 8 }}>Ce mois</span>
+            )}
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={nextMonth} disabled={isCurrentMonth}>
+            <ChevronRight size={15} />
+          </button>
+          {!isCurrentMonth && (
+            <button className="btn btn-secondary btn-sm" onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth()) }}>
+              Aujourd'hui
+            </button>
+          )}
+        </div>
+
+        {/* Stats */}
+        <div className="stats-grid">
+          <StatCard icon={Car}        label="Véhicules disponibles" value={available}                   color="var(--green)"  />
+          <StatCard icon={Car}        label="Véhicules loués"       value={rented}                      color="var(--accent)" />
+          <StatCard icon={Users}      label="Nouveaux clients"      value={filteredClients.length}       color="#6366f1"       />
+          <StatCard icon={FileText}   label="Contrats du mois"      value={filteredContracts.length}     color="#f59e0b"       sub={`${active} actifs`} />
+          <StatCard icon={Receipt}    label="Factures du mois"      value={filteredInvoices.length}      color="#10b981"       />
+          <StatCard icon={TrendingUp} label="Chiffre d'affaires"    value={`${revenue.toLocaleString()} MAD`} color="var(--accent)" />
+        </div>
+
+        {/* Tables */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 24 }}>
+          <div className="card">
+            <div className="card-header">
+              <h3>Contrats — {MONTHS[month]}</h3>
+              <span className="badge badge-gray">{filteredContracts.length}</span>
+            </div>
+            <div className="card-body">
+              {filteredContracts.length === 0 && (
+                <p style={{ color: 'var(--text3)', fontSize: 13 }}>Aucun contrat ce mois.</p>
+              )}
+              {filteredContracts.slice(0, 8).map(c => (
+                <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{c.contractNumber}</div>
+                    <div style={{ color: 'var(--text3)', fontSize: 11 }}>{c.clientName} — {c.vehicleName}</div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                    <span className={`badge ${c.status === 'active' ? 'badge-green' : 'badge-gray'}`}>{c.status}</span>
+                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: 'var(--accent)' }}>{(c.totalTTC || 0).toLocaleString()} MAD</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header"><h3>État du parc</h3></div>
+            <div className="card-body">
+              {fleet.slice(0, 8).map(v => (
+                <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{v.make} {v.model} {v.year}</div>
+                    <div style={{ color: 'var(--text3)', fontSize: 11, fontFamily: 'DM Mono, monospace' }}>{v.plate}</div>
+                  </div>
+                  <span className={`badge ${v.status === 'available' ? 'badge-green' : v.status === 'rented' ? 'badge-orange' : 'badge-gray'}`}>
+                    {v.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
