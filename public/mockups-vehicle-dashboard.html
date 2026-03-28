@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RentaFlow — Vehicle Dashboard Mockups</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --accent:  #c74b1f;
+      --accent2: #e05a2b;
+      --bg:      #faf9f6;
+      --border:  #e8e4dc;
+      --text1:   #1c1a16;
+      --text2:   #6b6560;
+      --text3:   #9e9890;
+      --green:   #2a7d4f;
+      --orange:  #d97706;
+      --red:     #dc2626;
+      --blue:    #1d6fa4;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text1);
+      min-height: 100vh;
+      padding: 40px 24px 60px;
+    }
+
+    /* ── PAGE HEADER ── */
+    .page-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .page-header h1 {
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text1);
+    }
+    .page-header h1 span { color: var(--accent); }
+    .page-header p {
+      margin-top: 8px;
+      font-size: .9rem;
+      color: var(--text2);
+    }
+
+    /* ── GRID OF 3 CARDS ── */
+    .showcase {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 48px;
+      max-width: 1340px;
+      margin: 0 auto;
+      justify-items: center;
+    }
+
+    .style-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      max-width: 420px;
+    }
+    .style-label {
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .style-label::before,
+    .style-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      min-width: 24px;
+    }
+    .style-label span {
+      background: var(--accent);
+      color: #fff;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: .72rem;
+    }
+
+    /* ══════════════════════════════════════════
+       SHARED DASHBOARD SHELL
+    ══════════════════════════════════════════ */
+    .dashboard {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 24px rgba(28,26,22,.09);
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+
+    /* ── QUADRANT GRID ── */
+    .quad-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      min-height: 0;
+    }
+    .quad {
+      cursor: pointer;
+      transition: background .18s;
+      padding: 14px 15px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── ECHÉANCES edit toggle ── */
+    .edit-fields { display: none; flex-direction: column; gap: 5px; margin-top: 6px; }
+    .edit-fields.open { display: flex; }
+    .edit-fields input {
+      font-family: 'Inter', sans-serif;
+      font-size: .72rem;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 4px 7px;
+      color: var(--text1);
+      background: #fff;
+      outline: none;
+    }
+    .edit-fields input:focus { border-color: var(--accent); }
+    .btn-edit {
+      font-family: 'Inter', sans-serif;
+      font-size: .68rem;
+      font-weight: 600;
+      padding: 3px 9px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      align-self: flex-start;
+      margin-top: 4px;
+    }
+
+    /* ══════════════════════════════════════════
+       STYLE A — MINIMAL CARDS
+    ══════════════════════════════════════════ */
+
+    /* Header A */
+    .header-a {
+      padding: 13px 16px 11px;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .header-a .vh-info { display: flex; flex-direction: column; gap: 1px; }
+    .header-a .vh-name { font-size: .95rem; font-weight: 700; color: var(--text1); line-height: 1.1; }
+    .header-a .vh-sub  { font-size: .72rem; color: var(--text2); }
+    .badge-a {
+      font-size: .68rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: #d1fae5;
+      color: #065f46;
+      letter-spacing: .3px;
+      white-space: nowrap;
+    }
+
+    /* Quads A */
+    .dashboard-a .quad-grid { border-top: none; }
+    .dashboard-a .quad {
+      border: none;
+      background: #fff;
+    }
+    .dashboard-a .quad:hover { background: #fdf7f4; }
+    .dashboard-a .quad-tl { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .dashboard-a .quad-tr { border-bottom: 1px solid var(--border); }
+    .dashboard-a .quad-bl { border-right: 1px solid var(--border); }
+
+    .quad-a-icon {
+      font-size: 1rem;
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 4px;
+      flex-shrink: 0;
+    }
+    .qa-blue  { background: #eff6ff; }
+    .qa-red   { background: #fff1f0; }
+    .qa-green { background: #ecfdf5; }
+    .qa-amber { background: #fffbeb; }
+
+    .quad-a-val {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--text1);
+      line-height: 1;
+    }
+    .quad-a-label {
+      font-size: .65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--text3);
+      margin-top: 1px;
+    }
+    .quad-a-rows { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+    .quad-a-row  { display: flex; justify-content: space-between; align-items: center; font-size: .68rem; }
+    .quad-a-row .k { color: var(--text2); }
+    .quad-a-row .v { font-weight: 600; color: var(--text1); }
+    .quad-a-row .v.warn { color: var(--orange); }
+
+    /* edit button A */
+    .btn-edit-a {
+      background: var(--border);
+      color: var(--text1);
+    }
+    .btn-edit-a:hover { background: var(--accent); color: #fff; }
+    .dashboard-a .edit-fields input { background: var(--bg); }
+
+    /* ══════════════════════════════════════════
+       STYLE B — DARK DASHBOARD
+    ══════════════════════════════════════════ */
+    .dashboard-b { background: #1a1714; border-color: #1a1714; }
+
+    /* Header B */
+    .header-b {
+      padding: 13px 16px 11px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .header-b .vh-name { font-size: .95rem; font-weight: 700; color: #fff; line-height: 1.1; }
+    .header-b .vh-sub  { font-size: .72rem; color: rgba(255,255,255,.7); }
+    .badge-b {
+      font-size: .68rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(255,255,255,.2);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.35);
+      white-space: nowrap;
+    }
+
+    /* Quads B */
+    .dashboard-b .quad { padding: 13px 14px 11px; border-radius: 0; }
+    .dashboard-b .quad:hover { filter: brightness(1.06); }
+
+    .qb-loc  { background: #1e2a3a; border-right: 1px solid #0d1117; border-bottom: 1px solid #0d1117; }
+    .qb-rep  { background: #2a1e1e; border-bottom: 1px solid #0d1117; }
+    .qb-amor { background: #1a2a1e; border-right: 1px solid #0d1117; }
+    .qb-ech  { background: #2a2a1a; }
+
+    .qb-title {
+      font-size: .6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 5px;
+    }
+    .qb-loc  .qb-title { color: #60a5fa; }
+    .qb-rep  .qb-title { color: #f87171; }
+    .qb-amor .qb-title { color: #4ade80; }
+    .qb-ech  .qb-title { color: #fbbf24; }
+
+    .qb-big {
+      font-size: 1.4rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .qb-loc  .qb-big { color: #93c5fd; }
+    .qb-rep  .qb-big { color: #fca5a5; }
+    .qb-amor .qb-big { color: #86efac; }
+    .qb-ech  .qb-big { color: #fde68a; }
+
+    .qb-sub {
+      font-size: .64rem;
+      margin-top: 2px;
+      color: rgba(255,255,255,.45);
+    }
+    .qb-rows { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; }
+    .qb-row  { display: flex; justify-content: space-between; align-items: center; font-size: .67rem; }
+    .qb-row .k { color: rgba(255,255,255,.45); }
+    .qb-row .v { font-weight: 600; }
+    .qb-loc  .qb-row .v { color: #bfdbfe; }
+    .qb-rep  .qb-row .v { color: #fecaca; }
+    .qb-amor .qb-row .v { color: #bbf7d0; }
+    .qb-ech  .qb-row .v { color: #fef08a; }
+    .qb-row .v.alert  { color: #f87171 !important; font-weight: 700; }
+    .qb-row .v.ok     { color: #4ade80 !important; }
+
+    .btn-edit-b {
+      background: rgba(255,255,255,.12);
+      color: rgba(255,255,255,.8);
+      border: 1px solid rgba(255,255,255,.18);
+      margin-top: 5px;
+    }
+    .btn-edit-b:hover { background: rgba(255,255,255,.25); color: #fff; }
+    .dashboard-b .edit-fields input {
+      background: rgba(255,255,255,.08);
+      border-color: rgba(255,255,255,.18);
+      color: #fff;
+    }
+    .dashboard-b .edit-fields input::placeholder { color: rgba(255,255,255,.3); }
+    .dashboard-b .edit-fields input:focus { border-color: #fbbf24; }
+
+    /* ══════════════════════════════════════════
+       STYLE C — KANBAN / TILES
+    ══════════════════════════════════════════ */
+    .dashboard-c { background: var(--bg); border-color: var(--border); }
+
+    /* Header C */
+    .header-c {
+      padding: 12px 16px 10px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .header-c .vh-name { font-size: 1rem; font-weight: 800; color: var(--text1); line-height: 1.1; }
+    .header-c .vh-sub  { font-size: .71rem; color: var(--text2); }
+    .badge-c {
+      font-size: .66rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 4px;
+      background: #d1fae5;
+      color: #065f46;
+      border: 1.5px solid #6ee7b7;
+      white-space: nowrap;
+    }
+    .divider-c {
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent) 0%, #e8a87c 50%, var(--border) 100%);
+    }
+
+    /* Quads C */
+    .dashboard-c .quad {
+      background: #fff;
+      margin: 5px;
+      border-radius: 8px;
+      border-left: 4px solid transparent;
+      box-shadow: 0 1px 4px rgba(28,26,22,.06);
+      padding: 10px 12px 10px 11px;
+    }
+    .dashboard-c .quad:hover { box-shadow: 0 3px 10px rgba(28,26,22,.11); transform: translateY(-1px); }
+    .dashboard-c .quad { transition: box-shadow .18s, transform .18s; }
+    .dashboard-c .quad-grid { background: var(--bg); gap: 0; }
+
+    .qc-loc  { border-left-color: #3b82f6 !important; }
+    .qc-rep  { border-left-color: var(--red) !important; }
+    .qc-amor { border-left-color: var(--green) !important; }
+    .qc-ech  { border-left-color: var(--orange) !important; }
+
+    .qc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .qc-title {
+      font-size: .62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .qc-loc  .qc-title { color: #3b82f6; }
+    .qc-rep  .qc-title { color: var(--red); }
+    .qc-amor .qc-title { color: var(--green); }
+    .qc-ech  .qc-title { color: var(--orange); }
+
+    .qc-badge {
+      font-size: .58rem;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+    .qc-loc  .qc-badge { background: #eff6ff; color: #1d4ed8; }
+    .qc-rep  .qc-badge { background: #fff1f0; color: var(--red); }
+    .qc-amor .qc-badge { background: #ecfdf5; color: var(--green); }
+    .qc-ech  .qc-badge { background: #fffbeb; color: var(--orange); }
+
+    .qc-big {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--text1);
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .qc-unit {
+      font-size: .62rem;
+      font-weight: 500;
+      color: var(--text3);
+    }
+    .qc-rows { display: flex; flex-direction: column; gap: 3px; margin-top: 5px; }
+    .qc-row  { display: flex; justify-content: space-between; align-items: center; font-size: .67rem; }
+    .qc-row .k { color: var(--text2); }
+    .qc-row .v { font-weight: 600; color: var(--text1); }
+    .qc-row .v.warn { color: var(--orange); }
+    .qc-row .v.ok   { color: var(--green); }
+
+    .btn-edit-c {
+      background: #fff7ed;
+      color: var(--orange);
+      border: 1px solid #fed7aa;
+      margin-top: 4px;
+    }
+    .btn-edit-c:hover { background: var(--orange); color: #fff; border-color: var(--orange); }
+    .dashboard-c .edit-fields input { background: var(--bg); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      .showcase { grid-template-columns: 1fr; }
+      .style-block { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PAGE HEADER -->
+  <header class="page-header">
+    <h1>Choisissez votre style — <span>Vehicle Dashboard</span></h1>
+    <p>RentaFlow · 3 propositions de design pour la fiche véhicule</p>
+  </header>
+
+  <div class="showcase">
+
+    <!-- ══════════════════════════════════════
+         STYLE A — MINIMAL CARDS
+    ══════════════════════════════════════ -->
+    <div class="style-block">
+      <div class="style-label"><span>Style A</span> Minimal Cards</div>
+
+      <div class="dashboard dashboard-a">
+
+        <!-- Header -->
+        <div class="header-a">
+          <div class="vh-info">
+            <div class="vh-name">Toyota Corolla <span style="font-weight:400;color:var(--text2)">2021</span></div>
+            <div class="vh-sub">12345·A·1 &nbsp;·&nbsp; Berline &nbsp;·&nbsp; 78 500 km</div>
+          </div>
+          <div class="badge-a">● Disponible</div>
+        </div>
+
+        <!-- Quadrants -->
+        <div class="quad-grid">
+
+          <!-- Locations -->
+          <div class="quad quad-tl" onclick="this.style.background=this.style.background?'':'#fdf7f4'">
+            <div class="quad-a-icon qa-blue">🚗</div>
+            <div class="quad-a-val">8</div>
+            <div class="quad-a-label">Locations</div>
+            <div class="quad-a-rows">
+              <div class="quad-a-row"><span class="k">Jours loués</span><span class="v">45 j</span></div>
+              <div class="quad-a-row"><span class="k">Revenus</span><span class="v">12 500 MAD</span></div>
+              <div class="quad-a-row"><span class="k">En cours</span><span class="v">—</span></div>
+            </div>
+          </div>
+
+          <!-- Réparations -->
+          <div class="quad quad-tr" onclick="">
+            <div class="quad-a-icon qa-red">🔧</div>
+            <div class="quad-a-val">3 200 MAD</div>
+            <div class="quad-a-label">Réparations</div>
+            <div class="quad-a-rows">
+              <div class="quad-a-row"><span class="k">Dernière</span><span class="v">Freins</span></div>
+              <div class="quad-a-row"><span class="k">Date</span><span class="v">12 jan 2026</span></div>
+              <div class="quad-a-row"><span class="k">Nb total</span><span class="v">3</span></div>
+            </div>
+          </div>
+
+          <!-- Amortissement -->
+          <div class="quad quad-bl" onclick="">
+            <div class="quad-a-icon qa-green">📉</div>
+            <div class="quad-a-val">95 000 MAD</div>
+            <div class="quad-a-label">Amortissement</div>
+            <div class="quad-a-rows">
+              <div class="quad-a-row"><span class="k">Valeur initiale</span><span class="v">130 000</span></div>
+              <div class="quad-a-row"><span class="k">% amorti</span><span class="v warn">26,9 %</span></div>
+              <div class="quad-a-row"><span class="k">Durée</span><span class="v">5 ans</span></div>
+            </div>
+          </div>
+
+          <!-- Échéances -->
+          <div class="quad quad-br" onclick="">
+            <div class="quad-a-icon qa-amber">📅</div>
+            <div class="quad-a-val">2 000 km</div>
+            <div class="quad-a-label">Prochaine vidange</div>
+            <div class="quad-a-rows">
+              <div class="quad-a-row"><span class="k">CT</span><span class="v warn">juin 2026</span></div>
+              <div class="quad-a-row"><span class="k">Assurance</span><span class="v">déc 2026</span></div>
+            </div>
+            <button class="btn-edit btn-edit-a" onclick="event.stopPropagation();toggleEdit('editA')">Modifier</button>
+            <div class="edit-fields" id="editA">
+              <input type="text" placeholder="Prochaine vidange (km)" value="2 000 km" />
+              <input type="text" placeholder="CT" value="juin 2026" />
+              <input type="text" placeholder="Assurance" value="déc 2026" />
+            </div>
+          </div>
+
+        </div><!-- /.quad-grid -->
+      </div><!-- /.dashboard-a -->
+    </div><!-- /.style-block -->
+
+
+    <!-- ══════════════════════════════════════
+         STYLE B — DARK DASHBOARD
+    ══════════════════════════════════════ -->
+    <div class="style-block">
+      <div class="style-label"><span>Style B</span> Dark Dashboard</div>
+
+      <div class="dashboard dashboard-b">
+
+        <!-- Header -->
+        <div class="header-b">
+          <div class="vh-info">
+            <div class="vh-name">Toyota Corolla <span style="font-weight:400;opacity:.75">2021</span></div>
+            <div class="vh-sub">12345·A·1 &nbsp;·&nbsp; Berline &nbsp;·&nbsp; 78 500 km</div>
+          </div>
+          <div class="badge-b">● Disponible</div>
+        </div>
+
+        <!-- Quadrants -->
+        <div class="quad-grid">
+
+          <!-- Locations -->
+          <div class="quad qb-loc" onclick="">
+            <div class="qb-title">Locations</div>
+            <div class="qb-big">8 <span style="font-size:.75rem;font-weight:500;opacity:.6">contrats</span></div>
+            <div class="qb-rows">
+              <div class="qb-row"><span class="k">Jours loués</span><span class="v">45 j</span></div>
+              <div class="qb-row"><span class="k">Revenus</span><span class="v">12 500 MAD</span></div>
+              <div class="qb-row"><span class="k">En cours</span><span class="v ok">Libre</span></div>
+            </div>
+          </div>
+
+          <!-- Réparations -->
+          <div class="quad qb-rep" onclick="">
+            <div class="qb-title">Réparations</div>
+            <div class="qb-big">3 200 <span style="font-size:.7rem;font-weight:400;opacity:.6">MAD</span></div>
+            <div class="qb-rows">
+              <div class="qb-row"><span class="k">Dernière</span><span class="v">Freins</span></div>
+              <div class="qb-row"><span class="k">Date</span><span class="v">12 jan 2026</span></div>
+              <div class="qb-row"><span class="k">Nb total</span><span class="v alert">3 ⚠</span></div>
+            </div>
+          </div>
+
+          <!-- Amortissement -->
+          <div class="quad qb-amor" onclick="">
+            <div class="qb-title">Amortissement</div>
+            <div class="qb-big">95 000 <span style="font-size:.65rem;font-weight:400;opacity:.6">MAD</span></div>
+            <div class="qb-rows">
+              <div class="qb-row"><span class="k">Valeur init.</span><span class="v">130 000</span></div>
+              <div class="qb-row"><span class="k">% amorti</span><span class="v alert">26,9 %</span></div>
+              <div class="qb-row"><span class="k">Durée</span><span class="v">5 ans</span></div>
+            </div>
+          </div>
+
+          <!-- Échéances -->
+          <div class="quad qb-ech" onclick="">
+            <div class="qb-title">Échéances</div>
+            <div class="qb-big">2 000 <span style="font-size:.65rem;font-weight:400;opacity:.6">km</span></div>
+            <div class="qb-rows">
+              <div class="qb-row"><span class="k">CT</span><span class="v alert">juin 2026 ⚠</span></div>
+              <div class="qb-row"><span class="k">Assurance</span><span class="v">déc 2026</span></div>
+            </div>
+            <button class="btn-edit btn-edit-b" onclick="event.stopPropagation();toggleEdit('editB')">Modifier</button>
+            <div class="edit-fields" id="editB">
+              <input type="text" placeholder="Vidange (km)" value="2 000 km" />
+              <input type="text" placeholder="CT" value="juin 2026" />
+              <input type="text" placeholder="Assurance" value="déc 2026" />
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /.dashboard-b -->
+    </div><!-- /.style-block -->
+
+
+    <!-- ══════════════════════════════════════
+         STYLE C — KANBAN / TILES
+    ══════════════════════════════════════ -->
+    <div class="style-block">
+      <div class="style-label"><span>Style C</span> Kanban / Tiles</div>
+
+      <div class="dashboard dashboard-c">
+
+        <!-- Header -->
+        <div class="header-c">
+          <div class="vh-info">
+            <div class="vh-name">Toyota Corolla <span style="font-weight:500;color:var(--text2)">2021</span></div>
+            <div class="vh-sub">12345·A·1 &nbsp;·&nbsp; Berline &nbsp;·&nbsp; 78 500 km</div>
+          </div>
+          <div class="badge-c">● Disponible</div>
+        </div>
+        <div class="divider-c"></div>
+
+        <!-- Quadrants -->
+        <div class="quad-grid">
+
+          <!-- Locations -->
+          <div class="quad qc-loc" onclick="">
+            <div class="qc-header">
+              <div class="qc-title">Locations</div>
+              <div class="qc-badge">8 contrats</div>
+            </div>
+            <div class="qc-big">45 <span class="qc-unit">jours</span></div>
+            <div class="qc-rows">
+              <div class="qc-row"><span class="k">Revenus</span><span class="v">12 500 MAD</span></div>
+              <div class="qc-row"><span class="k">En cours</span><span class="v ok">Libre</span></div>
+            </div>
+          </div>
+
+          <!-- Réparations -->
+          <div class="quad qc-rep" onclick="">
+            <div class="qc-header">
+              <div class="qc-title">Réparations</div>
+              <div class="qc-badge">3 interv.</div>
+            </div>
+            <div class="qc-big">3 200 <span class="qc-unit">MAD</span></div>
+            <div class="qc-rows">
+              <div class="qc-row"><span class="k">Dernière</span><span class="v">Freins</span></div>
+              <div class="qc-row"><span class="k">Date</span><span class="v">12 jan 2026</span></div>
+            </div>
+          </div>
+
+          <!-- Amortissement -->
+          <div class="quad qc-amor" onclick="">
+            <div class="qc-header">
+              <div class="qc-title">Amortissement</div>
+              <div class="qc-badge">26,9 %</div>
+            </div>
+            <div class="qc-big">95 000 <span class="qc-unit">MAD</span></div>
+            <div class="qc-rows">
+              <div class="qc-row"><span class="k">Valeur init.</span><span class="v">130 000</span></div>
+              <div class="qc-row"><span class="k">Durée</span><span class="v">5 ans</span></div>
+            </div>
+          </div>
+
+          <!-- Échéances -->
+          <div class="quad qc-ech" onclick="">
+            <div class="qc-header">
+              <div class="qc-title">Échéances</div>
+              <div class="qc-badge">3 items</div>
+            </div>
+            <div class="qc-big">2 000 <span class="qc-unit">km</span></div>
+            <div class="qc-rows">
+              <div class="qc-row"><span class="k">CT</span><span class="v warn">juin 2026</span></div>
+              <div class="qc-row"><span class="k">Assurance</span><span class="v ok">déc 2026</span></div>
+            </div>
+            <button class="btn-edit btn-edit-c" onclick="event.stopPropagation();toggleEdit('editC')">Modifier</button>
+            <div class="edit-fields" id="editC">
+              <input type="text" placeholder="Vidange (km)" value="2 000 km" />
+              <input type="text" placeholder="CT" value="juin 2026" />
+              <input type="text" placeholder="Assurance" value="déc 2026" />
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /.dashboard-c -->
+    </div><!-- /.style-block -->
+
+  </div><!-- /.showcase -->
+
+  <script>
+    function toggleEdit(id) {
+      const el = document.getElementById(id);
+      el.classList.toggle('open');
+      // Update button text
+      const btn = el.previousElementSibling;
+      btn.textContent = el.classList.contains('open') ? 'Fermer' : 'Modifier';
+    }
+  </script>
+
+</body>
+</html>

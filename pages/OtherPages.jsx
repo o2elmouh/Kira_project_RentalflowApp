@@ -750,19 +750,290 @@ function AgenceTab() {
   )
 }
 
-function GeneralConfigTab() {
+const DEFAULT_OPTIONS = [
+  { id: 'cdw', name: 'CDW — Collision Damage Waiver', pricingType: 'per_day', price: 80, enabled: true },
+  { id: 'pai', name: 'PAI — Protection Accident Individuel', pricingType: 'per_day', price: 40, enabled: true },
+]
+
+function RentalOptionsSection() {
+  const loadOptions = () => {
+    const cfg = getGeneralConfig()
+    return cfg.rentalOptions && cfg.rentalOptions.length > 0 ? cfg.rentalOptions : DEFAULT_OPTIONS
+  }
+  const [options, setOptions] = useState(loadOptions)
+  const [saved, setSaved] = useState(false)
+
+  const update = (id, field, value) => {
+    setOptions(prev => prev.map(o => o.id === id ? { ...o, [field]: value } : o))
+    setSaved(false)
+  }
+
+  const addOption = () => {
+    const newId = 'opt_' + Date.now()
+    setOptions(prev => [...prev, { id: newId, name: '', pricingType: 'per_day', price: 0, enabled: true }])
+    setSaved(false)
+  }
+
+  const removeOption = (id) => {
+    setOptions(prev => prev.filter(o => o.id !== id))
+    setSaved(false)
+  }
+
+  const save = () => {
+    const cfg = getGeneralConfig()
+    saveGeneralConfig({ ...cfg, rentalOptions: options })
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  const PROTECTED = ['cdw', 'pai']
+
   return (
-    <div className="card" style={{ maxWidth: 680 }}>
-      <div className="card-header"><h3>Configuration générale</h3></div>
+    <div className="card" style={{ maxWidth: 780 }}>
+      <div className="card-header">
+        <h3>Options de location</h3>
+        {saved && <span className="badge badge-green">Enregistré</span>}
+      </div>
       <div className="card-body">
-        <p style={{ fontSize: 13, color: 'var(--text3)' }}>
-          D'autres paramètres généraux seront ajoutés ici prochainement.
-        </p>
-        <div style={{ fontSize: 13, color: 'var(--text2)', background: 'var(--bg2)', borderRadius: 8, padding: '10px 14px', display: 'flex', gap: 8 }}>
-          <span>ℹ️</span>
-          <span>La limite kilométrique est désormais configurable par véhicule dans la fiche de chaque voiture (onglet Flotte).</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {options.map(opt => (
+            <div key={opt.id} style={{ display: 'grid', gridTemplateColumns: '36px 1fr 140px 100px 36px', gap: 8, alignItems: 'center', background: 'var(--bg2)', borderRadius: 8, padding: '8px 12px' }}>
+              <input
+                type="checkbox"
+                checked={opt.enabled}
+                onChange={e => update(opt.id, 'enabled', e.target.checked)}
+                style={{ width: 16, height: 16, cursor: 'pointer' }}
+              />
+              <input
+                className="form-input"
+                style={{ fontSize: 13, padding: '5px 8px' }}
+                value={opt.name}
+                placeholder="Nom de l'option"
+                onChange={e => update(opt.id, 'name', e.target.value)}
+              />
+              <select
+                className="form-select"
+                style={{ fontSize: 12, padding: '5px 8px' }}
+                value={opt.pricingType}
+                onChange={e => update(opt.id, 'pricingType', e.target.value)}
+              >
+                <option value="per_day">Par jour</option>
+                <option value="fixed">Fixe</option>
+              </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  className="form-input text-mono"
+                  style={{ fontSize: 13, padding: '5px 8px' }}
+                  type="number"
+                  min="0"
+                  value={opt.price}
+                  onChange={e => update(opt.id, 'price', Number(e.target.value))}
+                />
+                <span style={{ fontSize: 11, color: 'var(--text3)', whiteSpace: 'nowrap' }}>MAD</span>
+              </div>
+              {PROTECTED.includes(opt.id) ? (
+                <div style={{ width: 36 }} />
+              ) : (
+                <button
+                  onClick={() => removeOption(opt.id)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#ef4444', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title="Supprimer"
+                >
+                  🗑️
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+          <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={addOption}>
+            + Ajouter une option
+          </button>
+          <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={save}>
+            Enregistrer
+          </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function SignatureSection() {
+  const canvasRef = useRef(null)
+  const [drawing, setDrawing] = useState(false)
+  const [savedSig, setSavedSig] = useState(() => getGeneralConfig().defaultSignature || null)
+  const [editMode, setEditMode] = useState(!getGeneralConfig().defaultSignature)
+  const [saveFeedback, setSaveFeedback] = useState(false)
+
+  const getPos = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect()
+    if (e.touches) {
+      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top }
+    }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+  }
+
+  const startDraw = (e) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    e.preventDefault()
+    const ctx = canvas.getContext('2d')
+    const pos = getPos(e, canvas)
+    ctx.beginPath()
+    ctx.moveTo(pos.x, pos.y)
+    setDrawing(true)
+  }
+
+  const draw = (e) => {
+    if (!drawing) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    e.preventDefault()
+    const ctx = canvas.getContext('2d')
+    const pos = getPos(e, canvas)
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    ctx.strokeStyle = '#1c1a16'
+    ctx.lineTo(pos.x, pos.y)
+    ctx.stroke()
+  }
+
+  const stopDraw = () => setDrawing(false)
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
+  }
+
+  const saveSig = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const dataUrl = canvas.toDataURL('image/png')
+    const cfg = getGeneralConfig()
+    saveGeneralConfig({ ...cfg, defaultSignature: dataUrl })
+    setSavedSig(dataUrl)
+    setEditMode(false)
+    setSaveFeedback(true)
+    setTimeout(() => setSaveFeedback(false), 2000)
+  }
+
+  const startEdit = () => {
+    setEditMode(true)
+    setTimeout(() => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
+    }, 50)
+  }
+
+  return (
+    <div className="card" style={{ maxWidth: 520 }}>
+      <div className="card-header">
+        <h3>Signature par défaut</h3>
+        {saveFeedback && <span className="badge badge-green">Enregistrée</span>}
+      </div>
+      <div className="card-body">
+        {!editMode && savedSig ? (
+          <div>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', display: 'inline-block', marginBottom: 12 }}>
+              <img src={savedSig} alt="Signature enregistrée" style={{ display: 'block', maxWidth: 400 }} />
+            </div>
+            <div>
+              <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={startEdit}>
+                Modifier la signature
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 8 }}>
+              Dessinez votre signature ci-dessous :
+            </div>
+            <canvas
+              ref={canvasRef}
+              width={400}
+              height={150}
+              style={{ border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: 'crosshair', touchAction: 'none', display: 'block' }}
+              onMouseDown={startDraw}
+              onMouseMove={draw}
+              onMouseUp={stopDraw}
+              onMouseLeave={stopDraw}
+              onTouchStart={startDraw}
+              onTouchMove={draw}
+              onTouchEnd={stopDraw}
+            />
+            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+              <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={clearCanvas}>
+                Effacer
+              </button>
+              <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={saveSig}>
+                Enregistrer la signature
+              </button>
+              {savedSig && (
+                <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => setEditMode(false)}>
+                  Annuler
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function GeneralConfigTab() {
+  const [activeSection, setActiveSection] = useState('options')
+
+  const sections = [
+    { id: 'options',    label: 'Options de location' },
+    { id: 'signature',  label: 'Signature par défaut' },
+    { id: 'params',     label: 'Paramètres' },
+  ]
+
+  return (
+    <div>
+      {/* Tabs horizontaux */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid var(--border)', paddingBottom: 0 }}>
+        {sections.map(s => (
+          <button
+            key={s.id}
+            onClick={() => setActiveSection(s.id)}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '8px 16px',
+              fontSize: 13,
+              fontWeight: activeSection === s.id ? 700 : 400,
+              color: activeSection === s.id ? 'var(--accent)' : 'var(--text2)',
+              borderBottom: activeSection === s.id ? '2px solid var(--accent)' : '2px solid transparent',
+              marginBottom: -2,
+              cursor: 'pointer',
+              transition: 'color .15s',
+            }}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {activeSection === 'options' && <RentalOptionsSection />}
+      {activeSection === 'signature' && <SignatureSection />}
+      {activeSection === 'params' && (
+        <div className="card" style={{ maxWidth: 680 }}>
+          <div className="card-header"><h3>Paramètres généraux</h3></div>
+          <div className="card-body">
+            <p style={{ fontSize: 13, color: 'var(--text3)' }}>
+              D'autres paramètres généraux seront ajoutés ici prochainement.
+            </p>
+            <div style={{ fontSize: 13, color: 'var(--text2)', background: 'var(--bg2)', borderRadius: 8, padding: '10px 14px', display: 'flex', gap: 8 }}>
+              <span>ℹ️</span>
+              <span>La limite kilométrique est désormais configurable par véhicule dans la fiche de chaque voiture (onglet Flotte).</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

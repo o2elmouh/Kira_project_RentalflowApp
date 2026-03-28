@@ -1,13 +1,14 @@
-import { LayoutDashboard, PlusCircle, Car, Users, FileText, Receipt, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Car, Users, FileText, Receipt, Settings, LogOut, RotateCcw } from 'lucide-react'
 
 const NAV = [
-  { id: 'dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
-  { id: 'new-rental', label: 'New Rental',  icon: PlusCircle },
-  { id: 'fleet',      label: 'Fleet',       icon: Car },
-  { id: 'clients',    label: 'Clients',     icon: Users },
-  { id: 'contracts',  label: 'Contracts',   icon: FileText },
-  { id: 'invoices',   label: 'Invoices',    icon: Receipt },
-  { id: 'settings',   label: 'Settings',    icon: Settings },
+  { id: 'dashboard',         label: 'Dashboard',   icon: LayoutDashboard },
+  { id: 'new-rental',        label: 'New Rental',   icon: PlusCircle },
+  { id: 'restitution-quick', label: 'Restitution',  icon: RotateCcw },
+  { id: 'fleet',             label: 'Fleet',        icon: Car },
+  { id: 'clients',           label: 'Clients',      icon: Users },
+  { id: 'contracts',         label: 'Contracts',    icon: FileText },
+  { id: 'invoices',          label: 'Invoices',     icon: Receipt },
+  { id: 'settings',          label: 'Settings',     icon: Settings },
 ]
 
 export default function Sidebar({ active, onNav, user, profile, onSignOut }) {
@@ -21,16 +22,25 @@ export default function Sidebar({ active, onNav, user, profile, onSignOut }) {
         <span className="logo-text">RentaFlow</span>
       </div>
       <nav className="sidebar-nav">
-        {NAV.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            className={`nav-item${active === id ? ' active' : ''}`}
-            onClick={() => onNav(id)}
-          >
-            <Icon size={16} />
-            <span>{label}</span>
-          </button>
-        ))}
+        {NAV.map(({ id, label, icon: Icon }) => {
+          const isRestitution = id === 'restitution-quick'
+          const navTarget = isRestitution ? 'contracts' : id
+          return (
+            <button
+              key={id}
+              className={`nav-item${active === id ? ' active' : ''}`}
+              onClick={() => onNav(navTarget)}
+              style={isRestitution ? {
+                background: active === id ? undefined : 'rgba(251, 191, 36, 0.10)',
+                borderLeft: '2px solid rgba(251, 191, 36, 0.45)',
+                color: 'var(--text2)',
+              } : undefined}
+            >
+              <Icon size={16} />
+              <span>{label}</span>
+            </button>
+          )
+        })}
       </nav>
 
       {user && onSignOut && (

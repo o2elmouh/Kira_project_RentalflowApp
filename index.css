@@ -371,3 +371,16 @@ body {
   font-size: 13px;
   margin-bottom: 20px;
 }
+
+/* ── Vehicle Dashboard (Kanban Tiles) ────────────────────── */
+.vehicle-dashboard { background: var(--bg); border-radius: 12px; }
+.vehicle-dashboard-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 20px; background: var(--surface); border-radius: 12px 12px 0 0; border-bottom: 1px solid var(--border); }
+.vehicle-dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
+.dashboard-tile { background: var(--surface); border-radius: 8px; padding: 14px 16px; border-left-width: 4px; border-left-style: solid; transition: box-shadow 0.15s; }
+.dashboard-tile:hover { box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+.dashboard-tile-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.dashboard-tile-value { font-size: 28px; font-weight: 700; line-height: 1; margin-bottom: 10px; color: var(--text1); }
+.dashboard-tile-value span { font-size: 13px; font-weight: 500; color: var(--text3); margin-left: 4px; }
+.dashboard-tile-meta { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text2); }
+.dashboard-tile-meta-row { display: flex; justify-content: space-between; }
+.dashboard-edit-panel { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }

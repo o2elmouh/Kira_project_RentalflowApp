@@ -443,61 +443,226 @@ function RentalsTab({ vehicle }) {
   )
 }
 
-// ── Vehicle detail panel ──────────────────────────────────
-const TABS = [
-  { id: 'rentals',    label: 'Locations',      icon: History },
-  { id: 'repairs',    label: 'Réparations',     icon: Wrench },
-  { id: 'amort',      label: 'Amortissement',   icon: TrendingDown },
-  { id: 'deadlines',  label: 'Échéances',       icon: Clock },
-]
+// ── Vehicle dashboard (Kanban Tiles 2x2) ─────────────────
+function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDelete }) {
+  const [showDeadlineEdit, setShowDeadlineEdit] = useState(false)
+  const [deadlineForm, setDeadlineForm] = useState(() => computeDeadlinesFromConfig(vehicle))
+  const [deadlineSaved, setDeadlineSaved] = useState(false)
 
-function VehicleDetail({ vehicle, onClose, onSave }) {
-  const [tab, setTab] = useState('rentals')
-  const contracts = getContracts()
+  const contracts = getContracts().filter(c => c.vehicleId === vehicle.id)
+  const repairs = getRepairs ? getRepairs(vehicle.id) : []
 
-  const urgentDeadlines = [
-    vehicle.nextOilChange, vehicle.nextTimingBelt, vehicle.nextControleTech,
-    vehicle.nextRepair, vehicle.warrantyEnd,
-  ].filter(d => d && Math.ceil((new Date(d) - new Date()) / 86400000) <= 30).length
+  // Locations metrics
+  const totalRevenue = contracts.reduce((s, c) => s + (c.totalTTC || 0), 0)
+  const totalDays = contracts.reduce((s, c) => s + (c.days || 0), 0)
+  const activeContract = contracts.find(c => c.status === 'active')
+
+  // Repairs metrics
+  const repairTotal = repairs.reduce((s, r) => s + (r.cost || 0), 0)
+  const lastRepair = repairs.length > 0 ? repairs.slice().sort((a, b) => new Date(b.date) - new Date(a.date))[0] : null
+
+  // Amortissement metrics
+  const price    = Number(vehicle.purchasePrice) || 0
+  const lifespan = Number(vehicle.lifespan) || 5
+  const residual = Number(vehicle.residualValue) || 0
+  const boughtDate = vehicle.purchaseDate || (vehicle.year ? `${vehicle.year}-01-01` : null)
+  const bought = boughtDate ? new Date(boughtDate) : null
+  const yearsElapsed = bought ? (Date.now() - bought.getTime()) / (365.25 * 24 * 3600 * 1000) : 0
+  const depreciable = Math.max(0, price - residual)
+  const bookValue = price > 0 ? Math.max(residual, price - (depreciable / lifespan) * yearsElapsed) : 0
+  const amortPct = price > 0 ? Math.min(100, (yearsElapsed / lifespan) * 100) : 0
+
+  // Deadlines metrics
+  const nextOilKm = vehicle.nextOilChangeMileage || ''
+  const ctDate = vehicle.nextControleTech || ''
+  const assurDate = vehicle.insuranceEnd || ''
+
+  const statusColor = vehicle.status === 'available' ? '#16a34a' : vehicle.status === 'rented' ? '#f59e0b' : '#6b7280'
+  const statusLabel = vehicle.status === 'available' ? 'Disponible' : vehicle.status === 'rented' ? 'En location' : 'Maintenance'
+
+  const saveDeadlines = () => {
+    onSave({ ...vehicle, ...deadlineForm })
+    setDeadlineSaved(true)
+    setTimeout(() => setDeadlineSaved(false), 2000)
+  }
+
+  const config = getFleetConfigForMake(vehicle.make)
+  const deadlineFields = [
+    { label: 'Prochaine vidange',     dateKey: 'nextOilChange',    mileageKey: 'nextOilChangeMileage',  configHint: config ? `Config : tous les ${config.vidangeKm.toLocaleString()} km` : null },
+    { label: 'Changement courroie',   dateKey: 'nextTimingBelt',   mileageKey: 'nextTimingBeltMileage', configHint: config ? `Config : à ${config.courroieKm.toLocaleString()} km` : null },
+    { label: 'Contrôle technique',    dateKey: 'nextControleTech', configHint: config ? `Config : tous les ${config.controlTechYears} ans` : null },
+    { label: 'Prochaine réparation',  dateKey: 'nextRepair',       configHint: null },
+    { label: 'Fin de garantie',       dateKey: 'warrantyEnd',      configHint: config ? `Config : ${config.warrantyGeneral}` : null },
+    { label: 'Date de revente prévue',dateKey: 'plannedSaleDate',  configHint: null },
+  ]
 
   return (
-    <div className="card mb-4">
-      <div className="card-header" style={{ gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}><ChevronLeft size={14} /></button>
+    <div className="vehicle-dashboard card mb-4">
+      {/* ── Header ── */}
+      <div className="vehicle-dashboard-header">
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <button className="btn btn-ghost btn-sm" onClick={onClose} style={{ marginTop: 2 }}><ChevronLeft size={14} /></button>
           <div>
-            <div style={{ fontWeight: 700 }}>{vehicle.make} {vehicle.model} {vehicle.year}</div>
-            <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>{displayPlate(vehicle.plate)}</div>
+            <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--text1)' }}>
+              {vehicle.make} {vehicle.model} {vehicle.year}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 3 }}>
+              {displayPlate(vehicle.plate)}
+              {vehicle.category && <span style={{ marginLeft: 10 }}>{vehicle.category}</span>}
+              {vehicle.mileage ? <span style={{ marginLeft: 10 }}>{Number(vehicle.mileage).toLocaleString()} km</span> : null}
+            </div>
           </div>
         </div>
-        {urgentDeadlines > 0 && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--orange)', fontSize: 12, fontWeight: 600 }}>
-            <AlertTriangle size={14} /> {urgentDeadlines} échéance{urgentDeadlines > 1 ? 's' : ''} urgente{urgentDeadlines > 1 ? 's' : ''}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ padding: '4px 10px', borderRadius: 20, background: statusColor + '20', color: statusColor, fontSize: 12, fontWeight: 600 }}>
+            {statusLabel}
           </span>
-        )}
+          {onEdit && (
+            <button className="btn btn-ghost btn-sm" onClick={onEdit}><Edit2 size={13} /> Modifier</button>
+          )}
+          {onDelete && (
+            <button className="btn btn-ghost btn-sm" style={{ color: '#dc2626' }} onClick={onDelete}><Trash2 size={13} /></button>
+          )}
+        </div>
       </div>
 
-      {/* Tab bar */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', padding: '0 18px' }}>
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button key={id} onClick={() => setTab(id)} style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '10px 14px', border: 'none', background: 'none',
-            fontFamily: 'inherit', fontSize: 13, fontWeight: tab === id ? 600 : 400,
-            color: tab === id ? 'var(--accent)' : 'var(--text3)',
-            borderBottom: tab === id ? '2px solid var(--accent)' : '2px solid transparent',
-            cursor: 'pointer', marginBottom: -1,
-          }}>
-            <Icon size={14} />{label}
-          </button>
-        ))}
-      </div>
+      {/* ── 2×2 grid ── */}
+      <div className="vehicle-dashboard-grid">
 
-      <div className="card-body">
-        {tab === 'rentals'   && <RentalsTab vehicle={vehicle} />}
-        {tab === 'repairs'   && <RepairsTab vehicle={vehicle} />}
-        {tab === 'amort'     && <AmortissementTab vehicle={vehicle} contracts={contracts} />}
-        {tab === 'deadlines' && <DeadlinesTab vehicle={vehicle} onSave={v => { onSave(v); }} />}
+        {/* Haut gauche — LOCATIONS */}
+        <div className="dashboard-tile" style={{ borderLeftColor: '#2563eb' }}>
+          <div className="dashboard-tile-label" style={{ color: '#2563eb' }}>
+            LOCATIONS
+            <span style={{ background: '#eff6ff', color: '#2563eb', borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700 }}>{contracts.length}</span>
+          </div>
+          <div className="dashboard-tile-value">{totalDays}<span>jours loués</span></div>
+          <div className="dashboard-tile-meta">
+            <div className="dashboard-tile-meta-row">
+              <span>Revenus total</span>
+              <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 600 }}>{totalRevenue.toLocaleString()} MAD</span>
+            </div>
+            <div className="dashboard-tile-meta-row">
+              <span>Statut actuel</span>
+              <span style={{ fontWeight: 600, color: activeContract ? '#16a34a' : 'var(--text3)' }}>
+                {activeContract ? 'En cours' : 'Libre'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Haut droit — RÉPARATIONS */}
+        <div className="dashboard-tile" style={{ borderLeftColor: '#dc2626' }}>
+          <div className="dashboard-tile-label" style={{ color: '#dc2626' }}>
+            RÉPARATIONS
+            <span style={{ background: '#fef2f2', color: '#dc2626', borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700 }}>{repairs.length}</span>
+          </div>
+          <div className="dashboard-tile-value">{repairTotal.toLocaleString()}<span>MAD total</span></div>
+          <div className="dashboard-tile-meta">
+            {lastRepair ? (
+              <>
+                <div className="dashboard-tile-meta-row">
+                  <span>Dernière intervention</span>
+                  <span style={{ fontWeight: 600 }}>{lastRepair.type}</span>
+                </div>
+                <div className="dashboard-tile-meta-row">
+                  <span>Date</span>
+                  <span>{new Date(lastRepair.date).toLocaleDateString('fr-MA')}</span>
+                </div>
+              </>
+            ) : (
+              <div style={{ color: 'var(--text3)', fontSize: 12 }}>Aucune intervention</div>
+            )}
+          </div>
+        </div>
+
+        {/* Bas gauche — AMORTISSEMENT */}
+        <div className="dashboard-tile" style={{ borderLeftColor: '#16a34a' }}>
+          <div className="dashboard-tile-label" style={{ color: '#16a34a' }}>
+            AMORTISSEMENT
+            <span style={{ background: '#f0fdf4', color: '#16a34a', borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700 }}>
+              {price > 0 ? `${amortPct.toFixed(0)}%` : '—'}
+            </span>
+          </div>
+          {price > 0 ? (
+            <>
+              <div className="dashboard-tile-value">{Math.round(bookValue).toLocaleString()}<span>MAD actuel</span></div>
+              <div className="dashboard-tile-meta">
+                <div className="dashboard-tile-meta-row">
+                  <span>Valeur initiale</span>
+                  <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 600 }}>{price.toLocaleString()} MAD</span>
+                </div>
+                <div className="dashboard-tile-meta-row">
+                  <span>Durée de vie</span>
+                  <span>{lifespan} ans</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 8 }}>
+              Ajoutez le prix d'achat (bouton Modifier) pour activer.
+            </div>
+          )}
+        </div>
+
+        {/* Bas droit — ÉCHÉANCES */}
+        <div className="dashboard-tile" style={{ borderLeftColor: '#f59e0b' }}>
+          <div className="dashboard-tile-label" style={{ color: '#f59e0b' }}>
+            ÉCHÉANCES
+            <span style={{ background: '#fffbeb', color: '#f59e0b', borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700 }}>
+              {[ctDate, assurDate, nextOilKm].filter(Boolean).length}
+            </span>
+          </div>
+          <div className="dashboard-tile-value">
+            {nextOilKm ? <>{Number(nextOilKm).toLocaleString()}<span>km vidange</span></> : <span style={{ fontSize: 14, fontWeight: 500 }}>—</span>}
+          </div>
+          <div className="dashboard-tile-meta">
+            <div className="dashboard-tile-meta-row">
+              <span>CT</span>
+              {ctDate ? <DeadlineBadge date={ctDate} /> : <span style={{ color: 'var(--text3)' }}>—</span>}
+            </div>
+            <div className="dashboard-tile-meta-row">
+              <span>Assurance</span>
+              {assurDate ? <DeadlineBadge date={assurDate} /> : <span style={{ color: 'var(--text3)' }}>—</span>}
+            </div>
+            <div style={{ marginTop: 6 }}>
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ fontSize: 11, padding: '3px 8px' }}
+                onClick={() => setShowDeadlineEdit(v => !v)}
+              >
+                {showDeadlineEdit ? 'Fermer' : 'Modifier'}
+              </button>
+              {deadlineSaved && <span className="badge badge-green" style={{ marginLeft: 6 }}>Enregistré</span>}
+            </div>
+          </div>
+
+          {/* Inline edit panel */}
+          {showDeadlineEdit && (
+            <div className="dashboard-edit-panel">
+              {deadlineFields.map(({ label, dateKey, mileageKey, configHint }) => (
+                <div key={dateKey} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)' }}>
+                    {label}
+                    {configHint && <span style={{ fontSize: 10, color: '#a5b4fc', marginLeft: 4 }}>({configHint})</span>}
+                  </label>
+                  <input className="form-input" type="date" style={{ fontSize: 12, padding: '4px 8px' }}
+                    value={deadlineForm[dateKey] || ''}
+                    onChange={e => setDeadlineForm(p => ({ ...p, [dateKey]: e.target.value }))} />
+                  {mileageKey && (
+                    <input className="form-input text-mono" type="number" style={{ fontSize: 12, padding: '4px 8px' }}
+                      placeholder="Kilométrage"
+                      value={deadlineForm[mileageKey] || ''}
+                      onChange={e => setDeadlineForm(p => ({ ...p, [mileageKey]: e.target.value }))} />
+                  )}
+                </div>
+              ))}
+              <button className="btn btn-primary btn-sm" style={{ marginTop: 4 }} onClick={saveDeadlines}>
+                Enregistrer
+              </button>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   )
@@ -598,7 +763,9 @@ export default function Fleet() {
     <div>
       <div className="page-header">
         <div><h2>Parc automobile</h2><p>Gérez votre flotte de véhicules</p></div>
-        <button className="btn btn-primary" onClick={openAdd}><PlusCircle size={15} /> Ajouter</button>
+        {!detail && !editing && (
+          <button className="btn btn-primary" onClick={openAdd}><PlusCircle size={15} /> Ajouter</button>
+        )}
       </div>
 
       <div className="page-body">
@@ -754,6 +921,8 @@ export default function Fleet() {
             vehicle={detail}
             onClose={() => setDetail(null)}
             onSave={saveDeadlines}
+            onEdit={() => openEdit(detail)}
+            onDelete={() => remove(detail.id)}
           />
         )}
 
@@ -763,6 +932,11 @@ export default function Fleet() {
             {fleet.map(v => {
               const urgentCount = [v.nextOilChange, v.nextTimingBelt, v.nextControleTech, v.nextRepair, v.warrantyEnd]
                 .filter(d => d && Math.ceil((new Date(d) - new Date()) / 86400000) <= 30).length
+
+              const vConfig = getFleetConfigForMake(v.make)
+              const currentKm = v.mileage || 0
+              const targetOilKm = v.nextOilChangeMileage || (vConfig ? currentKm + vConfig.vidangeKm : null)
+              const targetBeltKm = v.nextTimingBeltMileage || (vConfig ? currentKm + vConfig.courroieKm : null)
 
               return (
                 <div key={v.id} className="vehicle-card">
@@ -776,7 +950,29 @@ export default function Fleet() {
                   </div>
                   <div className="vehicle-name">{v.make} {v.model} {v.year}</div>
                   <div className="vehicle-meta">{v.category} · {v.color} · {v.fuelType}</div>
-                  <div className="vehicle-meta">{v.mileage?.toLocaleString()} km</div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                    <div className="vehicle-meta">{v.mileage?.toLocaleString()} km</div>
+                    {vConfig && (targetOilKm || targetBeltKm) && (
+                      <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                        {targetOilKm && (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: currentKm > targetOilKm ? '#dc2626' : '#111827' }}>
+                              🛢️ {Number(targetOilKm).toLocaleString()} km
+                            </span>
+                            <span style={{ fontSize: 10, color: '#2563eb' }}>{currentKm.toLocaleString()} km</span>
+                          </div>
+                        )}
+                        {targetBeltKm && (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: currentKm > targetBeltKm ? '#dc2626' : '#111827' }}>
+                              ⚙️ {Number(targetBeltKm).toLocaleString()} km
+                            </span>
+                            <span style={{ fontSize: 10, color: '#2563eb' }}>{currentKm.toLocaleString()} km</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <div className="vehicle-status">
                     <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 600, color: 'var(--accent)' }}>{v.dailyRate} MAD/j</span>
                     <span className={`badge ${v.status === 'available' ? 'badge-green' : v.status === 'rented' ? 'badge-orange' : 'badge-gray'}`}>{v.status}</span>
