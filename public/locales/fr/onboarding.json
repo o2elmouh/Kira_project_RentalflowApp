@@ -24,7 +24,11 @@
     "errors": {
       "required": "Nom de l'agence et votre nom sont requis.",
       "generic": "Erreur lors de la création. Vérifiez la console."
-    }
+    },
+    "ice": "ICE",
+    "icePlaceholder": "000000000000000",
+    "rc": "Registre de commerce (RC)",
+    "rcPlaceholder": "123456"
   },
   "loggedInAs": "Connecté en tant que {{email}} ·"
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase, isSupabaseEnabled } from './lib/supabase'
+import { UserContext } from './lib/UserContext'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import NewRental from './pages/NewRental'
@@ -141,16 +142,20 @@ export default function App() {
   if (authState === 'unauthenticated') return <AuthPage />
   if (authState === 'onboarding') return <OnboardingPage user={user} />
 
+  const role = profile?.role ?? 'admin' // default admin for localStorage mode
+
   return (
-    <div className="app-shell">
-      <Sidebar
-        active={page}
-        onNav={setPage}
-        user={user}
-        profile={profile}
-        onSignOut={USE_AUTH ? () => supabase.auth.signOut() : null}
-      />
-      <main className="main">{renderPage()}</main>
-    </div>
+    <UserContext.Provider value={{ user, profile, role }}>
+      <div className="app-shell">
+        <Sidebar
+          active={page}
+          onNav={setPage}
+          user={user}
+          profile={profile}
+          onSignOut={USE_AUTH ? () => supabase.auth.signOut() : null}
+        />
+        <main className="main">{renderPage()}</main>
+      </div>
+    </UserContext.Provider>
   )
 }

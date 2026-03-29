@@ -19,6 +19,8 @@ export default function OnboardingPage({ user }) {
   const [fullName, setFullName]     = useState(user?.user_metadata?.full_name || '')
   const [city, setCity]             = useState('')
   const [phone, setPhone]           = useState('')
+  const [ice, setIce]               = useState('')
+  const [rc, setRc]                 = useState('')
   const [error, setError]           = useState(null)
   const [loading, setLoading]       = useState(false)
 
@@ -38,6 +40,8 @@ export default function OnboardingPage({ user }) {
         p_email:       user.email,
         p_phone:       phone.trim() || null,
         p_city:        city.trim() || null,
+        p_ice:         ice.trim() || null,
+        p_rc:          rc.trim() || null,
       })
       if (error) throw error
       window.location.reload()
@@ -115,6 +119,17 @@ export default function OnboardingPage({ user }) {
             <Field label={t('step2.city')}>
               <input className="form-input" placeholder={t('step2.cityPlaceholder')}
                 value={city} onChange={e => setCity(e.target.value)} />
+            </Field>
+
+            <Field label={t('step2.ice')}>
+              <input className="form-input" placeholder={t('step2.icePlaceholder')}
+                value={ice} onChange={e => setIce(e.target.value)}
+                maxLength={15} />
+            </Field>
+
+            <Field label={t('step2.rc')}>
+              <input className="form-input" placeholder={t('step2.rcPlaceholder')}
+                value={rc} onChange={e => setRc(e.target.value)} />
             </Field>
 
             <div className="auth-actions">

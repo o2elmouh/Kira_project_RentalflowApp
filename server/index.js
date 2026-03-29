@@ -7,6 +7,7 @@ import healthRouter    from './routes/health.js'
 import agencyRouter    from './routes/agency.js'
 import contractsRouter from './routes/contracts.js'
 import emailRouter     from './routes/email.js'
+import teamRouter      from './routes/team.js'
 
 const app  = express()
 const PORT = process.env.PORT || 3001
@@ -44,6 +45,7 @@ app.use('/health',    healthRouter)
 app.use('/agency',    agencyRouter)
 app.use('/contracts', contractsRouter)
 app.use('/email',     emailRouter)
+app.use('/team',      teamRouter)
 
 // ── 404 ───────────────────────────────────────────────────
 app.use((req, res) => {

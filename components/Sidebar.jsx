@@ -53,8 +53,20 @@ export default function Sidebar({ active, onNav, user, profile, onSignOut }) {
               {agencyName}
             </div>
           )}
-          <div style={{ fontSize: 12, color: 'var(--text2)', paddingLeft: 8, marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {displayName}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 12, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+              {displayName}
+            </span>
+            {profile?.role && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, flexShrink: 0,
+                background: profile.role === 'admin' ? 'rgba(99,102,241,0.2)' : 'rgba(34,197,94,0.15)',
+                color:      profile.role === 'admin' ? '#a5b4fc' : '#86efac',
+                textTransform: 'uppercase', letterSpacing: '0.5px',
+              }}>
+                {profile.role}
+              </span>
+            )}
           </div>
           <div style={{ marginBottom: 8 }}>
             <LanguageSelector />
