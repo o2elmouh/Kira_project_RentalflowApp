@@ -6,6 +6,7 @@ import NewRental from './pages/NewRental'
 import Fleet from './pages/Fleet'
 import { Clients, Contracts, Invoices, Settings } from './pages/OtherPages'
 import Restitution from './pages/Restitution'
+import RestitutionPicker from './pages/RestitutionPicker'
 import AuthPage from './pages/Auth'
 import OnboardingPage from './pages/Onboarding'
 import { seedDemoData } from './utils/storage'
@@ -115,8 +116,10 @@ export default function App() {
       case 'clients':    return <Clients />
       case 'fleet':      return <Fleet />
       case 'settings':   return <Settings />
+      case 'restitution-picker':
+        return <RestitutionPicker onPick={handleRestitution} onCancel={() => setPage('contracts')} />
       case 'restitution':
-        if (!restitutionContract) { setTimeout(() => setPage('contracts'), 0); return null }
+        if (!restitutionContract) { setTimeout(() => setPage('restitution-picker'), 0); return null }
         return <Restitution
           contract={restitutionContract}
           onDone={() => { setRestitutionContract(null); setPage('contracts') }}
