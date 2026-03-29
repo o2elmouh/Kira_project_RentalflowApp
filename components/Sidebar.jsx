@@ -1,17 +1,20 @@
+import { useTranslation } from 'react-i18next'
 import { LayoutDashboard, PlusCircle, Car, Users, FileText, Receipt, Settings, LogOut, RotateCcw } from 'lucide-react'
+import LanguageSelector from './LanguageSelector'
 
-const NAV = [
-  { id: 'dashboard',         label: 'Dashboard',   icon: LayoutDashboard },
-  { id: 'new-rental',        label: 'New Rental',   icon: PlusCircle },
-  { id: 'restitution-quick', label: 'Restitution',  icon: RotateCcw },
-  { id: 'fleet',             label: 'Fleet',        icon: Car },
-  { id: 'clients',           label: 'Clients',      icon: Users },
-  { id: 'contracts',         label: 'Contracts',    icon: FileText },
-  { id: 'invoices',          label: 'Invoices',     icon: Receipt },
-  { id: 'settings',          label: 'Settings',     icon: Settings },
+const NAV_IDS = [
+  { id: 'dashboard',         key: 'dashboard',   icon: LayoutDashboard },
+  { id: 'new-rental',        key: 'newRental',    icon: PlusCircle },
+  { id: 'restitution-quick', key: 'restitution',  icon: RotateCcw },
+  { id: 'fleet',             key: 'fleet',        icon: Car },
+  { id: 'clients',           key: 'clients',      icon: Users },
+  { id: 'contracts',         key: 'contracts',    icon: FileText },
+  { id: 'invoices',          key: 'invoices',     icon: Receipt },
+  { id: 'settings',          key: 'settings',     icon: Settings },
 ]
 
 export default function Sidebar({ active, onNav, user, profile, onSignOut }) {
+  const { t } = useTranslation('common')
   const displayName = profile?.full_name || user?.email || ''
   const agencyName  = profile?.agencies?.name || ''
 
@@ -22,9 +25,9 @@ export default function Sidebar({ active, onNav, user, profile, onSignOut }) {
         <span className="logo-text">RentaFlow</span>
       </div>
       <nav className="sidebar-nav">
-        {NAV.map(({ id, label, icon: Icon }) => {
+        {NAV_IDS.map(({ id, key, icon: Icon }) => {
           const isRestitution = id === 'restitution-quick'
-          const navTarget = isRestitution ? 'contracts' : id
+          const navTarget = isRestitution ? 'restitution-picker' : id
           return (
             <button
               key={id}
@@ -37,21 +40,24 @@ export default function Sidebar({ active, onNav, user, profile, onSignOut }) {
               } : undefined}
             >
               <Icon size={16} />
-              <span>{label}</span>
+              <span>{t(`nav.${key}`)}</span>
             </button>
           )
         })}
       </nav>
 
       {user && onSignOut && (
-        <div style={{ padding: '12px 10px', borderTop: '1px solid var(--border)', marginTop: 'auto' }}>
+        <div style={{ padding: '12px 10px', borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 'auto' }}>
           {agencyName && (
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4, paddingLeft: 8 }}>
               {agencyName}
             </div>
           )}
-          <div style={{ fontSize: 12, color: 'var(--text2)', paddingLeft: 8, marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: 12, color: 'var(--text2)', paddingLeft: 8, marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {displayName}
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <LanguageSelector />
           </div>
           <button
             className="nav-item"
@@ -59,7 +65,7 @@ export default function Sidebar({ active, onNav, user, profile, onSignOut }) {
             onClick={onSignOut}
           >
             <LogOut size={14} />
-            <span>Déconnexion</span>
+            <span>{t('signOut')}</span>
           </button>
         </div>
       )}

@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
+import LanguageSelector from '../components/LanguageSelector'
 
 function Field({ label, children }) {
   return (
@@ -11,6 +13,7 @@ function Field({ label, children }) {
 }
 
 export default function OnboardingPage({ user }) {
+  const { t } = useTranslation('onboarding')
   const [step, setStep]             = useState(1)
   const [agencyName, setAgencyName] = useState('')
   const [fullName, setFullName]     = useState(user?.user_metadata?.full_name || '')
@@ -23,7 +26,7 @@ export default function OnboardingPage({ user }) {
     e.preventDefault()
     setError(null)
     if (!agencyName.trim() || !fullName.trim()) {
-      setError("Nom de l'agence et votre nom sont requis.")
+      setError(t('step2.errors.required'))
       return
     }
     setLoading(true)
@@ -40,13 +43,13 @@ export default function OnboardingPage({ user }) {
       window.location.reload()
     } catch (err) {
       console.error('[Onboarding]', err)
-      setError(err.message || 'Erreur lors de la création. Vérifiez la console.')
+      setError(err.message || t('step2.errors.generic'))
       setLoading(false)
     }
   }
 
   const goNext = () => {
-    if (!fullName.trim()) { setError('Votre nom est requis.'); return }
+    if (!fullName.trim()) { setError(t('step1.errors.nameRequired')); return }
     setError(null)
     setStep(2)
   }
@@ -56,6 +59,9 @@ export default function OnboardingPage({ user }) {
       <div className="auth-brand">
         <div className="auth-logo">RF</div>
         <span>RentaFlow</span>
+      </div>
+      <div style={{ marginBottom: 16, width: '100%', maxWidth: 300 }}>
+        <LanguageSelector />
       </div>
 
       <form onSubmit={handleCreate} className="auth-form">
@@ -70,31 +76,29 @@ export default function OnboardingPage({ user }) {
           ))}
         </div>
 
-        <h2>{step === 1 ? 'Bienvenue ! 👋' : 'Votre agence'}</h2>
+        <h2>{step === 1 ? t('step1.title') : t('step2.title')}</h2>
         <p className="auth-subtitle">
-          {step === 1
-            ? 'Configurons votre compte en 2 étapes.'
-            : 'Ces informations apparaîtront sur vos contrats et factures.'}
+          {step === 1 ? t('step1.subtitle') : t('step2.subtitle')}
         </p>
 
         {error && <div className="auth-error">{error}</div>}
 
         {step === 1 && (
           <>
-            <Field label="Votre nom complet">
-              <input className="form-input" placeholder="Prénom Nom"
+            <Field label={t('step1.fullName')}>
+              <input className="form-input" placeholder={t('step1.fullNamePlaceholder')}
                 value={fullName} onChange={e => setFullName(e.target.value)}
                 required autoFocus />
             </Field>
 
-            <Field label="Téléphone">
-              <input className="form-input" placeholder="+212 6XX XXX XXX"
+            <Field label={t('step1.phone')}>
+              <input className="form-input" placeholder={t('step1.phonePlaceholder')}
                 value={phone} onChange={e => setPhone(e.target.value)} />
             </Field>
 
             <div className="auth-actions">
               <button type="button" className="btn btn-primary" style={{ width: '100%' }} onClick={goNext}>
-                Suivant →
+                {t('step1.next')}
               </button>
             </div>
           </>
@@ -102,24 +106,24 @@ export default function OnboardingPage({ user }) {
 
         {step === 2 && (
           <>
-            <Field label="Nom de l'agence *">
-              <input className="form-input" placeholder="Atlas Car Rental"
+            <Field label={t('step2.agencyName')}>
+              <input className="form-input" placeholder={t('step2.agencyNamePlaceholder')}
                 value={agencyName} onChange={e => setAgencyName(e.target.value)}
                 required autoFocus />
             </Field>
 
-            <Field label="Ville">
-              <input className="form-input" placeholder="Casablanca"
+            <Field label={t('step2.city')}>
+              <input className="form-input" placeholder={t('step2.cityPlaceholder')}
                 value={city} onChange={e => setCity(e.target.value)} />
             </Field>
 
             <div className="auth-actions">
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setStep(1)}>
-                  ← Retour
+                  {t('step2.back')}
                 </button>
                 <button className="btn btn-primary" style={{ flex: 1 }} disabled={loading}>
-                  {loading ? 'Création…' : 'Créer mon agence 🚀'}
+                  {loading ? t('step2.submitting') : t('step2.submit')}
                 </button>
               </div>
             </div>
@@ -128,10 +132,10 @@ export default function OnboardingPage({ user }) {
       </form>
 
       <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text3)', marginTop: 20 }}>
-        Connecté en tant que {user?.email} ·{' '}
+        {t('loggedInAs', { email: user?.email })}{' '}
         <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}
           onClick={() => supabase.auth.signOut()}>
-          Déconnexion
+          {t('signOut', { ns: 'common' })}
         </button>
       </p>
     </div>

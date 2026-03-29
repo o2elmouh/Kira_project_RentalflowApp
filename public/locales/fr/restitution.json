@@ -1,0 +1,109 @@
+{
+  "picker": {
+    "title": "Restitution",
+    "subtitle": "Sélectionnez le véhicule à restituer",
+    "empty": "Aucun véhicule en location actuellement.",
+    "badge": "En location",
+    "contract": "Contrat {{number}}"
+  },
+  "title": "Restitution du véhicule",
+  "subtitle": "Contrat {{number}} · {{clientName}} · {{vehicleName}}",
+  "noContract": "Aucun contrat sélectionné.",
+  "steps": {
+    "return": "Retour",
+    "photos": "Photos",
+    "inspection": "État des lieux",
+    "closure": "Clôture"
+  },
+  "step1": {
+    "title": "Retour — Kilométrage & Carburant",
+    "returnKm": "Kilométrage retour (km)",
+    "kmHint": "Départ: {{departure}} km — Km parcourus: {{driven}} km",
+    "kmError": "⚠️ Le kilométrage retour ne peut pas être inférieur au kilométrage départ ({{departure}} km).",
+    "fuelLevel": "Niveau carburant retour",
+    "fuelDepartureHint": "Niveau départ: {{level}}",
+    "fuelWarning": "Attention: le niveau de carburant est inférieur au départ ({{diff}} quart(s) manquant(s))",
+    "returnDate": "Date de retour",
+    "returnTime": "Heure de retour"
+  },
+  "step2": {
+    "title": "Photos retour",
+    "departure": "Départ",
+    "return": "Retour",
+    "add": "Ajouter"
+  },
+  "step3": {
+    "title": "État des lieux & Frais",
+    "damages": "Dommages constatés",
+    "damagePlaceholder": "Description du dommage...",
+    "extraCosts": "Frais supplémentaires",
+    "noExtraKm": "Pas de km supplémentaires",
+    "extraKm": "Km supplémentaires: {{count}} km × 2 MAD = {{fee}} MAD",
+    "kmAllowed": "(autorisé: {{km}} km)",
+    "noKmLimit": "Pas de limite kilométrique configurée pour ce véhicule",
+    "fuelShortage": "Manque carburant: {{diff}} quart(s) × 100 MAD = {{fee}} MAD",
+    "noFuelFee": "Carburant: pas de frais",
+    "damageFee": "Frais dommages (MAD)",
+    "totalFees": "Total frais supplémentaires"
+  },
+  "step4": {
+    "title": "Clôture du contrat",
+    "summary": "Récapitulatif",
+    "contract": "Contrat",
+    "client": "Client",
+    "vehicle": "Véhicule",
+    "actualDuration": "Durée réelle",
+    "drivenKm": "Km parcourus",
+    "rentalAmount": "Montant location",
+    "extraFees": "Frais supplémentaires",
+    "totalFinal": "Total final",
+    "damagesFound": "Dommages constatés",
+    "downloadPdf": "Télécharger document de restitution PDF",
+    "closing": "Clôture en cours...",
+    "close": "Clôturer le contrat"
+  },
+  "pdf": {
+    "title": "PROCÈS-VERBAL DE RESTITUTION",
+    "contract": "Contrat:",
+    "client": "CLIENT",
+    "vehicle": "VÉHICULE",
+    "departure": "Départ",
+    "return": "Retour",
+    "date": "Date",
+    "time": "Heure",
+    "mileage": "Kilométrage",
+    "fuelLevel": "Carburant",
+    "damages": "DOMMAGES CONSTATÉS",
+    "zone": "Zone",
+    "description": "Description",
+    "extraFees": "FRAIS SUPPLÉMENTAIRES",
+    "extraKm": "Km supplémentaires",
+    "fuelShortage": "Manque carburant",
+    "damageFee": "Frais dommages",
+    "totalFees": "TOTAL FRAIS SUPPLÉMENTAIRES",
+    "clientSignature": "Signature Locataire",
+    "agencySignature": "Signature Agence"
+  },
+  "zones": {
+    "A": "A - Avant",
+    "B": "B - Arrière",
+    "C": "C - Côté gauche",
+    "D": "D - Côté droit",
+    "E": "E - Toit / Dessous"
+  },
+  "fuelLevels": {
+    "Vide": "Vide",
+    "1/4": "1/4",
+    "1/2": "1/2",
+    "3/4": "3/4",
+    "Plein": "Plein"
+  },
+  "photos": {
+    "front": "Avant",
+    "rear": "Arrière",
+    "left": "Côté gauche",
+    "right": "Côté droit",
+    "interior": "Intérieur",
+    "damage": "Détail / Dommage"
+  }
+}

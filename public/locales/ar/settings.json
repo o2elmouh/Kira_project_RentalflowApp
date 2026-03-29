@@ -1,0 +1,83 @@
+{
+  "title": "الإعدادات",
+  "subtitle": "إعدادات الوكالة",
+  "tabs": {
+    "agency": "الوكالة",
+    "fleetConfig": "إعدادات الأسطول",
+    "general": "الإعدادات العامة"
+  },
+  "agency": {
+    "generalInfo": "المعلومات العامة",
+    "name": "اسم الوكالة",
+    "namePlaceholder": "مثال: أطلس لتأجير السيارات",
+    "city": "المدينة",
+    "cityPlaceholder": "مثال: الدار البيضاء",
+    "address": "العنوان",
+    "addressPlaceholder": "مثال: 12 شارع الأزهار، الدار البيضاء",
+    "phone": "الهاتف",
+    "phonePlaceholder": "مثال: ‎+212 6XX XXX XXX",
+    "email": "البريد الإلكتروني للوكالة",
+    "emailPlaceholder": "مثال: contact@agence.ma",
+    "legalSection": "المعرفات الجبائية والقانونية",
+    "ice": "ICE",
+    "icePlaceholder": "المعرف المشترك للمقاولة",
+    "rc": "السجل التجاري",
+    "rcPlaceholder": "رقم السجل التجاري",
+    "if": "المعرف الجبائي",
+    "ifPlaceholder": "مثال: 12345678",
+    "patente": "الباتانتا",
+    "patentePlaceholder": "رقم الباتانتا",
+    "insurance": "رقم بوليصة التأمين",
+    "insurancePlaceholder": "مثال: ASS-2024-00123",
+    "saveBtn": "حفظ الإعدادات",
+    "saved": "تم الحفظ"
+  },
+  "fleetConfig": {
+    "title": "إعدادات الأسطول",
+    "resetBtn": "إعادة تعيين القيم الافتراضية",
+    "headers": {
+      "brand": "العلامة التجارية",
+      "generalWarranty": "الضمان العام",
+      "durationYears": "المدة (سنوات)",
+      "batteryWarranty": "ضمان البطارية",
+      "controleTech": "الفحص التقني (سنوات)",
+      "oilChange": "تغيير الزيت (كم)",
+      "timingBelt": "سير التوزيع (كم)",
+      "extensible": "قابل للتمديد"
+    }
+  },
+  "general": {
+    "tabs": {
+      "options": "خيارات الإيجار",
+      "signature": "التوقيع الافتراضي",
+      "params": "إعدادات"
+    },
+    "options": {
+      "title": "خيارات الإيجار",
+      "saved": "تم الحفظ",
+      "editBtn": "تعديل",
+      "namePlaceholder": "اسم الخيار",
+      "perDay": "يومي",
+      "fixed": "ثابت",
+      "addBtn": "+ إضافة خيار",
+      "saveBtn": "حفظ",
+      "cancelBtn": "إلغاء",
+      "defaultCDW": "CDW — تغطية أضرار التصادم",
+      "defaultPAI": "PAI — تأمين الحوادث الشخصية"
+    },
+    "signature": {
+      "title": "التوقيع الافتراضي",
+      "saved": "تم الحفظ",
+      "editBtn": "تعديل التوقيع",
+      "instruction": "ارسم توقيعك أدناه:",
+      "clearBtn": "مسح",
+      "saveBtn": "حفظ التوقيع",
+      "savedMsg": "تم حفظ التوقيع"
+    },
+    "params": {
+      "title": "إعدادات عامة",
+      "comingSoon": "ستُضاف إعدادات عامة أخرى قريباً.",
+      "kmNote": "ℹ️ يمكن الآن ضبط حد الكيلومترات لكل سيارة على حدة في بطاقة السيارة (قسم الأسطول)."
+    }
+  }
+}

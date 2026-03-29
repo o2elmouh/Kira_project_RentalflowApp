@@ -1,0 +1,30 @@
+{
+  "step1": {
+    "title": "Bienvenue ! 👋",
+    "subtitle": "Configurons votre compte en 2 étapes.",
+    "fullName": "Votre nom complet",
+    "fullNamePlaceholder": "Prénom Nom",
+    "phone": "Téléphone",
+    "phonePlaceholder": "+212 6XX XXX XXX",
+    "next": "Suivant →",
+    "errors": {
+      "nameRequired": "Votre nom est requis."
+    }
+  },
+  "step2": {
+    "title": "Votre agence",
+    "subtitle": "Ces informations apparaîtront sur vos contrats et factures.",
+    "agencyName": "Nom de l'agence *",
+    "agencyNamePlaceholder": "Atlas Car Rental",
+    "city": "Ville",
+    "cityPlaceholder": "Casablanca",
+    "back": "← Retour",
+    "submit": "Créer mon agence 🚀",
+    "submitting": "Création…",
+    "errors": {
+      "required": "Nom de l'agence et votre nom sont requis.",
+      "generic": "Erreur lors de la création. Vérifiez la console."
+    }
+  },
+  "loggedInAs": "Connecté en tant que {{email}} ·"
+}

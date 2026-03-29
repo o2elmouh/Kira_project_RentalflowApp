@@ -628,42 +628,50 @@ function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDelete }) {
               <button
                 className="btn btn-ghost btn-sm"
                 style={{ fontSize: 11, padding: '3px 8px' }}
-                onClick={() => setShowDeadlineEdit(v => !v)}
+                onClick={() => setShowDeadlineEdit(true)}
               >
-                {showDeadlineEdit ? 'Fermer' : 'Modifier'}
+                Modifier
               </button>
-              {deadlineSaved && <span className="badge badge-green" style={{ marginLeft: 6 }}>Enregistré</span>}
             </div>
           </div>
+        </div>
 
-          {/* Inline edit panel */}
-          {showDeadlineEdit && (
-            <div className="dashboard-edit-panel">
+      </div>
+
+      {/* Échéances modal */}
+      {showDeadlineEdit && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setShowDeadlineEdit(false)}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 24, width: 420, maxWidth: '92vw', maxHeight: '90vh', overflowY: 'auto' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700 }}>Modifier les échéances</h3>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowDeadlineEdit(false)}>✕</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {deadlineFields.map(({ label, dateKey, mileageKey, configHint }) => (
-                <div key={dateKey} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)' }}>
+                <div key={dateKey} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>
                     {label}
-                    {configHint && <span style={{ fontSize: 10, color: '#a5b4fc', marginLeft: 4 }}>({configHint})</span>}
+                    {configHint && <span style={{ fontSize: 11, color: '#a5b4fc', marginLeft: 4 }}>({configHint})</span>}
                   </label>
-                  <input className="form-input" type="date" style={{ fontSize: 12, padding: '4px 8px' }}
-                    value={deadlineForm[dateKey] || ''}
+                  <input className="form-input" type="date" value={deadlineForm[dateKey] || ''}
                     onChange={e => setDeadlineForm(p => ({ ...p, [dateKey]: e.target.value }))} />
                   {mileageKey && (
-                    <input className="form-input text-mono" type="number" style={{ fontSize: 12, padding: '4px 8px' }}
-                      placeholder="Kilométrage"
+                    <input className="form-input text-mono" type="number" placeholder="Kilométrage"
                       value={deadlineForm[mileageKey] || ''}
                       onChange={e => setDeadlineForm(p => ({ ...p, [mileageKey]: e.target.value }))} />
                   )}
                 </div>
               ))}
-              <button className="btn btn-primary btn-sm" style={{ marginTop: 4 }} onClick={saveDeadlines}>
-                Enregistrer
-              </button>
             </div>
-          )}
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button className="btn btn-primary" onClick={() => { saveDeadlines(); setShowDeadlineEdit(false) }}>Enregistrer</button>
+              <button className="btn btn-ghost" onClick={() => setShowDeadlineEdit(false)}>Annuler</button>
+            </div>
+          </div>
         </div>
-
-      </div>
+      )}
     </div>
   )
 }
@@ -939,7 +947,8 @@ export default function Fleet() {
               const targetBeltKm = v.nextTimingBeltMileage || (vConfig ? currentKm + vConfig.courroieKm : null)
 
               return (
-                <div key={v.id} className="vehicle-card">
+                <div key={v.id} className="vehicle-card" style={{ cursor: 'pointer' }}
+                  onClick={() => { setDetail(v); setEditing(null) }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div className="vehicle-plate" style={{ direction: 'rtl', fontSize: 13, letterSpacing: 2 }}>{displayPlate(v.plate)}</div>
                     {urgentCount > 0 && (
@@ -978,11 +987,8 @@ export default function Fleet() {
                     <span className={`badge ${v.status === 'available' ? 'badge-green' : v.status === 'rented' ? 'badge-orange' : 'badge-gray'}`}>{v.status}</span>
                   </div>
                   <div style={{ display: 'flex', gap: 5, marginTop: 10 }}>
-                    <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => { setDetail(v); setEditing(null) }}>
-                      <History size={12} /> Historique
-                    </button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(v)}><Edit2 size={12} /></button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => remove(v.id)}><Trash2 size={12} /></button>
+                    <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); openEdit(v) }}><Edit2 size={12} /></button>
+                    <button className="btn btn-ghost btn-sm" style={{ color: '#dc2626' }} onClick={e => { e.stopPropagation(); remove(v.id) }}><Trash2 size={12} /></button>
                   </div>
                 </div>
               )

@@ -1,0 +1,83 @@
+{
+  "title": "Paramètres",
+  "subtitle": "Configuration de l'agence",
+  "tabs": {
+    "agency": "Agence",
+    "fleetConfig": "Configuration parc",
+    "general": "Configuration générale"
+  },
+  "agency": {
+    "generalInfo": "Informations générales",
+    "name": "Nom de l'agence",
+    "namePlaceholder": "Ex: Location Auto Maroc",
+    "city": "Ville",
+    "cityPlaceholder": "Ex: Casablanca",
+    "address": "Adresse",
+    "addressPlaceholder": "Ex: 12 Rue des Fleurs, Casablanca",
+    "phone": "Téléphone",
+    "phonePlaceholder": "Ex: +212 6XX XXX XXX",
+    "email": "Email de l'agence",
+    "emailPlaceholder": "Ex: contact@agence.ma",
+    "legalSection": "Identifiants fiscaux & légaux",
+    "ice": "ICE",
+    "icePlaceholder": "Identifiant Commun de l'Entreprise",
+    "rc": "RC",
+    "rcPlaceholder": "Registre de Commerce",
+    "if": "IF — Identifiant Fiscal",
+    "ifPlaceholder": "Ex: 12345678",
+    "patente": "Patente",
+    "patentePlaceholder": "Numéro de patente",
+    "insurance": "N° Police d'assurance",
+    "insurancePlaceholder": "Ex: ASS-2024-00123",
+    "saveBtn": "Enregistrer les paramètres",
+    "saved": "Enregistré"
+  },
+  "fleetConfig": {
+    "title": "Configuration parc",
+    "resetBtn": "Réinitialiser les valeurs par défaut",
+    "headers": {
+      "brand": "Marque",
+      "generalWarranty": "Garantie générale",
+      "durationYears": "Durée (ans)",
+      "batteryWarranty": "Garantie batterie",
+      "controleTech": "Contrôle technique (ans)",
+      "oilChange": "Vidange (km)",
+      "timingBelt": "Courroie distribution (km)",
+      "extensible": "Extension possible"
+    }
+  },
+  "general": {
+    "tabs": {
+      "options": "Options de location",
+      "signature": "Signature par défaut",
+      "params": "Paramètres"
+    },
+    "options": {
+      "title": "Options de location",
+      "saved": "Enregistré",
+      "editBtn": "Modifier",
+      "namePlaceholder": "Nom de l'option",
+      "perDay": "Par jour",
+      "fixed": "Fixe",
+      "addBtn": "+ Ajouter une option",
+      "saveBtn": "Enregistrer",
+      "cancelBtn": "Annuler",
+      "defaultCDW": "CDW — Collision Damage Waiver",
+      "defaultPAI": "PAI — Protection Accident Individuel"
+    },
+    "signature": {
+      "title": "Signature par défaut",
+      "saved": "Enregistrée",
+      "editBtn": "Modifier la signature",
+      "instruction": "Dessinez votre signature ci-dessous :",
+      "clearBtn": "Effacer",
+      "saveBtn": "Enregistrer la signature",
+      "savedMsg": "Signature enregistrée"
+    },
+    "params": {
+      "title": "Paramètres généraux",
+      "comingSoon": "D'autres paramètres généraux seront ajoutés ici prochainement.",
+      "kmNote": "ℹ️ La limite kilométrique est désormais configurable par véhicule dans la fiche de chaque voiture (onglet Flotte)."
+    }
+  }
+}

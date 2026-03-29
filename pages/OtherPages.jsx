@@ -762,6 +762,7 @@ function RentalOptionsSection() {
   }
   const [options, setOptions] = useState(loadOptions)
   const [saved, setSaved] = useState(false)
+  const [editMode, setEditMode] = useState(false)
 
   const update = (id, field, value) => {
     setOptions(prev => prev.map(o => o.id === id ? { ...o, [field]: value } : o))
@@ -771,18 +772,17 @@ function RentalOptionsSection() {
   const addOption = () => {
     const newId = 'opt_' + Date.now()
     setOptions(prev => [...prev, { id: newId, name: '', pricingType: 'per_day', price: 0, enabled: true }])
-    setSaved(false)
   }
 
   const removeOption = (id) => {
     setOptions(prev => prev.filter(o => o.id !== id))
-    setSaved(false)
   }
 
   const save = () => {
     const cfg = getGeneralConfig()
     saveGeneralConfig({ ...cfg, rentalOptions: options })
     setSaved(true)
+    setEditMode(false)
     setTimeout(() => setSaved(false), 2000)
   }
 
@@ -792,12 +792,17 @@ function RentalOptionsSection() {
     <div className="card" style={{ maxWidth: 780 }}>
       <div className="card-header">
         <h3>Options de location</h3>
-        {saved && <span className="badge badge-green">Enregistré</span>}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {saved && <span className="badge badge-green">Enregistré</span>}
+          {!editMode && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setEditMode(true)}>Modifier</button>
+          )}
+        </div>
       </div>
       <div className="card-body">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {options.map(opt => (
-            <div key={opt.id} style={{ display: 'grid', gridTemplateColumns: '36px 1fr 140px 100px 36px', gap: 8, alignItems: 'center', background: 'var(--bg2)', borderRadius: 8, padding: '8px 12px' }}>
+            <div key={opt.id} style={{ display: 'grid', gridTemplateColumns: `36px 1fr 130px 90px${editMode && !PROTECTED.includes(opt.id) ? ' 36px' : ''}`, gap: 8, alignItems: 'center', background: 'var(--bg2)', borderRadius: 8, padding: '8px 12px' }}>
               <input
                 type="checkbox"
                 checked={opt.enabled}
@@ -806,34 +811,35 @@ function RentalOptionsSection() {
               />
               <input
                 className="form-input"
-                style={{ fontSize: 13, padding: '5px 8px' }}
+                style={{ fontSize: 13, padding: '5px 8px', minWidth: 0 }}
                 value={opt.name}
                 placeholder="Nom de l'option"
+                readOnly={!editMode}
                 onChange={e => update(opt.id, 'name', e.target.value)}
               />
               <select
                 className="form-select"
                 style={{ fontSize: 12, padding: '5px 8px' }}
                 value={opt.pricingType}
+                disabled={!editMode}
                 onChange={e => update(opt.id, 'pricingType', e.target.value)}
               >
                 <option value="per_day">Par jour</option>
                 <option value="fixed">Fixe</option>
               </select>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
                 <input
                   className="form-input text-mono"
-                  style={{ fontSize: 13, padding: '5px 8px' }}
+                  style={{ fontSize: 13, padding: '5px 8px', width: 0, flex: 1, minWidth: 0 }}
                   type="number"
                   min="0"
+                  readOnly={!editMode}
                   value={opt.price}
                   onChange={e => update(opt.id, 'price', Number(e.target.value))}
                 />
                 <span style={{ fontSize: 11, color: 'var(--text3)', whiteSpace: 'nowrap' }}>MAD</span>
               </div>
-              {PROTECTED.includes(opt.id) ? (
-                <div style={{ width: 36 }} />
-              ) : (
+              {editMode && !PROTECTED.includes(opt.id) && (
                 <button
                   onClick={() => removeOption(opt.id)}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#ef4444', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -845,14 +851,19 @@ function RentalOptionsSection() {
             </div>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-          <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={addOption}>
-            + Ajouter une option
-          </button>
-          <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={save}>
-            Enregistrer
-          </button>
-        </div>
+        {editMode && (
+          <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+            <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={addOption}>
+              + Ajouter une option
+            </button>
+            <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={save}>
+              Enregistrer
+            </button>
+            <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => { setOptions(loadOptions()); setEditMode(false) }}>
+              Annuler
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

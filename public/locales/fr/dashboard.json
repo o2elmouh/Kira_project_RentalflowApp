@@ -1,0 +1,23 @@
+{
+  "title": "Dashboard",
+  "subtitle": "Aperçu de vos opérations de location",
+  "newRental": "New Rental",
+  "thisMonth": "Ce mois",
+  "today": "Aujourd'hui",
+  "stats": {
+    "availableVehicles": "Véhicules disponibles",
+    "rentedVehicles": "Véhicules loués",
+    "newClients": "Nouveaux clients",
+    "monthContracts": "Contrats du mois",
+    "monthInvoices": "Factures du mois",
+    "revenue": "Chiffre d'affaires",
+    "activeCount": "{{count}} actifs"
+  },
+  "contracts": {
+    "title": "Contrats — {{month}}",
+    "empty": "Aucun contrat ce mois."
+  },
+  "fleetStatus": {
+    "title": "État du parc"
+  }
+}

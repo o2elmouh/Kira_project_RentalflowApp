@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
+import LanguageSelector from '../components/LanguageSelector'
 
 function Field({ label, children }) {
   return (
@@ -11,6 +13,7 @@ function Field({ label, children }) {
 }
 
 function LoginForm({ onSwitch }) {
+  const { t } = useTranslation('auth')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState(null)
@@ -26,29 +29,29 @@ function LoginForm({ onSwitch }) {
 
   return (
     <form onSubmit={handleSubmit} className="auth-form">
-      <h2>Connexion</h2>
-      <p className="auth-subtitle">Accédez à votre espace RentaFlow</p>
+      <h2>{t('login.title')}</h2>
+      <p className="auth-subtitle">{t('login.subtitle')}</p>
 
       {error && <div className="auth-error">{error}</div>}
 
-      <Field label="Adresse email">
-        <input className="form-input" type="email" placeholder="vous@agence.ma"
+      <Field label={t('login.email')}>
+        <input className="form-input" type="email" placeholder={t('login.emailPlaceholder')}
           value={email} onChange={e => setEmail(e.target.value)} required autoFocus />
       </Field>
 
-      <Field label="Mot de passe">
-        <input className="form-input" type="password" placeholder="••••••••"
+      <Field label={t('login.password')}>
+        <input className="form-input" type="password" placeholder={t('login.passwordPlaceholder')}
           value={password} onChange={e => setPassword(e.target.value)} required />
       </Field>
 
       <div className="auth-actions">
         <button className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
-          {loading ? 'Connexion…' : 'Se connecter'}
+          {loading ? t('login.submitting') : t('login.submit')}
         </button>
         <p className="auth-switch">
-          Pas encore de compte ?{' '}
+          {t('login.noAccount')}{' '}
           <button type="button" className="btn btn-ghost btn-sm" onClick={onSwitch}>
-            Créer un compte
+            {t('login.signUp')}
           </button>
         </p>
       </div>
@@ -57,18 +60,19 @@ function LoginForm({ onSwitch }) {
 }
 
 function SignupForm({ onSwitch }) {
-  const [email, setEmail]             = useState('')
-  const [password, setPassword]       = useState('')
-  const [confirm, setConfirm]         = useState('')
-  const [error, setError]             = useState(null)
-  const [loading, setLoading]         = useState(false)
+  const { t } = useTranslation('auth')
+  const [email, setEmail]               = useState('')
+  const [password, setPassword]         = useState('')
+  const [confirm, setConfirm]           = useState('')
+  const [error, setError]               = useState(null)
+  const [loading, setLoading]           = useState(false)
   const [needsConfirm, setNeedsConfirm] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
-    if (password !== confirm) { setError('Les mots de passe ne correspondent pas.'); return }
-    if (password.length < 6)  { setError('Mot de passe trop court (6 caractères min).'); return }
+    if (password !== confirm) { setError(t('errors.passwordMismatch')); return }
+    if (password.length < 6)  { setError(t('errors.passwordTooShort')); return }
     setLoading(true)
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) { setError(error.message); setLoading(false); return }
@@ -79,46 +83,46 @@ function SignupForm({ onSwitch }) {
   if (needsConfirm) return (
     <div className="auth-form" style={{ textAlign: 'center' }}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
-      <h2>Vérifiez votre email</h2>
-      <p className="auth-subtitle" style={{ marginTop: 8 }}>
-        Un lien de confirmation a été envoyé à <strong>{email}</strong>.
-      </p>
+      <h2>{t('verify.title')}</h2>
+      <p className="auth-subtitle" style={{ marginTop: 8 }}
+        dangerouslySetInnerHTML={{ __html: t('verify.hint', { email: `<strong>${email}</strong>` }) }}
+      />
       <button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={onSwitch}>
-        Retour à la connexion
+        {t('verify.backToLogin')}
       </button>
     </div>
   )
 
   return (
     <form onSubmit={handleSubmit} className="auth-form">
-      <h2>Créer un compte</h2>
-      <p className="auth-subtitle">Commencez votre essai gratuit RentaFlow</p>
+      <h2>{t('signup.title')}</h2>
+      <p className="auth-subtitle">{t('signup.subtitle')}</p>
 
       {error && <div className="auth-error">{error}</div>}
 
-      <Field label="Adresse email">
-        <input className="form-input" type="email" placeholder="vous@agence.ma"
+      <Field label={t('signup.email')}>
+        <input className="form-input" type="email" placeholder={t('signup.emailPlaceholder')}
           value={email} onChange={e => setEmail(e.target.value)} required autoFocus />
       </Field>
 
-      <Field label="Mot de passe">
-        <input className="form-input" type="password" placeholder="••••••••"
+      <Field label={t('signup.password')}>
+        <input className="form-input" type="password" placeholder={t('signup.passwordPlaceholder')}
           value={password} onChange={e => setPassword(e.target.value)} required />
       </Field>
 
-      <Field label="Confirmer le mot de passe">
-        <input className="form-input" type="password" placeholder="••••••••"
+      <Field label={t('signup.confirmPassword')}>
+        <input className="form-input" type="password" placeholder={t('signup.passwordPlaceholder')}
           value={confirm} onChange={e => setConfirm(e.target.value)} required />
       </Field>
 
       <div className="auth-actions">
         <button className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
-          {loading ? 'Création…' : 'Créer mon compte'}
+          {loading ? t('signup.submitting') : t('signup.submit')}
         </button>
         <p className="auth-switch">
-          Déjà un compte ?{' '}
+          {t('signup.hasAccount')}{' '}
           <button type="button" className="btn btn-ghost btn-sm" onClick={onSwitch}>
-            Se connecter
+            {t('signup.signIn')}
           </button>
         </p>
       </div>
@@ -127,6 +131,7 @@ function SignupForm({ onSwitch }) {
 }
 
 export default function AuthPage() {
+  const { t } = useTranslation('auth')
   const [mode, setMode] = useState('login')
   return (
     <div className="auth-shell">
@@ -134,12 +139,15 @@ export default function AuthPage() {
         <div className="auth-logo">RF</div>
         <span>RentaFlow</span>
       </div>
+      <div style={{ marginBottom: 16, width: '100%', maxWidth: 300 }}>
+        <LanguageSelector />
+      </div>
       {mode === 'login'
         ? <LoginForm  onSwitch={() => setMode('signup')} />
         : <SignupForm onSwitch={() => setMode('login')}  />
       }
       <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text3)', marginTop: 20 }}>
-        © {new Date().getFullYear()} RentaFlow · Gestion de location automobile au Maroc
+        {t('footer', { year: new Date().getFullYear() })}
       </p>
     </div>
   )

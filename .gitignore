@@ -9,6 +9,16 @@ build/
 .env
 .env.local
 .env.*.local
+server/.env
+server/.env.local
+
+# Screenshots (dev only)
+screenshots/test-*.png
+screenshots/i18n*.png
+screenshots/mockup*.png
+screenshots/fleet-*.png
+screenshots/auth-*.png
+screenshots/onboarding*.png
 
 # Vite
 *.local

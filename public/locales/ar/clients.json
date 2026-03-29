@@ -1,0 +1,37 @@
+{
+  "title": "العملاء",
+  "count": "{{count}} عميل مسجَّل",
+  "count_plural": "{{count}} عملاء مسجَّلون",
+  "exportPdf": "تصدير PDF",
+  "empty": "لا يوجد عملاء حتى الآن.",
+  "pdfTitle": "قائمة العملاء",
+  "headers": {
+    "fullName": "الاسم الكامل",
+    "cin": "رقم البطاقة الوطنية",
+    "phone": "الهاتف",
+    "email": "البريد الإلكتروني",
+    "nationality": "الجنسية",
+    "contractCount": "عدد العقود",
+    "totalDays": "مجموع الأيام",
+    "totalPaid": "إجمالي المدفوع",
+    "flag": "تصنيف",
+    "actions": "الإجراءات"
+  },
+  "actions": {
+    "edit": "تعديل",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "addFlag": "إضافة تصنيف",
+    "setFlag": "تحديد تصنيف",
+    "removeFlag": "إزالة",
+    "saveFlag": "حفظ",
+    "notePlaceholder": "ملاحظة (اختياري)"
+  },
+  "flagCategories": {
+    "Impayé": "دين غير مسدَّد",
+    "Dommage non remboursé": "ضرر غير مُعوَّض",
+    "Litige": "نزاع",
+    "Blacklist": "قائمة سوداء",
+    "Autre": "أخرى"
+  }
+}

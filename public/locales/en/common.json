@@ -1,0 +1,49 @@
+{
+  "brand": "RentaFlow",
+  "loading": "Loading…",
+  "save": "Save",
+  "saved": "Saved",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "edit": "Edit",
+  "add": "Add",
+  "close": "Close",
+  "back": "Back",
+  "next": "Next",
+  "previous": "Previous",
+  "confirm": "Confirm",
+  "search": "Search",
+  "export": "Export",
+  "download": "Download",
+  "signOut": "Sign out",
+  "noData": "No data yet.",
+  "currency": "MAD",
+  "perDay": "MAD/day",
+  "days": "day(s)",
+  "km": "km",
+  "choose": "— Choose —",
+  "status": {
+    "available": "Available",
+    "rented": "Rented",
+    "maintenance": "In maintenance",
+    "active": "Active",
+    "cancelled": "Cancelled",
+    "closed": "Closed",
+    "paid": "Paid",
+    "pending": "Pending"
+  },
+  "months": [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+  ],
+  "nav": {
+    "dashboard": "Dashboard",
+    "newRental": "New Rental",
+    "restitution": "Restitution",
+    "fleet": "Fleet",
+    "clients": "Clients",
+    "contracts": "Contracts",
+    "invoices": "Invoices",
+    "settings": "Settings"
+  }
+}

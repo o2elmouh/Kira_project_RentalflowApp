@@ -1,0 +1,30 @@
+{
+  "step1": {
+    "title": "أهلاً بك! 👋",
+    "subtitle": "لنضبط حسابك في خطوتين.",
+    "fullName": "اسمك الكامل",
+    "fullNamePlaceholder": "الاسم الأول واسم العائلة",
+    "phone": "الهاتف",
+    "phonePlaceholder": "‎+212 6XX XXX XXX",
+    "next": "التالي →",
+    "errors": {
+      "nameRequired": "الاسم مطلوب."
+    }
+  },
+  "step2": {
+    "title": "معلومات وكالتك",
+    "subtitle": "ستظهر هذه المعلومات في عقودك وفواتيرك.",
+    "agencyName": "اسم الوكالة *",
+    "agencyNamePlaceholder": "أطلس كار رينتال",
+    "city": "المدينة",
+    "cityPlaceholder": "الدار البيضاء",
+    "back": "→ رجوع",
+    "submit": "إنشاء وكالتي 🚀",
+    "submitting": "جارٍ الإنشاء…",
+    "errors": {
+      "required": "اسم الوكالة واسمك مطلوبان.",
+      "generic": "حدث خطأ أثناء الإنشاء. يرجى مراجعة الإعدادات."
+    }
+  },
+  "loggedInAs": "متصل بحساب {{email}} ·"
+}

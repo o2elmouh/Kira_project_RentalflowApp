@@ -1,0 +1,37 @@
+{
+  "title": "Clients",
+  "count": "{{count}} client enregistré",
+  "count_plural": "{{count}} clients enregistrés",
+  "exportPdf": "Exporter PDF",
+  "empty": "Aucun client pour l'instant.",
+  "pdfTitle": "Liste des clients",
+  "headers": {
+    "fullName": "Nom complet",
+    "cin": "CIN",
+    "phone": "Téléphone",
+    "email": "Email",
+    "nationality": "Nationalité",
+    "contractCount": "Nb contrats",
+    "totalDays": "Durée totale",
+    "totalPaid": "Total payé",
+    "flag": "Flag",
+    "actions": "Actions"
+  },
+  "actions": {
+    "edit": "Modifier",
+    "cancel": "Annuler",
+    "save": "Sauvegarder",
+    "addFlag": "Ajouter un flag",
+    "setFlag": "Définir un flag",
+    "removeFlag": "Retirer",
+    "saveFlag": "Enregistrer",
+    "notePlaceholder": "Note (optionnel)"
+  },
+  "flagCategories": {
+    "Impayé": "Impayé",
+    "Dommage non remboursé": "Dommage non remboursé",
+    "Litige": "Litige",
+    "Blacklist": "Blacklist",
+    "Autre": "Autre"
+  }
+}

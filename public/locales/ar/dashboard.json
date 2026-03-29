@@ -1,0 +1,23 @@
+{
+  "title": "لوحة التحكم",
+  "subtitle": "نظرة عامة على عمليات التأجير",
+  "newRental": "إيجار جديد",
+  "thisMonth": "هذا الشهر",
+  "today": "اليوم",
+  "stats": {
+    "availableVehicles": "سيارات متاحة",
+    "rentedVehicles": "سيارات مؤجَّرة",
+    "newClients": "عملاء جدد",
+    "monthContracts": "عقود الشهر",
+    "monthInvoices": "فواتير الشهر",
+    "revenue": "رقم المعاملات",
+    "activeCount": "{{count}} نشطة"
+  },
+  "contracts": {
+    "title": "عقود — {{month}}",
+    "empty": "لا توجد عقود هذا الشهر."
+  },
+  "fleetStatus": {
+    "title": "حالة الأسطول"
+  }
+}

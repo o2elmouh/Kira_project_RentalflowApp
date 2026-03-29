@@ -1,0 +1,11 @@
+{
+  "title": "Factures",
+  "count": "{{count}} facture · {{total}} MAD total",
+  "count_plural": "{{count}} factures · {{total}} MAD total",
+  "empty": "Aucune facture pour l'instant.",
+  "ref": "Réf:",
+  "status": {
+    "paid": "Payée",
+    "pending": "En attente"
+  }
+}
