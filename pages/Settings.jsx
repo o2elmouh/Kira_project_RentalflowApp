@@ -4,11 +4,9 @@ import { Edit2 } from 'lucide-react'
 import {
   getAgency, saveAgency,
   getFleetConfig, saveFleetConfig,
-} from '../lib/db'
-import {
   getGeneralConfig, saveGeneralConfig,
   resetFleetConfig,
-} from '../storage'
+} from '../lib/db'
 import { api } from '../lib/api'
 import { useIsAdmin } from '../lib/UserContext'
 

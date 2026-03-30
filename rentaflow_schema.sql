@@ -750,18 +750,30 @@ CREATE OR REPLACE FUNCTION onboard_new_agency(
   p_agency_name   TEXT,
   p_full_name     TEXT,
   p_email         TEXT DEFAULT NULL,
-  p_phone         TEXT DEFAULT NULL
+  p_phone         TEXT DEFAULT NULL,
+  p_city          TEXT DEFAULT NULL,
+  p_ice           TEXT DEFAULT NULL,
+  p_rc            TEXT DEFAULT NULL
 )
 RETURNS UUID
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, auth
 AS $$
 DECLARE
   v_agency_id UUID;
 BEGIN
+  -- Idempotence : si le profil existe déjà, retourner l'agency_id existant
+  SELECT agency_id INTO v_agency_id FROM profiles WHERE id = p_user_id;
+  IF v_agency_id IS NOT NULL THEN
+    RETURN v_agency_id;
+  END IF;
+
+  SET LOCAL row_security = off;
+
   -- Create agency
-  INSERT INTO agencies (name, email, phone)
-  VALUES (p_agency_name, p_email, p_phone)
+  INSERT INTO agencies (name, email, phone, city, ice, rc)
+  VALUES (p_agency_name, p_email, p_phone, p_city, p_ice, p_rc)
   RETURNING id INTO v_agency_id;
 
   -- Create owner profile

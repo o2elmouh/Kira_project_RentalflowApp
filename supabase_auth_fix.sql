@@ -15,7 +15,7 @@ CREATE POLICY "profiles_insert_self" ON profiles
 -- FIX 3: onboard_new_agency — version sécurisée et complète
 --   - Valide que l'appelant est bien p_user_id
 --   - Désactive RLS localement pour l'INSERT initial
---   - Accepte p_city directement (évite un UPDATE séparé qui peut échouer)
+--   - Accepte p_city, p_ice, p_rc directement
 --   - Idempotent : retourne l'agency_id existant si le profil existe déjà
 CREATE OR REPLACE FUNCTION onboard_new_agency(
   p_user_id       UUID,
@@ -23,7 +23,9 @@ CREATE OR REPLACE FUNCTION onboard_new_agency(
   p_full_name     TEXT,
   p_email         TEXT DEFAULT NULL,
   p_phone         TEXT DEFAULT NULL,
-  p_city          TEXT DEFAULT NULL
+  p_city          TEXT DEFAULT NULL,
+  p_ice           TEXT DEFAULT NULL,
+  p_rc            TEXT DEFAULT NULL
 )
 RETURNS UUID
 LANGUAGE plpgsql
@@ -51,8 +53,8 @@ BEGIN
   SET LOCAL row_security = off;
 
   -- Créer l'agence
-  INSERT INTO agencies (name, email, phone, city)
-  VALUES (p_agency_name, p_email, p_phone, p_city)
+  INSERT INTO agencies (name, email, phone, city, ice, rc)
+  VALUES (p_agency_name, p_email, p_phone, p_city, p_ice, p_rc)
   RETURNING id INTO v_agency_id;
 
   -- Créer le profil propriétaire

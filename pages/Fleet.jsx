@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { PlusCircle, Trash2, Edit2, ChevronLeft, AlertTriangle, Clock, Wrench, TrendingDown, History } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { getFleet, saveVehicle, deleteVehicle, getContracts, getRepairs, saveRepair, deleteRepair } from '../lib/db'
-import { getFleetConfigForMake } from '../utils/storage'
+import { getFleet, saveVehicle, deleteVehicle, getContracts, getRepairs, saveRepair, deleteRepair, getFleetConfigForMake } from '../lib/db'
 
 // ── Car catalogue ─────────────────────────────────────────
 const CAR_CATALOGUE = {
