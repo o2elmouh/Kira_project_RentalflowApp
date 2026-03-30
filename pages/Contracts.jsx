@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FileText, Download, X } from 'lucide-react'
+import { FileText, Download, X, Link, Copy, Check, MessageCircle, CreditCard } from 'lucide-react'
+import { createSigningToken, getSigningUrl } from '../lib/signing'
 import {
   getClients,
   getContracts, updateContract,
@@ -9,6 +10,7 @@ import {
   getAgency,
 } from '../lib/db'
 import { generateContract } from '../utils/pdf'
+import { api } from '../lib/api'
 
 // ─────────────────────────────────────────────────────────
 // Helpers
@@ -74,6 +76,12 @@ export default function Contracts({ onRestitution }) {
   const [showProlonger, setShowProlonger] = useState(false)
   const [prolongForm, setProlongForm] = useState({ newEndDate: '', newDailyRate: '' })
   const [prolongMsg, setProlongMsg] = useState(null)
+  const [signingUrl, setSigningUrl] = useState(null)   // string | null
+  const [urlCopied, setUrlCopied] = useState(false)
+  const [waContractSending, setWaContractSending]   = useState(false)
+  const [waContractToast,   setWaContractToast]     = useState(null)   // 'success' | 'error' | null
+  const [waPaymentSending,  setWaPaymentSending]    = useState(false)
+  const [waPaymentToast,    setWaPaymentToast]      = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -96,6 +104,79 @@ export default function Contracts({ onRestitution }) {
     const client = getClient(contract.clientId)
     const vehicle = getVehicle(contract.vehicleId)
     generateContract(contract, client, vehicle, agency)
+  }
+
+  const sendContractWhatsApp = async (contract) => {
+    const client  = getClient(contract.clientId)
+    const vehicle = getVehicle(contract.vehicleId)
+    const phone   = client.phone || contract.clientPhone
+    if (!phone) {
+      setWaContractToast('error')
+      setTimeout(() => setWaContractToast(null), 4000)
+      return
+    }
+    setWaContractSending(true)
+    setWaContractToast(null)
+    try {
+      // Generate PDF as ArrayBuffer, convert to base64
+      const { jsPDF } = await import('jspdf')
+      // Re-use generateContract but capture the doc before saving
+      // We call a helper that returns the arraybuffer instead of saving
+      const { generateContractBuffer } = await import('../utils/pdf')
+      const buffer = await generateContractBuffer(contract, client, vehicle, agency)
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)))
+
+      const vehicleName = vehicle.make
+        ? `${vehicle.make} ${vehicle.model}`
+        : (contract.vehicleName || '')
+
+      await api.sendContractWhatsApp({
+        to: phone,
+        clientName: client.firstName ? `${client.firstName} ${client.lastName}` : (contract.clientName || ''),
+        contractNumber: contract.contractNumber,
+        pdfBase64: base64,
+        vehicleName,
+        startDate: contract.startDate,
+        endDate: contract.endDate,
+      })
+      setWaContractToast('success')
+    } catch (err) {
+      console.error('[WhatsApp contract]', err)
+      setWaContractToast('error')
+    } finally {
+      setWaContractSending(false)
+      setTimeout(() => setWaContractToast(null), 4000)
+    }
+  }
+
+  const sendPaymentLinkWhatsApp = async (contract) => {
+    const client = getClient(contract.clientId)
+    const phone  = client.phone || contract.clientPhone
+    if (!phone) {
+      setWaPaymentToast('error')
+      setTimeout(() => setWaPaymentToast(null), 4000)
+      return
+    }
+    setWaPaymentSending(true)
+    setWaPaymentToast(null)
+    try {
+      const merchantId = import.meta.env.VITE_CMI_MERCHANT_ID || 'DEMO'
+      const paymentLink = `https://payment.cmi.co.ma/pgui/pay?merchant=${merchantId}&amount=${contract.totalTTC}&ref=${contract.contractNumber}`
+      await api.sendPaymentLink({
+        to: phone,
+        clientName: client.firstName ? `${client.firstName} ${client.lastName}` : (contract.clientName || ''),
+        contractNumber: contract.contractNumber,
+        amount: contract.totalTTC,
+        paymentLink,
+      })
+      setWaPaymentToast('success')
+    } catch (err) {
+      console.error('[WhatsApp payment]', err)
+      setWaPaymentToast('error')
+    } finally {
+      setWaPaymentSending(false)
+      setTimeout(() => setWaPaymentToast(null), 4000)
+    }
   }
 
   const openProlonger = (contract) => {
@@ -204,7 +285,7 @@ export default function Contracts({ onRestitution }) {
                       <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '10px 12px' }}>
                           <button
-                            onClick={() => { setSelected(c.id); setShowProlonger(false); setProlongMsg(null) }}
+                            onClick={() => { setSelected(c.id); setShowProlonger(false); setProlongMsg(null); setSigningUrl(null); setUrlCopied(false) }}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontFamily: 'DM Mono, monospace', fontSize: 12, fontWeight: 600, textDecoration: 'underline', padding: 0 }}
                           >
                             {c.contractNumber}
@@ -247,7 +328,7 @@ export default function Contracts({ onRestitution }) {
       {panelContract && (
         <>
           <div
-            onClick={() => { setSelected(null); setShowProlonger(false); setProlongMsg(null) }}
+            onClick={() => { setSelected(null); setShowProlonger(false); setProlongMsg(null); setSigningUrl(null); setUrlCopied(false) }}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 999 }}
           />
           <div style={{
@@ -260,7 +341,7 @@ export default function Contracts({ onRestitution }) {
                 <div style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 15 }}>{panelContract.contractNumber}</div>
                 <span className={`badge ${statusBadgeClass(panelContract.status)}`} style={{ marginTop: 4 }}>{statusLabel(panelContract.status, t)}</span>
               </div>
-              <button onClick={() => { setSelected(null); setShowProlonger(false); setProlongMsg(null) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+              <button onClick={() => { setSelected(null); setShowProlonger(false); setProlongMsg(null); setSigningUrl(null); setUrlCopied(false) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
                 <X size={20} />
               </button>
             </div>
@@ -383,6 +464,62 @@ export default function Contracts({ onRestitution }) {
                   {t('panel.restitute')}
                 </button>
               )}
+              {/* Envoyer pour signature — only for active, unsigned contracts */}
+              {panelContract.status === 'active' && !panelContract.signed && (
+                <button
+                  className="btn btn-secondary"
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  onClick={() => {
+                    const token = createSigningToken(panelContract.id)
+                    setSigningUrl(getSigningUrl(token))
+                    setUrlCopied(false)
+                  }}
+                >
+                  <Link size={15} /> Envoyer pour signature
+                </button>
+              )}
+              {panelContract.signed && (
+                <div style={{ padding: '8px 12px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 13, color: '#166534', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Check size={14} /> Contrat signé par le client
+                </div>
+              )}
+              {/* Signing URL box */}
+              {signingUrl && (
+                <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14, background: 'var(--bg2)' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Link size={13} /> Lien de signature
+                  </div>
+                  <div style={{
+                    fontSize: 11,
+                    fontFamily: 'DM Mono, monospace',
+                    wordBreak: 'break-all',
+                    background: 'var(--surface, #fff)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    padding: '8px 10px',
+                    marginBottom: 8,
+                    color: 'var(--text2)',
+                    lineHeight: 1.5,
+                  }}>
+                    {signingUrl}
+                  </div>
+                  <button
+                    className="btn btn-primary"
+                    style={{ width: '100%', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(signingUrl).then(() => {
+                        setUrlCopied(true)
+                        setTimeout(() => setUrlCopied(false), 2500)
+                      })
+                    }}
+                  >
+                    {urlCopied ? <><Check size={14} /> Copié !</> : <><Copy size={14} /> Copier le lien</>}
+                  </button>
+                  <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8, marginBottom: 0, textAlign: 'center' }}>
+                    Envoyez ce lien au client par WhatsApp ou SMS
+                  </p>
+                </div>
+              )}
               <button
                 className="btn btn-primary"
                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
@@ -390,6 +527,52 @@ export default function Contracts({ onRestitution }) {
               >
                 <Download size={15} /> {t('panel.downloadPdf')}
               </button>
+
+              {/* WhatsApp buttons — only for active or closed contracts */}
+              {(panelContract.status === 'active' || panelContract.status === 'closed') && (
+                <>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderColor: '#25d366', color: '#25d366' }}
+                    onClick={() => sendContractWhatsApp(panelContract)}
+                    disabled={waContractSending}
+                  >
+                    <MessageCircle size={15} />
+                    {waContractSending ? 'Envoi en cours…' : '📱 Envoyer par WhatsApp'}
+                  </button>
+
+                  <button
+                    className="btn btn-secondary"
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderColor: '#0070ba', color: '#0070ba' }}
+                    onClick={() => sendPaymentLinkWhatsApp(panelContract)}
+                    disabled={waPaymentSending}
+                  >
+                    <CreditCard size={15} />
+                    {waPaymentSending ? 'Envoi en cours…' : '💳 Envoyer lien de paiement CMI'}
+                  </button>
+
+                  {waContractToast === 'success' && (
+                    <div style={{ padding: '8px 12px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 13, color: '#166534' }}>
+                      Contrat envoyé par WhatsApp.
+                    </div>
+                  )}
+                  {waContractToast === 'error' && (
+                    <div style={{ padding: '8px 12px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#991b1b' }}>
+                      Échec de l&apos;envoi WhatsApp. Vérifiez le numéro du client.
+                    </div>
+                  )}
+                  {waPaymentToast === 'success' && (
+                    <div style={{ padding: '8px 12px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 13, color: '#166534' }}>
+                      Lien de paiement envoyé par WhatsApp.
+                    </div>
+                  )}
+                  {waPaymentToast === 'error' && (
+                    <div style={{ padding: '8px 12px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#991b1b' }}>
+                      Échec de l&apos;envoi du lien de paiement.
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </>

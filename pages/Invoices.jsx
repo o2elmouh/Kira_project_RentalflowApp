@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getInvoices } from '../lib/db'
+import { getInvoices, getContracts } from '../lib/db'
+import { api } from '../lib/api'
+import { generateInvoice } from '../utils/pdf'
 
 // ─────────────────────────────────────────────────────────
 // INVOICES
@@ -9,20 +11,49 @@ import { getInvoices } from '../lib/db'
 export default function Invoices() {
   const { t } = useTranslation('invoices')
   const [invoices, setInvoices] = useState([])
+  const [contracts, setContracts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [waSending, setWaSending] = useState(null) // invoice id being sent
+  const [waStatus, setWaStatus] = useState({})     // { [invoiceId]: 'ok'|'err' }
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    getInvoices().then(data => {
+    Promise.all([getInvoices(), getContracts()]).then(([invs, ctrs]) => {
       if (cancelled) return
-      setInvoices(data)
+      setInvoices(invs)
+      setContracts(ctrs)
       setLoading(false)
     })
     return () => { cancelled = true }
   }, [])
 
   const total = invoices.reduce((s, i) => s + (i.totalTTC || 0), 0)
+
+  const sendInvoiceWhatsApp = async (inv) => {
+    const contract = contracts.find(c => c.id === inv.contractId) || {}
+    const phone = contract.clientPhone || ''
+    if (!phone) { alert('Numéro de téléphone client introuvable sur ce contrat.'); return }
+    setWaSending(inv.id)
+    try {
+      const doc = generateInvoice({}, inv, contract)
+      const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(doc.output('arraybuffer'))))
+      await api.sendInvoiceWhatsApp({
+        to: phone,
+        clientName: inv.clientName,
+        invoiceNumber: inv.invoiceNumber,
+        pdfBase64,
+        totalTTC: inv.totalTTC,
+      })
+      setWaStatus(s => ({ ...s, [inv.id]: 'ok' }))
+    } catch (err) {
+      console.error('[WhatsApp invoice]', err)
+      setWaStatus(s => ({ ...s, [inv.id]: 'err' }))
+    } finally {
+      setWaSending(null)
+      setTimeout(() => setWaStatus(s => { const n = { ...s }; delete n[inv.id]; return n }), 4000)
+    }
+  }
 
   if (loading) {
     return (
@@ -51,6 +82,15 @@ export default function Invoices() {
                   <span className={`badge ${inv.status === 'paid' ? 'badge-green' : inv.status === 'pending' ? 'badge-orange' : 'badge-gray'}`}>
                     {inv.status === 'paid' ? t('status.paid') : inv.status === 'pending' ? t('status.pending') : inv.status || t('status.pending')}
                   </span>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    title="Envoyer par WhatsApp"
+                    disabled={waSending === inv.id}
+                    onClick={() => sendInvoiceWhatsApp(inv)}
+                    style={{ fontSize: 14, padding: '2px 6px' }}
+                  >
+                    {waSending === inv.id ? '…' : waStatus[inv.id] === 'ok' ? '✅' : waStatus[inv.id] === 'err' ? '❌' : '📱'}
+                  </button>
                 </div>
               </div>
             ))}

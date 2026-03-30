@@ -13,10 +13,13 @@ import Restitution from './pages/Restitution'
 import RestitutionPicker from './pages/RestitutionPicker'
 import AuthPage from './pages/Auth'
 import OnboardingPage from './pages/Onboarding'
+import SignContract from './pages/SignContract'
 import { seedDemoData } from './utils/storage'
 
 const USE_AUTH = import.meta.env.VITE_USE_AUTH === 'true'
 const PREVIEW  = new URLSearchParams(window.location.search).get('preview')
+
+const signToken = new URLSearchParams(window.location.search).get('sign')
 
 export default function App() {
   const [page, setPage]                               = useState('dashboard')
@@ -131,6 +134,8 @@ export default function App() {
       default: return <Dashboard onNav={setPage} />
     }
   }
+
+  if (signToken) return <SignContract token={signToken} />
 
   if (PREVIEW === 'onboarding')
     return <OnboardingPage user={{ id: 'preview', email: 'preview@rentaflow.ma' }} />
