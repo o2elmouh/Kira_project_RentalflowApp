@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { Upload, Camera, CheckCircle, AlertCircle, Printer, Download, ArrowRight, ArrowLeft } from 'lucide-react'
+import { runOCR } from './lib/ocr'
 import { getAvailableVehicles, saveClient, saveContract, saveInvoice, getAgency, getFleet, saveVehicle } from './utils/storage'
 import { generateContract, generateInvoice } from './utils/pdf'
 import CarPhotoGuide from './components/CarPhotoGuide'
@@ -101,29 +102,31 @@ function ScanStep({ onNext }) {
     dateOfBirth: '',
   })
   const cinRef = useRef(); const licRef = useRef()
+  const [ocrError, setOcrError] = useState(null)
 
-  const simulateScan = (type) => {
-    setScanning(true); setScanType(type); setProgress(0)
-    const interval = setInterval(() => {
-      setProgress(p => {
-        if (p >= 100) {
-          clearInterval(interval)
-          setScanning(false)
-          const demo = type === 'cin'
-            ? { firstName: 'Karim', lastName: 'El Fassi', cinNumber: 'BJ987654', cinExpiry: '2029-03-15', nationality: 'Marocain' }
-            : { drivingLicenseNumber: 'W87654321', licenseExpiry: '2028-11-20' }
-          setExtracted(prev => ({ ...prev, [type]: demo }))
-          setClient(prev => ({ ...prev, ...demo }))
-          return 100
-        }
-        return p + 12
-      })
-    }, 120)
+  const handleFile = async (type, file) => {
+    if (!file) return
+    setScanning(true); setScanType(type); setProgress(0); setOcrError(null)
+    try {
+      const fields = await runOCR(file, type, pct => setProgress(pct))
+      setExtracted(prev => ({ ...prev, [type]: fields }))
+      setClient(prev => ({ ...prev, ...fields }))
+    } catch (err) {
+      console.error('[OCR]', err)
+      setOcrError(`OCR failed: ${err.message}`)
+    } finally {
+      setScanning(false)
+      setProgress(0)
+    }
   }
 
-  const handleFile = (type, file) => {
-    if (!file) return
-    simulateScan(type)
+  // Demo mode — fills with realistic sample data (no Tesseract needed)
+  const simulateScan = (type) => {
+    const demo = type === 'cin'
+      ? { firstName: 'Karim', lastName: 'El Fassi', cinNumber: 'BJ987654', cinExpiry: '2029-03-15', nationality: 'Marocain', dateOfBirth: '1990-06-15', docType: 'cin' }
+      : { drivingLicenseNumber: 'W87654321', licenseExpiry: '2028-11-20' }
+    setExtracted(prev => ({ ...prev, [type]: demo }))
+    setClient(prev => ({ ...prev, ...demo }))
   }
 
   const allFilled = client.firstName && client.lastName && client.cinNumber && client.drivingLicenseNumber
@@ -135,19 +138,26 @@ function ScanStep({ onNext }) {
         <div className="card">
           <div className="card-header">
             <h3>National ID (CIN) or Passport</h3>
-            {extracted.cin && <span className="badge badge-green"><CheckCircle size={11} /> Scanned</span>}
+            {extracted.cin && (
+              <span className="badge badge-green">
+                <CheckCircle size={11} /> {extracted.cin.docType === 'passport' ? 'Passport MRZ' : 'CIN'} scanned
+              </span>
+            )}
           </div>
           <div className="card-body">
             <div className={`scan-zone${scanning && scanType === 'cin' ? ' scanning' : ''}`}
-              onClick={() => cinRef.current?.click()}>
+              onClick={() => !scanning && cinRef.current?.click()}>
               <div className="scan-icon">🪪</div>
               <div className="scan-title">Upload CIN / Passport</div>
-              <div className="scan-hint">Click to browse or drag & drop (JPG, PNG, PDF)</div>
+              <div className="scan-hint">Click to browse or drag & drop (JPG, PNG)</div>
               {scanning && scanType === 'cin' && (
                 <div className="progress-bar"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
               )}
             </div>
-            <input ref={cinRef} type="file" accept="image/*,.pdf" style={{ display:'none' }}
+            {ocrError && scanType === 'cin' && (
+              <div style={{ fontSize: 12, color: '#dc2626', marginTop: 6 }}>{ocrError}</div>
+            )}
+            <input ref={cinRef} type="file" accept="image/*" style={{ display:'none' }}
               onChange={e => handleFile('cin', e.target.files[0])} />
             <button className="btn btn-secondary btn-sm mt-2" style={{ width:'100%' }}
               onClick={() => simulateScan('cin')}>
@@ -160,11 +170,11 @@ function ScanStep({ onNext }) {
         <div className="card">
           <div className="card-header">
             <h3>Driving License (Permis)</h3>
-            {extracted.license && <span className="badge badge-green"><CheckCircle size={11} /> Scanned</span>}
+            {extracted.license && <span className="badge badge-green"><CheckCircle size={11} /> Permis scanned</span>}
           </div>
           <div className="card-body">
             <div className={`scan-zone${scanning && scanType === 'license' ? ' scanning' : ''}`}
-              onClick={() => licRef.current?.click()}>
+              onClick={() => !scanning && licRef.current?.click()}>
               <div className="scan-icon">🪙</div>
               <div className="scan-title">Upload Driving License</div>
               <div className="scan-hint">Front side of the Moroccan permis de conduire</div>
@@ -172,6 +182,9 @@ function ScanStep({ onNext }) {
                 <div className="progress-bar"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
               )}
             </div>
+            {ocrError && scanType === 'license' && (
+              <div style={{ fontSize: 12, color: '#dc2626', marginTop: 6 }}>{ocrError}</div>
+            )}
             <input ref={licRef} type="file" accept="image/*" style={{ display:'none' }}
               onChange={e => handleFile('license', e.target.files[0])} />
             <button className="btn btn-secondary btn-sm mt-2" style={{ width:'100%' }}
