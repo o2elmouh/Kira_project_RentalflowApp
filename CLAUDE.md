@@ -1,5 +1,13 @@
 # RentaFlow — Project Context
 
+## Instructions for Claude
+
+- **Read-Only Context:** Use this file to understand the current state of the app. Do not re-explain or repeat information already here unless explicitly asked.
+- **Token Efficiency:** Skip re-summarising the stack, file structure, or completed work — it's already documented below.
+- **Ledger Update:** At the end of each session, or when asked, produce a `Context Update` block — a concise summary of new features, bug fixes, and environment changes. Format it as a code block so it can be copied back into this file.
+
+---
+
 ## Overview
 **RentaFlow** is a Moroccan car rental agency SaaS (location de voitures).
 Target market: small/mid-size Moroccan rental agencies.
@@ -193,4 +201,4 @@ RESEND_API_KEY=               ← optional, for email
 ## GitHub
 Repo: `https://github.com/o2elmouh/Kira_project_RentalflowApp`
 Main branch: `main`
-Latest commit: `f7e0c81` — i18n complete across all pages
+Latest commit: `8f68f3f` — CLAUDE.md added, i18n complete across all pages
