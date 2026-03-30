@@ -355,6 +355,32 @@ AS $$
   );
 $$;
 
+-- Get available vehicles for a date range (no overlapping active contracts)
+CREATE OR REPLACE FUNCTION get_available_vehicles(
+  p_agency_id UUID,
+  p_start_date DATE,
+  p_end_date   DATE
+)
+RETURNS SETOF vehicles
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+  SELECT v.*
+    FROM vehicles v
+   WHERE v.agency_id = p_agency_id
+     AND v.status    = 'available'
+     AND v.id NOT IN (
+       SELECT c.vehicle_id
+         FROM contracts c
+        WHERE c.agency_id = p_agency_id
+          AND c.status IN ('active','draft')
+          AND c.pickup_date::DATE  <= p_end_date
+          AND c.return_date::DATE  >= p_start_date
+     )
+   ORDER BY v.brand, v.model;
+$$;
+
 -- Get the agency_id for the currently authenticated user
 CREATE OR REPLACE FUNCTION my_agency_id()
 RETURNS UUID
