@@ -2,15 +2,29 @@
 -- RentaFlow — Auth fixes (appliquer dans Supabase SQL Editor)
 -- ============================================================
 
--- FIX 1: profiles SELECT — permettre à chaque user de lire son propre profil
+-- FIX 1: profiles SELECT — each user can read their own profile and agency members
+-- (avoids circular dependency with user_belongs_to_agency which queries profiles)
 DROP POLICY IF EXISTS "profiles_select_own" ON profiles;
-CREATE POLICY "profiles_select_own" ON profiles
-  FOR SELECT USING (id = auth.uid());
+DROP POLICY IF EXISTS "profiles_select" ON profiles;
+CREATE POLICY "profiles_select" ON profiles
+  FOR SELECT USING (
+    agency_id = (SELECT agency_id FROM profiles WHERE id = auth.uid() LIMIT 1)
+    OR id = auth.uid()
+  );
 
--- FIX 2: profiles INSERT — permettre l'auto-insertion lors de l'onboarding
+-- FIX 2: profiles INSERT — allow self-insert during onboarding
 DROP POLICY IF EXISTS "profiles_insert_self" ON profiles;
-CREATE POLICY "profiles_insert_self" ON profiles
+DROP POLICY IF EXISTS "profiles_insert" ON profiles;
+CREATE POLICY "profiles_insert" ON profiles
   FOR INSERT WITH CHECK (id = auth.uid());
+
+-- FIX 2b: profiles UPDATE
+DROP POLICY IF EXISTS "profiles_update" ON profiles;
+CREATE POLICY "profiles_update" ON profiles
+  FOR UPDATE USING (
+    agency_id = (SELECT agency_id FROM profiles WHERE id = auth.uid() LIMIT 1)
+    OR id = auth.uid()
+  );
 
 -- FIX 3: onboard_new_agency — version sécurisée et complète
 --   - Valide que l'appelant est bien p_user_id

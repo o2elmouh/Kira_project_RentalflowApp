@@ -599,17 +599,25 @@ CREATE POLICY "agencies_update" ON agencies
   FOR UPDATE USING (user_belongs_to_agency(id));
 
 -- ---- profiles ----
+-- Note: cannot use user_belongs_to_agency() here — it queries profiles itself (circular).
+-- Instead: a user may see/edit profiles that share their agency_id.
 DROP POLICY IF EXISTS "profiles_select" ON profiles;
 CREATE POLICY "profiles_select" ON profiles
-  FOR SELECT USING (user_belongs_to_agency(agency_id));
+  FOR SELECT USING (
+    agency_id = (SELECT agency_id FROM profiles WHERE id = auth.uid() LIMIT 1)
+    OR id = auth.uid()
+  );
 
 DROP POLICY IF EXISTS "profiles_insert" ON profiles;
 CREATE POLICY "profiles_insert" ON profiles
-  FOR INSERT WITH CHECK (user_belongs_to_agency(agency_id));
+  FOR INSERT WITH CHECK (id = auth.uid());
 
 DROP POLICY IF EXISTS "profiles_update" ON profiles;
 CREATE POLICY "profiles_update" ON profiles
-  FOR UPDATE USING (user_belongs_to_agency(agency_id));
+  FOR UPDATE USING (
+    agency_id = (SELECT agency_id FROM profiles WHERE id = auth.uid() LIMIT 1)
+    OR id = auth.uid()
+  );
 
 -- ---- vehicles ----
 DROP POLICY IF EXISTS "vehicles_select" ON vehicles;
