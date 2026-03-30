@@ -230,7 +230,30 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 
 -- ----------------------------------------------------------
--- 2.7 fleet_config
+-- 2.7 invoices
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS invoices (
+  id               UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  agency_id        UUID          NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+  contract_id      UUID          REFERENCES contracts(id) ON DELETE SET NULL,
+  client_id        UUID          REFERENCES clients(id)   ON DELETE SET NULL,
+  invoice_number   TEXT,
+  contract_number  TEXT,
+  client_name      TEXT,
+  vehicle_name     TEXT,
+  total_ht         DECIMAL(10,2) NOT NULL DEFAULT 0,
+  tva              DECIMAL(10,2) NOT NULL DEFAULT 0,
+  total_ttc        DECIMAL(10,2) NOT NULL DEFAULT 0,
+  days             INT           NOT NULL DEFAULT 1,
+  start_date       DATE,
+  end_date         DATE,
+  status           TEXT          NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','paid','cancelled')),
+  created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+
+-- ----------------------------------------------------------
+-- 2.8 fleet_config
 -- Stores per-brand maintenance specifications
 -- ----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS fleet_config (
@@ -613,6 +636,7 @@ ALTER TABLE vehicles         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clients          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contracts        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoices         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fleet_config     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE repairs          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contract_photos  ENABLE ROW LEVEL SECURITY;
@@ -697,6 +721,23 @@ CREATE POLICY "contracts_update" ON contracts
 
 DROP POLICY IF EXISTS "contracts_delete" ON contracts;
 CREATE POLICY "contracts_delete" ON contracts
+  FOR DELETE USING (user_belongs_to_agency(agency_id));
+
+-- ---- invoices ----
+DROP POLICY IF EXISTS "invoices_select" ON invoices;
+CREATE POLICY "invoices_select" ON invoices
+  FOR SELECT USING (user_belongs_to_agency(agency_id));
+
+DROP POLICY IF EXISTS "invoices_insert" ON invoices;
+CREATE POLICY "invoices_insert" ON invoices
+  FOR INSERT WITH CHECK (user_belongs_to_agency(agency_id));
+
+DROP POLICY IF EXISTS "invoices_update" ON invoices;
+CREATE POLICY "invoices_update" ON invoices
+  FOR UPDATE USING (user_belongs_to_agency(agency_id));
+
+DROP POLICY IF EXISTS "invoices_delete" ON invoices;
+CREATE POLICY "invoices_delete" ON invoices
   FOR DELETE USING (user_belongs_to_agency(agency_id));
 
 -- ---- payments ----

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getInvoices, getContracts } from '../lib/db'
+import { getInvoices, getContracts, getClients } from '../lib/db'
 import { api } from '../lib/api'
 import { generateInvoice } from '../utils/pdf'
 
@@ -12,6 +12,7 @@ export default function Invoices() {
   const { t } = useTranslation('invoices')
   const [invoices, setInvoices] = useState([])
   const [contracts, setContracts] = useState([])
+  const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [waSending, setWaSending] = useState(null) // invoice id being sent
   const [waStatus, setWaStatus] = useState({})     // { [invoiceId]: 'ok'|'err' }
@@ -19,10 +20,11 @@ export default function Invoices() {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    Promise.all([getInvoices(), getContracts()]).then(([invs, ctrs]) => {
+    Promise.all([getInvoices(), getContracts(), getClients()]).then(([invs, ctrs, cls]) => {
       if (cancelled) return
       setInvoices(invs)
       setContracts(ctrs)
+      setClients(cls)
       setLoading(false)
     })
     return () => { cancelled = true }
@@ -32,7 +34,8 @@ export default function Invoices() {
 
   const sendInvoiceWhatsApp = async (inv) => {
     const contract = contracts.find(c => c.id === inv.contractId) || {}
-    const phone = contract.clientPhone || ''
+    const client  = clients.find(cl => cl.id === (inv.clientId || contract.clientId)) || {}
+    const phone = client.phone || ''
     if (!phone) { alert('Numéro de téléphone client introuvable sur ce contrat.'); return }
     setWaSending(inv.id)
     try {
