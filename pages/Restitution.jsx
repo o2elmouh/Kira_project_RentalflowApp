@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle, ArrowRight, ArrowLeft, Download } from 'lucide-react'
-import { updateContract, saveInvoice, getFleet, saveVehicle, getAgency } from '../utils/storage'
+import { updateContract, saveInvoice, getFleet, saveVehicle, getAgency } from '../lib/db'
 import CarPhotoGuide from '../components/CarPhotoGuide'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
@@ -110,10 +110,8 @@ function StepBar({ current }) {
 
 // ── PDF Generation ────────────────────────────────────────
 
-function generateRestitutionPDF({ contract, returnDate, returnTime, returnMileage, returnFuelLevel,
+function generateRestitutionPDF({ agency = {}, contract, returnDate, returnTime, returnMileage, returnFuelLevel,
   returnPhotos, returnDamages, extraKmFee, fuelFee, damageFee, totalExtraFees, extraKm, fuelDiff }) {
-
-  const agency = getAgency()
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
   const ACCENT = [199, 75, 31]
@@ -536,7 +534,7 @@ function Step3Damages({ contract, vehicle, returnMileage, returnFuelLevel, damag
 
 // ── Step 4: Clôture ───────────────────────────────────────
 
-function Step4Closure({ contract, vehicle, returnDate, returnTime, returnMileage, returnFuelLevel,
+function Step4Closure({ agency, contract, vehicle, returnDate, returnTime, returnMileage, returnFuelLevel,
   returnPhotos, damages, damageFee, onBack, onDone }) {
 
   const { t } = useTranslation('restitution')
@@ -552,7 +550,7 @@ function Step4Closure({ contract, vehicle, returnDate, returnTime, returnMileage
 
   const handleDownloadPDF = () => {
     generateRestitutionPDF({
-      contract, returnDate, returnTime, returnMileage, returnFuelLevel,
+      agency, contract, returnDate, returnTime, returnMileage, returnFuelLevel,
       returnPhotos, returnDamages, extraKmFee, fuelFee, damageFee: damageFee || 0,
       totalExtraFees, extraKm, fuelDiff,
     })
@@ -562,7 +560,8 @@ function Step4Closure({ contract, vehicle, returnDate, returnTime, returnMileage
     setClosing(true)
     try {
       // 1. Update contract
-      updateContract(contract.id, {
+      await updateContract({
+        ...contract,
         status: 'closed',
         returnDate,
         returnMileage,
@@ -578,9 +577,9 @@ function Step4Closure({ contract, vehicle, returnDate, returnTime, returnMileage
       })
 
       // 2. Update vehicle status to available
-      const fleet = getFleet()
-      const vehicle = fleet.find(v => v.id === contract.vehicleId)
-      if (vehicle) saveVehicle({ ...vehicle, status: 'available' })
+      const fleet = await getFleet()
+      const v = fleet.find(fv => fv.id === contract.vehicleId)
+      if (v) await saveVehicle({ ...v, status: 'available' })
 
       // 3. Save invoice if extra fees
       if (totalExtraFees > 0) {
@@ -590,7 +589,7 @@ function Step4Closure({ contract, vehicle, returnDate, returnTime, returnMileage
           (damageFee || 0) > 0 ? { label: 'Frais dommages', qty: 1, unitPrice: damageFee } : null,
         ].filter(Boolean)
 
-        saveInvoice({
+        await saveInvoice({
           clientId: contract.clientId,
           clientName: contract.clientName,
           contractId: contract.id,
@@ -605,6 +604,8 @@ function Step4Closure({ contract, vehicle, returnDate, returnTime, returnMileage
       }
 
       onDone()
+    } catch (err) {
+      console.error('[Restitution] handleClose', err)
     } finally {
       setClosing(false)
     }
@@ -688,9 +689,25 @@ function Step4Closure({ contract, vehicle, returnDate, returnTime, returnMileage
 export default function Restitution({ contract, onDone }) {
   const { t } = useTranslation('restitution')
   const [step, setStep] = useState(0)
+  const [vehicle, setVehicle] = useState(null)
+  const [agency, setAgency] = useState({})
+  const [dataLoading, setDataLoading] = useState(true)
 
-  // Resolve vehicle for km limit
-  const vehicle = contract ? getFleet().find(v => v.id === contract.vehicleId) || null : null
+  useEffect(() => {
+    if (!contract) { setDataLoading(false); return }
+    let cancelled = false
+    Promise.all([
+      getFleet().catch(err => { console.error('[Restitution] getFleet', err); return [] }),
+      getAgency().catch(err => { console.error('[Restitution] getAgency', err); return {} }),
+    ]).then(([fleet, agencyData]) => {
+      if (!cancelled) {
+        setVehicle(fleet.find(v => v.id === contract.vehicleId) || null)
+        setAgency(agencyData || {})
+        setDataLoading(false)
+      }
+    })
+    return () => { cancelled = true }
+  }, [contract])
 
   // Step 1 data
   const [returnData, setReturnData] = useState({
@@ -713,6 +730,14 @@ export default function Restitution({ contract, onDone }) {
     return (
       <div style={{ padding: 40, textAlign: 'center', color: 'var(--text3)' }}>
         {t('noContract')}
+      </div>
+    )
+  }
+
+  if (dataLoading) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text3)' }}>
+        Chargement des données…
       </div>
     )
   }
@@ -768,6 +793,7 @@ export default function Restitution({ contract, onDone }) {
 
           {step === 3 && (
             <Step4Closure
+              agency={agency}
               contract={contract}
               vehicle={vehicle}
               returnDate={returnData.returnDate}

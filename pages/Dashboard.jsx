@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Car, Users, FileText, Receipt, TrendingUp, PlusCircle, ChevronLeft, ChevronRight } from 'lucide-react'
-import { getFleet, getClients, getContracts, getInvoices } from '../utils/storage'
+import { getFleet, getClients, getContracts, getInvoices } from '../lib/db'
 
 function inMonth(dateStr, year, month) {
   if (!dateStr) return false
@@ -31,10 +31,37 @@ export default function Dashboard({ onNav }) {
   const [year,  setYear]  = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
 
-  const fleet     = getFleet()
-  const clients   = getClients()
-  const contracts = getContracts()
-  const invoices  = getInvoices()
+  const [fleet,     setFleet]     = useState([])
+  const [clients,   setClients]   = useState([])
+  const [contracts, setContracts] = useState([])
+  const [invoices,  setInvoices]  = useState([])
+  const [loading,   setLoading]   = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const [f, cl, co, inv] = await Promise.all([
+          getFleet(),
+          getClients(),
+          getContracts(),
+          getInvoices(),
+        ])
+        if (!cancelled) {
+          setFleet(f)
+          setClients(cl)
+          setContracts(co)
+          setInvoices(inv)
+          setLoading(false)
+        }
+      } catch (err) {
+        console.error('[Dashboard] load error', err)
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [])
 
   const available = fleet.filter(v => v.status === 'available').length
   const rented    = fleet.filter(v => v.status === 'rented').length
@@ -59,6 +86,14 @@ export default function Dashboard({ onNav }) {
 
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth()
   const months = tc('months', { returnObjects: true })
+
+  if (loading) {
+    return (
+      <div className="page-body">
+        <p style={{ color: 'var(--text3)' }}>Chargement…</p>
+      </div>
+    )
+  }
 
   return (
     <div>

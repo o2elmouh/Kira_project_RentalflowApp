@@ -1,14 +1,43 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ArrowLeft, Car } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { getContracts, getFleet } from '../utils/storage'
+import { getContracts, getFleet } from '../lib/db'
 
 export default function RestitutionPicker({ onPick, onCancel }) {
   const { t } = useTranslation('restitution')
-  const contracts = getContracts().filter(c => c.status === 'active')
-  const fleet = getFleet()
+
+  const [contracts, setContracts] = useState([])
+  const [fleet,     setFleet]     = useState([])
+  const [loading,   setLoading]   = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const [allContracts, f] = await Promise.all([getContracts(), getFleet()])
+        if (!cancelled) {
+          setContracts(allContracts.filter(c => c.status === 'active'))
+          setFleet(f)
+          setLoading(false)
+        }
+      } catch (err) {
+        console.error('[RestitutionPicker] load error', err)
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [])
 
   const getVehicle = (vehicleId) => fleet.find(v => v.id === vehicleId)
+
+  if (loading) {
+    return (
+      <div className="page-body">
+        <p style={{ color: 'var(--text3)' }}>Chargement…</p>
+      </div>
+    )
+  }
 
   return (
     <div>

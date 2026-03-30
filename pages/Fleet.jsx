@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PlusCircle, Trash2, Edit2, ChevronLeft, AlertTriangle, Clock, Wrench, TrendingDown, History } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { getFleet, saveVehicle, deleteVehicle, getContracts, getRepairs, saveRepair, deleteRepair, getFleetConfigForMake } from '../utils/storage'
+import { getFleet, saveVehicle, deleteVehicle, getContracts, getRepairs, saveRepair, deleteRepair } from '../lib/db'
+import { getFleetConfigForMake } from '../utils/storage'
 
 // ── Car catalogue ─────────────────────────────────────────
 const CAR_CATALOGUE = {
@@ -85,7 +86,7 @@ function DeadlineBadge({ date }) {
 }
 
 // ── Amortissement ─────────────────────────────────────────
-function AmortissementTab({ vehicle, contracts }) {
+function AmortissementTab({ vehicle, contracts, repairs: repairsProp }) {
   const { t } = useTranslation('fleet')
   const price    = Number(vehicle.purchasePrice) || 0
   const lifespan = Number(vehicle.lifespan)  || 5
@@ -105,7 +106,7 @@ function AmortissementTab({ vehicle, contracts }) {
 
   const vehicleContracts = contracts.filter(c => c.vehicleId === vehicle.id)
   const revenue = vehicleContracts.reduce((s, c) => s + (c.totalTTC || 0), 0)
-  const repairCosts = getRepairs(vehicle.id).reduce((s, r) => s + (r.cost || 0), 0)
+  const repairCosts = (repairsProp || []).reduce((s, r) => s + (r.cost || 0), 0)
   const roi   = price > 0 ? ((revenue - repairCosts) / price * 100).toFixed(1) : 0
   const toRecover = Math.max(0, price - revenue + repairCosts)
 
@@ -307,19 +308,27 @@ const EMPTY_REPAIR = { date: new Date().toISOString().split('T')[0], type: 'Vida
 
 function RepairsTab({ vehicle }) {
   const { t } = useTranslation('fleet')
-  const [repairs, setRepairs] = useState(() => getRepairs(vehicle.id))
+  const [repairs, setRepairs] = useState([])
   const [form, setForm] = useState(null)
 
-  const refresh = () => setRepairs(getRepairs(vehicle.id))
-
-  const save = () => {
-    saveRepair({ ...form, vehicleId: vehicle.id, cost: Number(form.cost), mileage: Number(form.mileage) })
-    setForm(null)
-    refresh()
+  const refresh = async () => {
+    try { setRepairs(await getRepairs(vehicle.id)) } catch (e) { console.error(e) }
   }
 
-  const remove = (id) => {
-    if (confirm(t('repairs.deleteConfirm'))) { deleteRepair(id); refresh() }
+  useEffect(() => { refresh() }, [vehicle.id])
+
+  const save = async () => {
+    try {
+      await saveRepair({ ...form, vehicleId: vehicle.id, cost: Number(form.cost), mileage: Number(form.mileage) })
+      setForm(null)
+      await refresh()
+    } catch (e) { console.error(e) }
+  }
+
+  const remove = async (id) => {
+    if (confirm(t('repairs.deleteConfirm'))) {
+      try { await deleteRepair(id); await refresh() } catch (e) { console.error(e) }
+    }
   }
 
   const total = repairs.reduce((s, r) => s + (r.cost || 0), 0)
@@ -408,7 +417,12 @@ function RepairsTab({ vehicle }) {
 
 // ── Rental history tab ────────────────────────────────────
 function RentalsTab({ vehicle }) {
-  const [contracts] = useState(() => getContracts().filter(c => c.vehicleId === vehicle.id))
+  const [contracts, setContracts] = useState([])
+
+  useEffect(() => {
+    getContracts().then(all => setContracts(all.filter(c => c.vehicleId === vehicle.id))).catch(console.error)
+  }, [vehicle.id])
+
   const total     = contracts.reduce((s, c) => s + (c.totalTTC || 0), 0)
   const days      = contracts.reduce((s, c) => s + (c.days || 0), 0)
 
@@ -452,9 +466,13 @@ function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDelete }) {
   const [showDeadlineEdit, setShowDeadlineEdit] = useState(false)
   const [deadlineForm, setDeadlineForm] = useState(() => computeDeadlinesFromConfig(vehicle))
   const [deadlineSaved, setDeadlineSaved] = useState(false)
+  const [contracts, setContracts] = useState([])
+  const [repairs, setRepairs] = useState([])
 
-  const contracts = getContracts().filter(c => c.vehicleId === vehicle.id)
-  const repairs = getRepairs ? getRepairs(vehicle.id) : []
+  useEffect(() => {
+    getContracts().then(all => setContracts(all.filter(c => c.vehicleId === vehicle.id))).catch(console.error)
+    getRepairs(vehicle.id).then(setRepairs).catch(console.error)
+  }, [vehicle.id])
 
   // Locations metrics
   const totalRevenue = contracts.reduce((s, c) => s + (c.totalTTC || 0), 0)
@@ -723,14 +741,25 @@ function autoFillMaintenance(form) {
 
 // ── Main component ────────────────────────────────────────
 export default function Fleet() {
-  const [fleet,        setFleet]       = useState(getFleet)
+  const [fleet,        setFleet]       = useState([])
+  const [loading,      setLoading]     = useState(true)
   const [editing,      setEditing]     = useState(null)
   const [detail,       setDetail]      = useState(null)  // vehicle being viewed
   const [form,         setForm]        = useState(EMPTY)
   const [configBanner, setConfigBanner] = useState(null)
   const [editingHadPurchaseDate, setEditingHadPurchaseDate] = useState(false)
 
-  const refresh  = () => { const f = getFleet(); setFleet(f); if (detail) setDetail(f.find(v => v.id === detail.id) || null) }
+  const refresh = async (currentDetail) => {
+    try {
+      const f = await getFleet()
+      setFleet(f)
+      const d = currentDetail !== undefined ? currentDetail : detail
+      if (d) setDetail(f.find(v => v.id === d.id) || null)
+    } catch (e) { console.error(e) }
+  }
+
+  useEffect(() => { refresh().finally(() => setLoading(false)) }, [])
+
   const openAdd  = () => { setForm(EMPTY); setEditing('new'); setDetail(null); setConfigBanner(null); setEditingHadPurchaseDate(false) }
   const openEdit = (v) => {
     setConfigBanner(null)
@@ -750,24 +779,36 @@ export default function Fleet() {
     }
   }
 
-  const save = () => {
+  const save = async () => {
     if (!form.make || !form.model || !form.plate) return
     let toSave = { ...form, purchasePrice: Number(form.purchasePrice) || 0, residualValue: Number(form.residualValue) || 0 }
     if (editing === 'new') toSave = autoFillMaintenance(toSave)
-    saveVehicle(toSave)
-    setEditing(null)
-    setConfigBanner(null)
-    refresh()
+    try {
+      await saveVehicle(toSave)
+      setEditing(null)
+      setConfigBanner(null)
+      await refresh()
+    } catch (e) { console.error(e) }
   }
 
-  const remove = (id) => {
-    if (confirm('Supprimer ce véhicule ?')) { deleteVehicle(id); setDetail(null); refresh() }
+  const remove = async (id) => {
+    if (confirm('Supprimer ce véhicule ?')) {
+      try {
+        await deleteVehicle(id)
+        setDetail(null)
+        await refresh(null)
+      } catch (e) { console.error(e) }
+    }
   }
 
-  const saveDeadlines = (updated) => {
-    saveVehicle(updated)
-    refresh()
+  const saveDeadlines = async (updated) => {
+    try {
+      await saveVehicle(updated)
+      await refresh()
+    } catch (e) { console.error(e) }
   }
+
+  if (loading) return <div className="page-body"><p style={{ color: 'var(--text3)' }}>Chargement…</p></div>
 
   const models = CAR_CATALOGUE[form.make] || []
 
