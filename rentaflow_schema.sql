@@ -238,6 +238,9 @@ CREATE TABLE IF NOT EXISTS fleet_config (
   agency_id           UUID        NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
   brand               TEXT        NOT NULL,
   warranty_years      INT         NOT NULL DEFAULT 3,
+  warranty_general    TEXT,                          -- e.g. "2 ans · km illimité"
+  warranty_battery    TEXT,                          -- e.g. "8 ans ou 160 000 km"
+  warranty_extension  TEXT,                          -- e.g. "Oui (payante)"
   control_tech_years  INT         NOT NULL DEFAULT 5,
   oil_change_km       INT         NOT NULL DEFAULT 10000,
   timing_belt_km      INT,
