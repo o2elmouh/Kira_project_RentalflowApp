@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CheckCircle, ArrowRight, ArrowLeft, Download } from 'lucide-react'
 import { updateContract, saveInvoice, getFleet, saveVehicle, getAgency } from '../utils/storage'
 import CarPhotoGuide from '../components/CarPhotoGuide'
@@ -7,24 +8,18 @@ import 'jspdf-autotable'
 
 // ── Constants ─────────────────────────────────────────────
 
-const STEPS = ['Retour', 'Photos', 'État des lieux', 'Clôture']
+const STEPS = ['return', 'photos', 'inspection', 'closure']
 
 const PHOTO_SLOTS = [
-  { id: 'front',    label: 'Avant' },
-  { id: 'rear',     label: 'Arrière' },
-  { id: 'left',     label: 'Côté gauche' },
-  { id: 'right',    label: 'Côté droit' },
-  { id: 'interior', label: 'Intérieur' },
-  { id: 'damage',   label: 'Détail / Dommage' },
+  { id: 'front' },
+  { id: 'rear' },
+  { id: 'left' },
+  { id: 'right' },
+  { id: 'interior' },
+  { id: 'damage' },
 ]
 
-const ZONES = [
-  'A - Avant',
-  'B - Arrière',
-  'C - Côté gauche',
-  'D - Côté droit',
-  'E - Toit / Dessous',
-]
+const ZONES = ['A', 'B', 'C', 'D', 'E']
 
 const FUEL_LEVELS = { 'Vide': 0, '1/4': 1, '1/2': 2, '3/4': 3, 'Plein': 4 }
 const FUEL_OPTIONS = ['Vide', '1/4', '1/2', '3/4', 'Plein']
@@ -97,14 +92,15 @@ function computeExtraFees({ vehicle, returnMileage, returnFuelLevel, contract, d
 // ── StepBar ───────────────────────────────────────────────
 
 function StepBar({ current }) {
+  const { t } = useTranslation('restitution')
   return (
     <div className="steps">
-      {STEPS.map((label, i) => (
+      {STEPS.map((key, i) => (
         <div key={i} className="step-item">
           <div className={`step-circle ${i < current ? 'done' : i === current ? 'active' : ''}`}>
             {i < current ? '✓' : i + 1}
           </div>
-          <span className={`step-label${i === current ? ' active' : ''}`}>{label}</span>
+          <span className={`step-label${i === current ? ' active' : ''}`}>{t(`steps.${key}`)}</span>
           {i < STEPS.length - 1 && <div className={`step-line${i < current ? ' done' : ''}`} />}
         </div>
       ))}
@@ -232,6 +228,7 @@ function generateRestitutionPDF({ contract, returnDate, returnTime, returnMileag
 // ── Step 1: Retour kilométrage & carburant ────────────────
 
 function Step1Return({ contract, data, onChange, onNext }) {
+  const { t } = useTranslation('restitution')
   const startMileage = contract.startMileage || contract.mileageOut || 0
   const departureLevel = contract.fuelLevel || 'Plein'
   const kmDriven = data.returnMileage ? Math.max(0, data.returnMileage - startMileage) : 0
@@ -241,11 +238,11 @@ function Step1Return({ contract, data, onChange, onNext }) {
 
   return (
     <div className="card" style={{ maxWidth: 540, margin: '0 auto' }}>
-      <div className="card-header"><h3 style={{ margin: 0, fontSize: 16 }}>Retour — Kilométrage &amp; Carburant</h3></div>
+      <div className="card-header"><h3 style={{ margin: 0, fontSize: 16 }}>{t('step1.title')}</h3></div>
       <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
         <div className="form-group">
-          <label className="form-label">Kilométrage retour (km)</label>
+          <label className="form-label">{t('step1.returnKm')}</label>
           <input
             type="number"
             className="form-input"
@@ -254,37 +251,37 @@ function Step1Return({ contract, data, onChange, onNext }) {
             onChange={e => onChange({ returnMileage: Number(e.target.value) })}
           />
           <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
-            Départ: {startMileage} km — <strong>Km parcourus: {kmDriven} km</strong>
+            {t('step1.kmHint', { departure: startMileage, driven: kmDriven })}
           </div>
           {data.returnMileage < startMileage && (
             <div style={{ color: '#dc2626', fontSize: 11, marginTop: 3 }}>
-              ⚠️ Le kilométrage retour ne peut pas être inférieur au kilométrage départ ({startMileage} km).
+              {t('step1.kmError', { departure: startMileage })}
             </div>
           )}
         </div>
 
         <div className="form-group">
-          <label className="form-label">Niveau carburant retour</label>
+          <label className="form-label">{t('step1.fuelLevel')}</label>
           <select
             className="form-input"
             value={data.returnFuelLevel}
             onChange={e => onChange({ returnFuelLevel: e.target.value })}
           >
-            {FUEL_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+            {FUEL_OPTIONS.map(o => <option key={o} value={o}>{t(`fuelLevels.${o}`)}</option>)}
           </select>
           <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
-            Niveau départ: <strong>{departureLevel}</strong>
+            {t('step1.fuelDepartureHint', { level: departureLevel })}
           </div>
           {fuelDiff > 0 && (
             <div style={{ marginTop: 6, padding: '8px 12px', background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 6, color: '#c2410c', fontSize: 13 }}>
-              Attention: le niveau de carburant est inférieur au départ ({fuelDiff} quart(s) manquant(s))
+              {t('step1.fuelWarning', { diff: fuelDiff })}
             </div>
           )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="form-group">
-            <label className="form-label">Date de retour</label>
+            <label className="form-label">{t('step1.returnDate')}</label>
             <input
               type="date"
               className="form-input"
@@ -293,7 +290,7 @@ function Step1Return({ contract, data, onChange, onNext }) {
             />
           </div>
           <div className="form-group">
-            <label className="form-label">Heure de retour</label>
+            <label className="form-label">{t('step1.returnTime')}</label>
             <input
               type="time"
               className="form-input"
@@ -310,7 +307,7 @@ function Step1Return({ contract, data, onChange, onNext }) {
             onClick={onNext}
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}
           >
-            Suivant <ArrowRight size={16} />
+            {t('nav.next')} <ArrowRight size={16} />
           </button>
         </div>
       </div>
@@ -321,6 +318,7 @@ function Step1Return({ contract, data, onChange, onNext }) {
 // ── Step 2: Photos retour ─────────────────────────────────
 
 function Step2Photos({ contract, photos, onChange, onNext, onBack }) {
+  const { t } = useTranslation('restitution')
   const fileRefs = useRef({})
   const departurePhotos = contract.photos || {}
 
@@ -332,7 +330,7 @@ function Step2Photos({ contract, photos, onChange, onNext, onBack }) {
 
   return (
     <div className="card" style={{ maxWidth: 700, margin: '0 auto' }}>
-      <div className="card-header"><h3 style={{ margin: 0, fontSize: 16 }}>Photos retour</h3></div>
+      <div className="card-header"><h3 style={{ margin: 0, fontSize: 16 }}>{t('step2.title')}</h3></div>
       <div className="card-body">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
           {PHOTO_SLOTS.map(slot => {
@@ -341,12 +339,12 @@ function Step2Photos({ contract, photos, onChange, onNext, onBack }) {
             return (
               <div key={slot.id} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
                 <div style={{ padding: '8px 10px', background: 'var(--bg2)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid var(--border)' }}>
-                  {slot.label}
+                  {t(`photos.${slot.id}`)}
                 </div>
                 <div style={{ display: 'flex', gap: 4, padding: 8 }}>
                   {/* Departure photo */}
                   <div style={{ flex: 1, textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 4 }}>Départ</div>
+                    <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 4 }}>{t('step2.departure')}</div>
                     {departurePhoto ? (
                       <img src={departurePhoto} alt="départ" style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 4 }} />
                     ) : (
@@ -357,7 +355,7 @@ function Step2Photos({ contract, photos, onChange, onNext, onBack }) {
                   </div>
                   {/* Return photo */}
                   <div style={{ flex: 1, textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 4 }}>Retour</div>
+                    <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 4 }}>{t('step2.return')}</div>
                     {returnPhoto ? (
                       <div style={{ position: 'relative' }}>
                         <img src={returnPhoto} alt="retour" style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 4 }} />
@@ -388,7 +386,7 @@ function Step2Photos({ contract, photos, onChange, onNext, onBack }) {
                         style={{ marginTop: 4, padding: '3px 8px', fontSize: 11, width: '100%' }}
                         onClick={() => fileRefs.current[slot.id]?.click()}
                       >
-                        Ajouter
+                        {t('step2.add')}
                       </button>
                     )}
                   </div>
@@ -400,10 +398,10 @@ function Step2Photos({ contract, photos, onChange, onNext, onBack }) {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
           <button className="btn btn-secondary" onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <ArrowLeft size={16} /> Précédent
+            <ArrowLeft size={16} /> {t('nav.prev')}
           </button>
           <button className="btn btn-primary" onClick={onNext} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            Suivant <ArrowRight size={16} />
+            {t('nav.next')} <ArrowRight size={16} />
           </button>
         </div>
       </div>
@@ -414,6 +412,7 @@ function Step2Photos({ contract, photos, onChange, onNext, onBack }) {
 // ── Step 3: État des lieux & frais ────────────────────────
 
 function Step3Damages({ contract, vehicle, returnMileage, returnFuelLevel, damages, onChange, damageFee, onDamageFee, onNext, onBack }) {
+  const { t } = useTranslation('restitution')
   const { extraKm, extraKmFee, kmAllowed, kmDriven, fuelDiff, fuelFee, totalExtraFees } =
     computeExtraFees({ vehicle, returnMileage, returnFuelLevel, contract, damageFee })
 
@@ -434,12 +433,12 @@ function Step3Damages({ contract, vehicle, returnMileage, returnFuelLevel, damag
 
   return (
     <div className="card" style={{ maxWidth: 600, margin: '0 auto' }}>
-      <div className="card-header"><h3 style={{ margin: 0, fontSize: 16 }}>État des lieux &amp; Frais</h3></div>
+      <div className="card-header"><h3 style={{ margin: 0, fontSize: 16 }}>{t('step3.title')}</h3></div>
       <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Zones checklist */}
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: 'var(--text2)' }}>Dommages constatés</div>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: 'var(--text2)' }}>{t('step3.damages')}</div>
           {ZONES.map(zone => {
             const dmg = getDamage(zone)
             return (
@@ -451,13 +450,13 @@ function Step3Damages({ contract, vehicle, returnMileage, returnFuelLevel, damag
                     onChange={() => toggleZone(zone)}
                     style={{ width: 16, height: 16 }}
                   />
-                  {zone}
+                  {t(`zones.${zone}`)}
                 </label>
                 {dmg.checked && (
                   <input
                     type="text"
                     className="form-input"
-                    placeholder="Description du dommage..."
+                    placeholder={t('step3.damagePlaceholder')}
                     value={dmg.description}
                     onChange={e => setDescription(zone, e.target.value)}
                     style={{ marginTop: 6, marginLeft: 24, width: 'calc(100% - 24px)' }}
@@ -470,38 +469,38 @@ function Step3Damages({ contract, vehicle, returnMileage, returnFuelLevel, damag
 
         {/* Auto-calculated fees */}
         <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: 14, border: '1px solid var(--border)' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: 'var(--text2)' }}>Frais supplémentaires</div>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: 'var(--text2)' }}>{t('step3.extraCosts')}</div>
 
           {/* Extra km */}
           <div style={{ marginBottom: 8, fontSize: 13 }}>
             {vehicle?.maxKmEnabled ? (
               extraKmFee > 0 ? (
                 <div style={{ color: '#c2410c' }}>
-                  Km supplémentaires: <strong>{extraKm} km × 2 MAD = {extraKmFee} MAD</strong>
-                  <span style={{ color: 'var(--text3)', fontSize: 11, marginLeft: 6 }}>(autorisé: {kmAllowed} km)</span>
+                  {t('step3.extraKm', { count: extraKm, fee: extraKmFee })}
+                  <span style={{ color: 'var(--text3)', fontSize: 11, marginLeft: 6 }}>{t('step3.kmAllowed', { km: kmAllowed })}</span>
                 </div>
               ) : (
                 <div style={{ color: 'var(--text3)' }}>
-                  Pas de km supplémentaires (parcourus: {kmDriven} km / autorisé: {kmAllowed} km)
+                  {t('step3.noExtraKm')}
                 </div>
               )
             ) : (
-              <div style={{ color: 'var(--text3)' }}>Pas de limite kilométrique configurée pour ce véhicule</div>
+              <div style={{ color: 'var(--text3)' }}>{t('step3.noKmLimit')}</div>
             )}
           </div>
 
           {/* Fuel fee */}
           {fuelFee > 0 ? (
             <div style={{ marginBottom: 8, fontSize: 13, color: '#c2410c' }}>
-              Manque carburant: <strong>{fuelDiff} quart(s) × 100 MAD = {fuelFee} MAD</strong>
+              {t('step3.fuelShortage', { diff: fuelDiff, fee: fuelFee })}
             </div>
           ) : (
-            <div style={{ marginBottom: 8, fontSize: 13, color: 'var(--text3)' }}>Carburant: pas de frais</div>
+            <div style={{ marginBottom: 8, fontSize: 13, color: 'var(--text3)' }}>{t('step3.noFuelFee')}</div>
           )}
 
           {/* Damage fee */}
           <div className="form-group" style={{ marginBottom: 8 }}>
-            <label className="form-label" style={{ fontSize: 12 }}>Frais dommages (MAD)</label>
+            <label className="form-label" style={{ fontSize: 12 }}>{t('step3.damageFee')}</label>
             <input
               type="number"
               className="form-input"
@@ -516,7 +515,7 @@ function Step3Damages({ contract, vehicle, returnMileage, returnFuelLevel, damag
           {/* Total */}
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700 }}>
-              <span>Total frais supplémentaires</span>
+              <span>{t('step3.totalFees')}</span>
               <span style={{ color: totalExtraFees > 0 ? '#c2410c' : 'var(--text2)' }}>{totalExtraFees} MAD</span>
             </div>
           </div>
@@ -524,10 +523,10 @@ function Step3Damages({ contract, vehicle, returnMileage, returnFuelLevel, damag
 
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
           <button className="btn btn-secondary" onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <ArrowLeft size={16} /> Précédent
+            <ArrowLeft size={16} /> {t('nav.prev')}
           </button>
           <button className="btn btn-primary" onClick={onNext} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            Suivant <ArrowRight size={16} />
+            {t('nav.next')} <ArrowRight size={16} />
           </button>
         </div>
       </div>
@@ -540,6 +539,7 @@ function Step3Damages({ contract, vehicle, returnMileage, returnFuelLevel, damag
 function Step4Closure({ contract, vehicle, returnDate, returnTime, returnMileage, returnFuelLevel,
   returnPhotos, damages, damageFee, onBack, onDone }) {
 
+  const { t } = useTranslation('restitution')
   const [closing, setClosing] = useState(false)
 
   const startDate = contract.startDate
@@ -614,7 +614,7 @@ function Step4Closure({ contract, vehicle, returnDate, returnTime, returnMileage
     <div className="card" style={{ maxWidth: 540, margin: '0 auto' }}>
       <div className="card-header">
         <h3 style={{ margin: 0, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <CheckCircle size={18} color="#16a34a" /> Clôture du contrat
+          <CheckCircle size={18} color="#16a34a" /> {t('step4.title')}
         </h3>
       </div>
       <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -622,16 +622,16 @@ function Step4Closure({ contract, vehicle, returnDate, returnTime, returnMileage
         {/* Summary card */}
         <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: 16, border: '1px solid var(--border)' }}>
           <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text3)', letterSpacing: '.06em', marginBottom: 10 }}>
-            Récapitulatif
+            {t('step4.summary')}
           </div>
           {[
-            ['Contrat', contract.contractNumber || '—'],
-            ['Client', contract.clientName || '—'],
-            ['Véhicule', contract.vehicleName || '—'],
-            ['Durée réelle', `${realDays} jour(s)`],
-            ['Km parcourus', `${kmDriven} km`],
-            ['Montant location', `${contract.totalTTC || 0} MAD`],
-            ['Frais supplémentaires', `${totalExtraFees} MAD`],
+            [t('step4.contract'), contract.contractNumber || '—'],
+            [t('step4.client'), contract.clientName || '—'],
+            [t('step4.vehicle'), contract.vehicleName || '—'],
+            [t('step4.actualDuration'), `${realDays} jour(s)`],
+            [t('step4.drivenKm'), `${kmDriven} km`],
+            [t('step4.rentalAmount'), `${contract.totalTTC || 0} MAD`],
+            [t('step4.extraFees'), `${totalExtraFees} MAD`],
           ].map(([label, value]) => (
             <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
               <span style={{ color: 'var(--text3)' }}>{label}</span>
@@ -639,7 +639,7 @@ function Step4Closure({ contract, vehicle, returnDate, returnTime, returnMileage
             </div>
           ))}
           <div style={{ borderTop: '2px solid var(--border)', paddingTop: 10, marginTop: 6, display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700 }}>
-            <span>Total final</span>
+            <span>{t('step4.totalFinal')}</span>
             <span style={{ color: 'var(--accent)' }}>{finalTotal} MAD</span>
           </div>
         </div>
@@ -647,7 +647,7 @@ function Step4Closure({ contract, vehicle, returnDate, returnTime, returnMileage
         {/* Damage summary if any */}
         {returnDamages.length > 0 && (
           <div style={{ background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 8, padding: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#c2410c', marginBottom: 6 }}>Dommages constatés</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#c2410c', marginBottom: 6 }}>{t('step4.damagesFound')}</div>
             {returnDamages.map(d => (
               <div key={d.zone} style={{ fontSize: 12, marginBottom: 4 }}>
                 <strong>{d.zone}</strong>{d.description ? `: ${d.description}` : ''}
@@ -663,7 +663,7 @@ function Step4Closure({ contract, vehicle, returnDate, returnTime, returnMileage
             onClick={handleDownloadPDF}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
           >
-            <Download size={15} /> Télécharger document de restitution PDF
+            <Download size={15} /> {t('step4.downloadPdf')}
           </button>
           <button
             className="btn btn-primary"
@@ -671,12 +671,12 @@ function Step4Closure({ contract, vehicle, returnDate, returnTime, returnMileage
             disabled={closing}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#dc2626', borderColor: '#dc2626' }}
           >
-            <CheckCircle size={15} /> {closing ? 'Clôture en cours...' : 'Clôturer le contrat'}
+            <CheckCircle size={15} /> {closing ? t('step4.closing') : t('step4.close')}
           </button>
         </div>
 
         <button className="btn btn-secondary" onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, alignSelf: 'flex-start' }}>
-          <ArrowLeft size={16} /> Précédent
+          <ArrowLeft size={16} /> {t('nav.prev')}
         </button>
       </div>
     </div>
@@ -686,6 +686,7 @@ function Step4Closure({ contract, vehicle, returnDate, returnTime, returnMileage
 // ── Main Restitution wizard ───────────────────────────────
 
 export default function Restitution({ contract, onDone }) {
+  const { t } = useTranslation('restitution')
   const [step, setStep] = useState(0)
 
   // Resolve vehicle for km limit
@@ -711,7 +712,7 @@ export default function Restitution({ contract, onDone }) {
   if (!contract) {
     return (
       <div style={{ padding: 40, textAlign: 'center', color: 'var(--text3)' }}>
-        Aucun contrat sélectionné.
+        {t('noContract')}
       </div>
     )
   }
@@ -720,9 +721,9 @@ export default function Restitution({ contract, onDone }) {
     <div>
       <div className="page-header">
         <div>
-          <h2>Restitution du véhicule</h2>
+          <h2>{t('title')}</h2>
           <p style={{ color: 'var(--text3)', fontSize: 13 }}>
-            Contrat {contract.contractNumber} · {contract.clientName} · {contract.vehicleName}
+            {t('subtitle', { number: contract.contractNumber, clientName: contract.clientName, vehicleName: contract.vehicleName })}
           </p>
         </div>
       </div>

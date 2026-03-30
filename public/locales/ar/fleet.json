@@ -29,7 +29,9 @@
     "residualValue": "القيمة المتبقية (درهم)",
     "residualValuePlaceholder": "مثال: 20000",
     "lifespan": "مدة الاستهلاك (سنوات)",
-    "lifespanUnit": "{{n}} سنوات"
+    "lifespanUnit": "{{n}} سنوات",
+    "save": "حفظ",
+    "cancel": "إلغاء"
   },
   "fuelTypes": {
     "Essence": "بنزين",
@@ -128,5 +130,22 @@
     "daysRented": "أيام مؤجَّرة",
     "totalRevenue": "إجمالي رقم المعاملات",
     "empty": "لا توجد تأجيرات لهذه السيارة."
+  },
+  "saved": "تم الحفظ",
+  "amortissement": {
+    "residualWarning": "⚠️ القيمة المتبقية تتجاوز سعر الشراء — راجع البيانات.",
+    "roi": "العائد الصافي",
+    "toRecover": "المبلغ المتبقي",
+    "estimatedDate": "⚠️ تاريخ تقريبي 01/01/{{year}} — يُنصح بإدخال تاريخ الشراء الفعلي ·",
+    "boughtOn": "تاريخ الشراء: {{date}} ·",
+    "yearsOwned": "{{n}} سنة ملكية",
+    "fullyAmortised": "· تم الاستهلاك الكامل"
+  },
+  "echeances": {
+    "configBanner": "⚙️ بيانات محسوبة من Fleet_Config — {{make}} : ضمان {{warranty}} · فحص تقني كل {{ct}} سنة · تغيير الزيت كل {{vidange}} كم · حزام التوزيع عند {{courroie}} كم",
+    "computed": "محسوب",
+    "atKm": "عند {{km}} كم",
+    "recalcTitle": "إعادة حساب من Fleet_Config",
+    "recalcBtn": "↺ إعادة حساب"
   }
 }

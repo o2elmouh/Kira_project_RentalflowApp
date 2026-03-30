@@ -42,7 +42,8 @@
     "extend": "تمديد",
     "extendSuccess": "تم تسجيل التمديد · فاتورة جديدة أُنشئت",
     "extendSuccessUpdated": "تم تسجيل التمديد · الفاتورة مُحدَّثة",
-    "restitute": "🔑 إرجاع السيارة"
+    "restitute": "🔑 إرجاع السيارة",
+    "downloadPdf": "تحميل عقد PDF"
   },
   "extend": {
     "title": "تمديد الحجز",

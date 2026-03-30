@@ -42,7 +42,8 @@
     "extend": "Prolonger",
     "extendSuccess": "Prolongation enregistrée · Nouvelle facture générée",
     "extendSuccessUpdated": "Prolongation enregistrée · Facture mise à jour",
-    "restitute": "🔑 Restituer le véhicule"
+    "restitute": "🔑 Restituer le véhicule",
+    "downloadPdf": "Télécharger le contrat PDF"
   },
   "extend": {
     "title": "Prolonger la réservation",

@@ -29,7 +29,9 @@
     "residualValue": "Valeur résiduelle (MAD)",
     "residualValuePlaceholder": "Ex: 20000",
     "lifespan": "Durée d'amortissement (ans)",
-    "lifespanUnit": "{{n}} ans"
+    "lifespanUnit": "{{n}} ans",
+    "save": "Enregistrer",
+    "cancel": "Annuler"
   },
   "fuelTypes": {
     "Essence": "Essence",
@@ -128,5 +130,22 @@
     "daysRented": "Jours loués",
     "totalRevenue": "CA total",
     "empty": "Aucune location pour ce véhicule."
+  },
+  "saved": "Enregistré",
+  "amortissement": {
+    "residualWarning": "⚠️ La valeur résiduelle dépasse le prix d'achat — vérifiez les données.",
+    "roi": "ROI net",
+    "toRecover": "Reste à récupérer",
+    "estimatedDate": "⚠️ Date estimée au 01/01/{{year}} (ajoutez la date d'achat réelle pour plus de précision) ·",
+    "boughtOn": "Acheté le {{date}} ·",
+    "yearsOwned": "{{n}} an(s) de possession",
+    "fullyAmortised": "· Totalement amorti"
+  },
+  "echeances": {
+    "configBanner": "⚙️ Données calculées selon la Fleet_Config — {{make}} : garantie {{warranty}} · CT tous les {{ct}} ans · vidange tous les {{vidange}} km · courroie à {{courroie}} km",
+    "computed": "calculé",
+    "atKm": "à {{km}} km",
+    "recalcTitle": "Recalculer depuis la Fleet_Config",
+    "recalcBtn": "↺ Recalculer"
   }
 }

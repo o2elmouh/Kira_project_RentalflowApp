@@ -4,7 +4,8 @@
   "tabs": {
     "agency": "Agence",
     "fleetConfig": "Configuration parc",
-    "general": "Configuration générale"
+    "general": "Configuration générale",
+    "team": "Équipe"
   },
   "agency": {
     "generalInfo": "Informations générales",

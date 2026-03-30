@@ -105,5 +105,9 @@
     "right": "Côté droit",
     "interior": "Intérieur",
     "damage": "Détail / Dommage"
+  },
+  "nav": {
+    "prev": "← Précédent",
+    "next": "Suivant →"
   }
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { PlusCircle, Trash2, Edit2, ChevronLeft, AlertTriangle, Clock, Wrench, TrendingDown, History } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { getFleet, saveVehicle, deleteVehicle, getContracts, getRepairs, saveRepair, deleteRepair, getFleetConfigForMake } from '../utils/storage'
 
 // ── Car catalogue ─────────────────────────────────────────
@@ -85,6 +86,7 @@ function DeadlineBadge({ date }) {
 
 // ── Amortissement ─────────────────────────────────────────
 function AmortissementTab({ vehicle, contracts }) {
+  const { t } = useTranslation('fleet')
   const price    = Number(vehicle.purchasePrice) || 0
   const lifespan = Number(vehicle.lifespan)  || 5
   const residual = Number(vehicle.residualValue) || 0
@@ -109,7 +111,7 @@ function AmortissementTab({ vehicle, contracts }) {
 
   if (!price) return (
     <div className="alert alert-info" style={{ fontSize: 13 }}>
-      Ajoutez le <strong>prix d'achat</strong> dans la fiche véhicule (bouton Modifier) pour activer l'amortissement.
+      {t('detail.tiles.noPrice')}
     </div>
   )
 
@@ -119,14 +121,14 @@ function AmortissementTab({ vehicle, contracts }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {residualWarning && (
         <div style={{ fontSize: 12, color: '#c2410c', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6, padding: '6px 10px', marginBottom: 8 }}>
-          ⚠️ La valeur résiduelle dépasse le prix d'achat — vérifiez les données.
+          {t('amortissement.residualWarning')}
         </div>
       )}
       {/* Progress bar */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text3)', marginBottom: 6 }}>
-          <span>Amortissement linéaire sur {lifespan} ans</span>
-          <span>{pct.toFixed(1)}% amorti</span>
+          <span>{t('detail.tiles.amortissement')} · {t('detail.tiles.lifespanValue', { n: lifespan })}</span>
+          <span>{pct.toFixed(1)}%</span>
         </div>
         <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 10, overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? 'var(--green)' : 'var(--accent)', borderRadius: 10, transition: 'width 0.4s' }} />
@@ -136,13 +138,13 @@ function AmortissementTab({ vehicle, contracts }) {
       {/* Key figures */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
         {[
-          { label: 'Prix d\'achat',     value: `${price.toLocaleString()} MAD`,          color: 'var(--text1)' },
-          { label: 'Valeur actuelle',   value: `${Math.round(bookValue).toLocaleString()} MAD`, color: 'var(--accent)' },
-          { label: 'Valeur résiduelle', value: `${residual.toLocaleString()} MAD`,        color: 'var(--text3)' },
-          { label: 'CA généré',         value: `${revenue.toLocaleString()} MAD`,         color: 'var(--green)' },
-          { label: 'Coûts réparations', value: `${repairCosts.toLocaleString()} MAD`,     color: '#dc2626' },
-          { label: 'ROI net',           value: `${roi}%`,                                 color: +roi >= 0 ? 'var(--green)' : '#dc2626' },
-          { label: 'Reste à récupérer', value: `${toRecover.toLocaleString()} MAD`,       color: toRecover > 0 ? 'var(--orange)' : 'var(--green)' },
+          { label: t('form.purchasePrice'),        value: `${price.toLocaleString()} MAD`,          color: 'var(--text1)' },
+          { label: t('detail.tiles.currentValue'), value: `${Math.round(bookValue).toLocaleString()} MAD`, color: 'var(--accent)' },
+          { label: t('form.residualValue'),        value: `${residual.toLocaleString()} MAD`,        color: 'var(--text3)' },
+          { label: t('rentals.totalRevenue'),      value: `${revenue.toLocaleString()} MAD`,         color: 'var(--green)' },
+          { label: t('detail.tiles.repairs'),      value: `${repairCosts.toLocaleString()} MAD`,     color: '#dc2626' },
+          { label: t('amortissement.roi'),                      value: `${roi}%`,                                 color: +roi >= 0 ? 'var(--green)' : '#dc2626' },
+          { label: t('amortissement.toRecover'),            value: `${toRecover.toLocaleString()} MAD`,       color: toRecover > 0 ? 'var(--orange)' : 'var(--green)' },
         ].map(({ label, value, color }) => (
           <div key={label} className="card" style={{ padding: '12px 14px' }}>
             <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 4 }}>{label}</div>
@@ -154,11 +156,11 @@ function AmortissementTab({ vehicle, contracts }) {
       {bought && (
         <div style={{ fontSize: 12, color: 'var(--text3)' }}>
           {usingEstimatedDate
-            ? <span style={{ color: 'var(--orange)' }}>⚠️ Date estimée au 01/01/{vehicle.year} (ajoutez la date d'achat réelle pour plus de précision) · </span>
-            : `Acheté le ${bought.toLocaleDateString('fr-MA')} · `
+            ? <span style={{ color: 'var(--orange)' }}>{t('amortissement.estimatedDate', { year: vehicle.year })} </span>
+            : t('amortissement.boughtOn', { date: bought.toLocaleDateString('fr-MA') })
           }
-          {yearsElapsed.toFixed(1)} an(s) de possession
-          {pct >= 100 && <span style={{ color: 'var(--green)', fontWeight: 600 }}> · Totalement amorti</span>}
+          {t('amortissement.yearsOwned', { n: yearsElapsed.toFixed(1) })}
+          {pct >= 100 && <span style={{ color: 'var(--green)', fontWeight: 600 }}> · {t('amortissement.fullyAmortised')}</span>}
         </div>
       )}
     </div>
@@ -193,6 +195,7 @@ function computeDeadlinesFromConfig(vehicle) {
 }
 
 function DeadlinesTab({ vehicle, onSave }) {
+  const { t } = useTranslation('fleet')
   const config = getFleetConfigForMake(vehicle.make)
 
   const [form, setForm] = useState(() => computeDeadlinesFromConfig(vehicle))
@@ -209,12 +212,12 @@ function DeadlinesTab({ vehicle, onSave }) {
   }
 
   const deadlines = [
-    { label: 'Prochaine vidange',        dateKey: 'nextOilChange',   mileageKey: 'nextOilChangeMileage',  icon: '🛢️', configHint: config ? `Config : tous les ${config.vidangeKm.toLocaleString()} km` : null },
-    { label: 'Changement courroie',       dateKey: 'nextTimingBelt',  mileageKey: 'nextTimingBeltMileage', icon: '⚙️', configHint: config ? `Config : à ${config.courroieKm.toLocaleString()} km` : null },
-    { label: 'Contrôle technique',        dateKey: 'nextControleTech', icon: '📋', configHint: config ? `Config : tous les ${config.controlTechYears} ans` : null },
-    { label: 'Prochaine réparation',      dateKey: 'nextRepair',      icon: '🔧', configHint: null },
-    { label: 'Fin de garantie',           dateKey: 'warrantyEnd',     icon: '🛡️', configHint: config ? `Config : ${config.warrantyGeneral}` : null },
-    { label: 'Date de revente prévue',    dateKey: 'plannedSaleDate', icon: '💰', configHint: null },
+    { label: t('detail.modal.oilChange'),     dateKey: 'nextOilChange',   mileageKey: 'nextOilChangeMileage',  icon: '🛢️', configHint: config ? t('detail.modal.configHintKm', { km: config.vidangeKm.toLocaleString() }) : null },
+    { label: t('detail.modal.timingBelt'),    dateKey: 'nextTimingBelt',  mileageKey: 'nextTimingBeltMileage', icon: '⚙️', configHint: config ? t('detail.modal.configHintAtKm', { km: config.courroieKm.toLocaleString() }) : null },
+    { label: t('detail.modal.controleTech'),  dateKey: 'nextControleTech', icon: '📋', configHint: config ? t('detail.modal.configHintYears', { years: config.controlTechYears }) : null },
+    { label: t('detail.modal.nextRepair'),    dateKey: 'nextRepair',      icon: '🔧', configHint: null },
+    { label: t('detail.modal.warrantyEnd'),   dateKey: 'warrantyEnd',     icon: '🛡️', configHint: config ? `Config : ${config.warrantyGeneral}` : null },
+    { label: t('detail.modal.plannedSale'),   dateKey: 'plannedSaleDate', icon: '💰', configHint: null },
   ]
 
   return (
@@ -222,7 +225,7 @@ function DeadlinesTab({ vehicle, onSave }) {
       {/* Config banner */}
       {config && (
         <div style={{ fontSize: 12, color: '#6366f1', background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: 8, padding: '8px 12px' }}>
-          ⚙️ Données calculées selon la <strong>Fleet_Config — {vehicle.make}</strong> : garantie {config.warrantyGeneral} · CT tous les {config.controlTechYears} ans · vidange tous les {config.vidangeKm.toLocaleString()} km · courroie à {config.courroieKm.toLocaleString()} km
+          {t('echeances.configBanner', { make: vehicle.make, warranty: config.warrantyGeneral, ct: config.controlTechYears, vidange: config.vidangeKm.toLocaleString(), courroie: config.courroieKm.toLocaleString() })}
         </div>
       )}
 
@@ -245,10 +248,10 @@ function DeadlinesTab({ vehicle, onSave }) {
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 500 }}>
                   {label}
-                  {isComputed && <span style={{ fontSize: 10, color: '#6366f1', marginLeft: 6, fontWeight: 400 }}>calculé</span>}
+                  {isComputed && <span style={{ fontSize: 10, color: '#6366f1', marginLeft: 6, fontWeight: 400 }}>{t('echeances.computed')}</span>}
                 </div>
                 {mileageKey && form[mileageKey] && (
-                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>à {Number(form[mileageKey]).toLocaleString()} km</div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>{t('echeances.atKm', { km: Number(form[mileageKey]).toLocaleString() })}</div>
                 )}
                 {configHint && (
                   <div style={{ fontSize: 10, color: '#a5b4fc' }}>{configHint}</div>
@@ -263,14 +266,14 @@ function DeadlinesTab({ vehicle, onSave }) {
       {/* Edit form */}
       <div className="card">
         <div className="card-header">
-          <h3>Modifier les échéances</h3>
+          <h3>{t('detail.modal.title')}</h3>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {config && (
-              <button className="btn btn-ghost btn-sm" onClick={recalc} title="Recalculer depuis la Fleet_Config">
-                ↺ Recalculer
+              <button className="btn btn-ghost btn-sm" onClick={recalc} title={t('echeances.recalcTitle')}>
+                {t('echeances.recalcBtn')}
               </button>
             )}
-            {saved && <span className="badge badge-green">Enregistré</span>}
+            {saved && <span className="badge badge-green">{t('saved')}</span>}
           </div>
         </div>
         <div className="card-body">
@@ -284,14 +287,14 @@ function DeadlinesTab({ vehicle, onSave }) {
                 <input className="form-input" type="date" value={form[dateKey] || ''}
                   onChange={e => setForm(p => ({ ...p, [dateKey]: e.target.value }))} />
                 {mileageKey && (
-                  <input className="form-input text-mono" type="number" placeholder="Kilométrage"
+                  <input className="form-input text-mono" type="number" placeholder={t('detail.modal.mileagePlaceholder')}
                     value={form[mileageKey] || ''}
                     onChange={e => setForm(p => ({ ...p, [mileageKey]: e.target.value }))} />
                 )}
               </div>
             ))}
           </div>
-          <button className="btn btn-primary mt-3" onClick={save}>Enregistrer</button>
+          <button className="btn btn-primary mt-3" onClick={save}>{t('repairs.addBtn')}</button>
         </div>
       </div>
     </div>
@@ -303,6 +306,7 @@ const REPAIR_TYPES = ['Vidange', 'Courroie de distribution', 'Freins', 'Pneus', 
 const EMPTY_REPAIR = { date: new Date().toISOString().split('T')[0], type: 'Vidange', description: '', cost: '', garage: '', mileage: '' }
 
 function RepairsTab({ vehicle }) {
+  const { t } = useTranslation('fleet')
   const [repairs, setRepairs] = useState(() => getRepairs(vehicle.id))
   const [form, setForm] = useState(null)
 
@@ -315,7 +319,7 @@ function RepairsTab({ vehicle }) {
   }
 
   const remove = (id) => {
-    if (confirm('Supprimer cette réparation ?')) { deleteRepair(id); refresh() }
+    if (confirm(t('repairs.deleteConfirm'))) { deleteRepair(id); refresh() }
   }
 
   const total = repairs.reduce((s, r) => s + (r.cost || 0), 0)
@@ -324,57 +328,57 @@ function RepairsTab({ vehicle }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontSize: 13, color: 'var(--text3)' }}>
-          {repairs.length} intervention{repairs.length !== 1 ? 's' : ''} · <strong style={{ color: '#dc2626' }}>{total.toLocaleString()} MAD</strong> total
+          {t('repairs.count', { count: repairs.length })} · <strong style={{ color: '#dc2626' }}>{t('repairs.totalCost', { total: total.toLocaleString() })}</strong>
         </div>
         <button className="btn btn-primary btn-sm" onClick={() => setForm({ ...EMPTY_REPAIR })}>
-          <PlusCircle size={13} /> Ajouter
+          <PlusCircle size={13} /> {t('repairs.addBtn')}
         </button>
       </div>
 
       {form && (
         <div className="card">
-          <div className="card-header"><h3>{form.id ? 'Modifier' : 'Nouvelle intervention'}</h3></div>
+          <div className="card-header"><h3>{form.id ? t('repairs.titleEdit') : t('repairs.titleNew')}</h3></div>
           <div className="card-body">
             <div className="form-row cols-3">
               <div className="form-group">
-                <label className="form-label">Date *</label>
+                <label className="form-label">{t('repairs.date')}</label>
                 <input className="form-input" type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} />
               </div>
               <div className="form-group">
-                <label className="form-label">Type *</label>
+                <label className="form-label">{t('repairs.type')}</label>
                 <select className="form-select" value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
-                  {REPAIR_TYPES.map(t => <option key={t}>{t}</option>)}
+                  {Object.keys(t('repairs.types', { returnObjects: true })).map(k => <option key={k} value={k}>{t(`repairs.types.${k}`)}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Coût (MAD) *</label>
+                <label className="form-label">{t('repairs.cost')}</label>
                 <input className="form-input text-mono" type="number" value={form.cost} onChange={e => setForm(p => ({ ...p, cost: e.target.value }))} />
               </div>
             </div>
             <div className="form-row cols-2">
               <div className="form-group">
-                <label className="form-label">Garage / Prestataire</label>
-                <input className="form-input" value={form.garage} placeholder="Nom du garage…" onChange={e => setForm(p => ({ ...p, garage: e.target.value }))} />
+                <label className="form-label">{t('repairs.garage')}</label>
+                <input className="form-input" value={form.garage} placeholder={t('repairs.garagePlaceholder')} onChange={e => setForm(p => ({ ...p, garage: e.target.value }))} />
               </div>
               <div className="form-group">
-                <label className="form-label">Kilométrage</label>
+                <label className="form-label">{t('repairs.kmLabel')}</label>
                 <input className="form-input text-mono" type="number" value={form.mileage} onChange={e => setForm(p => ({ ...p, mileage: e.target.value }))} />
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label">Description / Remarques</label>
-              <input className="form-input" value={form.description} placeholder="Détails de l'intervention…" onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+              <label className="form-label">{t('repairs.description')}</label>
+              <input className="form-input" value={form.description} placeholder={t('repairs.descriptionPlaceholder')} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-              <button className="btn btn-primary" onClick={save} disabled={!form.date || !form.cost}>Enregistrer</button>
-              <button className="btn btn-ghost" onClick={() => setForm(null)}>Annuler</button>
+              <button className="btn btn-primary" onClick={save} disabled={!form.date || !form.cost}>{t('form.save')}</button>
+              <button className="btn btn-ghost" onClick={() => setForm(null)}>{t('form.cancel')}</button>
             </div>
           </div>
         </div>
       )}
 
       {repairs.length === 0 && !form && (
-        <p style={{ color: 'var(--text3)', fontSize: 13 }}>Aucune intervention enregistrée.</p>
+        <p style={{ color: 'var(--text3)', fontSize: 13 }}>{t('repairs.empty')}</p>
       )}
 
       {repairs.map(r => (

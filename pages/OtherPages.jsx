@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import { FileText, Download, X, Edit2, Flag, Eye } from 'lucide-react'
@@ -48,6 +49,7 @@ function flagBadgeStyle(category) {
 // ─────────────────────────────────────────────────────────
 
 export function Clients() {
+  const { t } = useTranslation('clients')
   const [clients, setClients] = useState(() => getClients())
   const [editId, setEditId] = useState(null)
   const [editData, setEditData] = useState({})
@@ -106,7 +108,7 @@ export function Clients() {
     doc.text(agency.name || 'Car Rental Agency', 14, 14)
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
-    doc.text('Liste des clients', 14, 21)
+    doc.text(t('pdfTitle'), 14, 21)
 
     const rows = clients.map(c => {
       const cContracts = contracts.filter(ct => ct.clientId === c.id)
@@ -125,7 +127,7 @@ export function Clients() {
 
     doc.autoTable({
       startY: 26,
-      head: [['Nom complet', 'CIN', 'Téléphone', 'Email', 'Nationalité', 'Nb contrats', 'Total payé', 'Flag']],
+      head: [[t('headers.fullName'), t('headers.cin'), t('headers.phone'), t('headers.email'), t('headers.nationality'), t('headers.contractCount'), t('headers.totalPaid'), t('headers.flag')]],
       body: rows,
       headStyles: { fillColor: [28, 26, 22], textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' },
       bodyStyles: { fontSize: 8 },
@@ -140,12 +142,12 @@ export function Clients() {
     <div>
       <div className="page-header">
         <div>
-          <h2>Clients</h2>
-          <p>{clients.length} client{clients.length !== 1 ? 's' : ''} enregistré{clients.length !== 1 ? 's' : ''}</p>
+          <h2>{t('title')}</h2>
+          <p>{t('count', { count: clients.length })}</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-secondary" onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Download size={15} /> Exporter PDF
+            <Download size={15} /> {t('exportPdf')}
           </button>
         </div>
       </div>
@@ -153,12 +155,16 @@ export function Clients() {
         <div className="card">
           <div className="card-body" style={{ padding: 0, overflowX: 'auto' }}>
             {clients.length === 0 ? (
-              <p style={{ color: 'var(--text3)', fontSize: 13, padding: 16 }}>Aucun client pour l'instant.</p>
+              <p style={{ color: 'var(--text3)', fontSize: 13, padding: 16 }}>{t('empty')}</p>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: 'var(--bg2)', borderBottom: '2px solid var(--border)' }}>
-                    {['Nom complet', 'CIN', 'Téléphone', 'Email', 'Nationalité', 'Nb contrats', 'Durée totale', 'Total payé', 'Flag', 'Actions'].map(h => (
+                    {[
+                      t('headers.fullName'), t('headers.cin'), t('headers.phone'), t('headers.email'),
+                      t('headers.nationality'), t('headers.contractCount'), t('headers.totalDays'),
+                      t('headers.totalPaid'), t('headers.flag'), t('headers.actions')
+                    ].map(h => (
                       <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, fontSize: 12, color: 'var(--text2)', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -204,7 +210,7 @@ export function Clients() {
                               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 14, opacity: 0.4, transition: 'opacity .15s' }}
                               onMouseEnter={e => e.currentTarget.style.opacity = 1}
                               onMouseLeave={e => e.currentTarget.style.opacity = 0.4}
-                              title="Ajouter un flag"
+                              title={t('actions.addFlag')}
                             >
                               🚩
                             </button>
@@ -214,7 +220,7 @@ export function Clients() {
                               ref={flagRef}
                               style={{ position: 'absolute', zIndex: 200, top: 36, left: 0, background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: 12, width: 240, boxShadow: '0 4px 20px rgba(0,0,0,.13)' }}
                             >
-                              <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 12 }}>Définir un flag</div>
+                              <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 12 }}>{t('actions.setFlag')}</div>
                               <select
                                 className="form-input"
                                 style={{ fontSize: 12, padding: '4px 6px', marginBottom: 8, width: '100%' }}
@@ -226,14 +232,14 @@ export function Clients() {
                               <textarea
                                 className="form-input"
                                 style={{ fontSize: 12, padding: '4px 6px', width: '100%', resize: 'vertical', minHeight: 48, marginBottom: 8 }}
-                                placeholder="Note (optionnel)"
+                                placeholder={t('actions.notePlaceholder')}
                                 value={flagData.note}
                                 onChange={e => setFlagData(p => ({ ...p, note: e.target.value }))}
                               />
                               <div style={{ display: 'flex', gap: 6 }}>
-                                <button className="btn btn-primary" style={{ flex: 1, fontSize: 12, padding: '5px 0' }} onClick={() => saveFlag(c)}>Enregistrer</button>
-                                {c.flag && <button className="btn btn-secondary" style={{ fontSize: 12, padding: '5px 8px' }} onClick={() => removeFlag(c)}>Retirer</button>}
-                                <button className="btn btn-secondary" style={{ fontSize: 12, padding: '5px 8px' }} onClick={() => setFlagId(null)}>Annuler</button>
+                                <button className="btn btn-primary" style={{ flex: 1, fontSize: 12, padding: '5px 0' }} onClick={() => saveFlag(c)}>{t('actions.saveFlag')}</button>
+                                {c.flag && <button className="btn btn-secondary" style={{ fontSize: 12, padding: '5px 8px' }} onClick={() => removeFlag(c)}>{t('actions.removeFlag')}</button>}
+                                <button className="btn btn-secondary" style={{ fontSize: 12, padding: '5px 8px' }} onClick={() => setFlagId(null)}>{t('actions.cancel')}</button>
                               </div>
                             </div>
                           )}
@@ -241,12 +247,12 @@ export function Clients() {
                         <td style={{ padding: '10px 12px' }}>
                           {isEditing ? (
                             <div style={{ display: 'flex', gap: 6 }}>
-                              <button className="btn btn-primary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => saveEdit(c)}>Sauvegarder</button>
-                              <button className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setEditId(null)}>Annuler</button>
+                              <button className="btn btn-primary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => saveEdit(c)}>{t('actions.save')}</button>
+                              <button className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setEditId(null)}>{t('actions.cancel')}</button>
                             </div>
                           ) : (
                             <button className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => startEdit(c)}>
-                              <Edit2 size={13} /> Modifier
+                              <Edit2 size={13} /> {t('actions.edit')}
                             </button>
                           )}
                         </td>
@@ -273,13 +279,14 @@ function statusBadgeClass(status) {
   return 'badge-gray'
 }
 
-function statusLabel(status) {
-  if (status === 'active') return 'Actif'
-  if (status === 'cancelled') return 'Annulé'
-  return 'Clôturé'
+function statusLabel(status, t) {
+  if (status === 'active') return t ? t('status.active', { ns: 'common' }) : 'Actif'
+  if (status === 'cancelled') return t ? t('status.cancelled', { ns: 'common' }) : 'Annulé'
+  return t ? t('status.closed', { ns: 'common' }) : 'Clôturé'
 }
 
 export function Contracts({ onRestitution }) {
+  const { t } = useTranslation('contracts')
   const [contracts, setContracts] = useState(() => getContracts())
   const [selected, setSelected] = useState(null)
   const [showProlonger, setShowProlonger] = useState(false)
@@ -340,7 +347,7 @@ export function Contracts({ onRestitution }) {
         totalTTC: Math.round(extraAmount * 100) / 100,
         notes: 'Facture de prolongation',
       })
-      setProlongMsg('Prolongation enregistrée · Nouvelle facture générée')
+      setProlongMsg(t('panel.extendSuccess'))
     } else {
       const invoices = getInvoices()
       const existing = invoices.find(i => i.contractId === contract.id)
@@ -351,7 +358,7 @@ export function Contracts({ onRestitution }) {
           tva: Math.round(((existing.tva || 0) + extraAmount - extraAmount / 1.20) * 100) / 100,
         })
       }
-      setProlongMsg('Prolongation enregistrée · Facture mise à jour')
+      setProlongMsg(t('panel.extendSuccessUpdated'))
     }
     const refreshed = getContracts()
     setContracts(refreshed)
@@ -366,20 +373,20 @@ export function Contracts({ onRestitution }) {
     <div>
       <div className="page-header">
         <div>
-          <h2>Contrats</h2>
-          <p>{contracts.length} contrat{contracts.length !== 1 ? 's' : ''} au total</p>
+          <h2>{t('title')}</h2>
+          <p>{t('count', { count: contracts.length })}</p>
         </div>
       </div>
       <div className="page-body">
         <div className="card">
           <div className="card-body" style={{ padding: 0, overflowX: 'auto' }}>
             {contracts.length === 0 ? (
-              <p style={{ color: 'var(--text3)', fontSize: 13, padding: 16 }}>Aucun contrat pour l'instant.</p>
+              <p style={{ color: 'var(--text3)', fontSize: 13, padding: 16 }}>{t('empty')}</p>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: 'var(--bg2)', borderBottom: '2px solid var(--border)' }}>
-                    {['N° Contrat', 'Client', 'Véhicule', 'Date début', 'Date fin', 'Durée', 'Total TTC', 'Statut', 'PDF'].map(h => (
+                    {[t('headers.number'), t('headers.client'), t('headers.vehicle'), t('headers.startDate'), t('headers.endDate'), t('headers.duration'), t('headers.totalTTC'), t('headers.status'), t('headers.pdf')].map(h => (
                       <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, fontSize: 12, color: 'var(--text2)', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -407,17 +414,17 @@ export function Contracts({ onRestitution }) {
                         </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(c.startDate)}</td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(c.endDate)}</td>
-                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>{days} j</td>
+                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>{days} {t('daysSuffix')}</td>
                         <td style={{ padding: '10px 12px', fontFamily: 'DM Mono, monospace', fontSize: 12, fontWeight: 600 }}>{(c.totalTTC || 0).toLocaleString('fr-MA')} MAD</td>
                         <td style={{ padding: '10px 12px' }}>
-                          <span className={`badge ${statusBadgeClass(c.status)}`}>{statusLabel(c.status)}</span>
+                          <span className={`badge ${statusBadgeClass(c.status)}`}>{statusLabel(c.status, t)}</span>
                         </td>
                         <td style={{ padding: '10px 12px' }}>
                           <button
                             className="btn btn-secondary"
                             style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}
                             onClick={() => downloadPDF(c)}
-                            title="Télécharger le contrat PDF"
+                            title={t('downloadPdf')}
                           >
                             <FileText size={13} />
                           </button>
@@ -447,43 +454,43 @@ export function Contracts({ onRestitution }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <div>
                 <div style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 15 }}>{panelContract.contractNumber}</div>
-                <span className={`badge ${statusBadgeClass(panelContract.status)}`} style={{ marginTop: 4 }}>{statusLabel(panelContract.status)}</span>
+                <span className={`badge ${statusBadgeClass(panelContract.status)}`} style={{ marginTop: 4 }}>{statusLabel(panelContract.status, t)}</span>
               </div>
               <button onClick={() => { setSelected(null); setShowProlonger(false); setProlongMsg(null) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
                 <X size={20} />
               </button>
             </div>
 
-            <SectionBlock title="Client">
-              <InfoRow label="Nom" value={`${panelClient.firstName || ''} ${panelClient.lastName || ''}`.trim() || panelContract.clientName || '—'} />
-              <InfoRow label="CIN" value={panelClient.cinNumber || '—'} />
-              <InfoRow label="Téléphone" value={panelClient.phone || '—'} />
-              <InfoRow label="Email" value={panelClient.email || '—'} />
+            <SectionBlock title={t('panel.client')}>
+              <InfoRow label={t('panel.client')} value={`${panelClient.firstName || ''} ${panelClient.lastName || ''}`.trim() || panelContract.clientName || '—'} />
+              <InfoRow label={t('panel.cin')} value={panelClient.cinNumber || '—'} />
+              <InfoRow label={t('panel.phone')} value={panelClient.phone || '—'} />
+              <InfoRow label={t('panel.email')} value={panelClient.email || '—'} />
             </SectionBlock>
 
-            <SectionBlock title="Véhicule">
-              <InfoRow label="Modèle" value={panelVehicle.make ? `${panelVehicle.make} ${panelVehicle.model} (${panelVehicle.year})` : (panelContract.vehicleName || '—')} />
-              <InfoRow label="Immatriculation" value={panelVehicle.plate || '—'} />
+            <SectionBlock title={t('panel.vehicle')}>
+              <InfoRow label={t('panel.model')} value={panelVehicle.make ? `${panelVehicle.make} ${panelVehicle.model} (${panelVehicle.year})` : (panelContract.vehicleName || '—')} />
+              <InfoRow label={t('panel.plate')} value={panelVehicle.plate || '—'} />
             </SectionBlock>
 
-            <SectionBlock title="Dates &amp; Durée">
-              <InfoRow label="Début" value={`${fmtDate(panelContract.startDate)}${panelContract.startTime ? ' ' + panelContract.startTime : ''}`} />
-              <InfoRow label="Fin" value={`${fmtDate(panelContract.endDate)}${panelContract.endTime ? ' ' + panelContract.endTime : ''}`} />
-              <InfoRow label="Durée" value={`${panelContract.days || daysBetween(panelContract.startDate, panelContract.endDate)} jour(s)`} />
+            <SectionBlock title={t('panel.dates')}>
+              <InfoRow label={t('panel.start')} value={`${fmtDate(panelContract.startDate)}${panelContract.startTime ? ' ' + panelContract.startTime : ''}`} />
+              <InfoRow label={t('panel.end')} value={`${fmtDate(panelContract.endDate)}${panelContract.endTime ? ' ' + panelContract.endTime : ''}`} />
+              <InfoRow label={t('panel.duration')} value={`${panelContract.days || daysBetween(panelContract.startDate, panelContract.endDate)} ${t('panel.days')}`} />
             </SectionBlock>
 
-            <SectionBlock title="Financier">
-              <InfoRow label="Tarif journalier" value={`${panelVehicle.dailyRate || '—'} MAD`} />
-              <InfoRow label="Nb jours" value={panelContract.days || daysBetween(panelContract.startDate, panelContract.endDate)} />
-              <InfoRow label="Total HT" value={`${panelContract.totalHT || '—'} MAD`} />
-              <InfoRow label="TVA" value={`${panelContract.tva || '—'} MAD`} />
-              <InfoRow label="Total TTC" value={`${panelContract.totalTTC || '—'} MAD`} isBold />
+            <SectionBlock title={t('panel.financial')}>
+              <InfoRow label={t('panel.dailyRate')} value={`${panelVehicle.dailyRate || '—'} MAD`} />
+              <InfoRow label={t('panel.numDays')} value={panelContract.days || daysBetween(panelContract.startDate, panelContract.endDate)} />
+              <InfoRow label={t('panel.totalHT')} value={`${panelContract.totalHT || '—'} MAD`} />
+              <InfoRow label={t('panel.vat')} value={`${panelContract.tva || '—'} MAD`} />
+              <InfoRow label={t('panel.totalTTC')} value={`${panelContract.totalTTC || '—'} MAD`} isBold />
             </SectionBlock>
 
-            <SectionBlock title="Détails">
-              <InfoRow label="Niveau carburant" value={panelContract.fuelLevel || '—'} />
-              <InfoRow label="Kilométrage départ" value={panelContract.mileageOut ? `${panelContract.mileageOut} km` : '—'} />
-              <InfoRow label="Mode de paiement" value={panelContract.paymentMethod || '—'} />
+            <SectionBlock title={t('panel.details')}>
+              <InfoRow label={t('panel.fuelLevel')} value={panelContract.fuelLevel || '—'} />
+              <InfoRow label={t('panel.departureKm')} value={panelContract.mileageOut ? `${panelContract.mileageOut} km` : '—'} />
+              <InfoRow label={t('panel.paymentMethod')} value={panelContract.paymentMethod || '—'} />
             </SectionBlock>
 
             <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -493,7 +500,7 @@ export function Contracts({ onRestitution }) {
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                   onClick={() => openProlonger(panelContract)}
                 >
-                  Prolonger
+                  {t('panel.extend')}
                 </button>
               )}
               {prolongMsg && (
@@ -503,12 +510,12 @@ export function Contracts({ onRestitution }) {
               )}
               {showProlonger && (
                 <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 16, background: 'var(--bg2)', marginBottom: 4 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Prolonger la réservation</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{t('extend.title')}</div>
                   <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 12 }}>
-                    Date de fin actuelle : <strong>{fmtDate(panelContract.endDate)}</strong>
+                    {t('extend.currentEnd')} <strong>{fmtDate(panelContract.endDate)}</strong>
                   </div>
                   <div className="form-group" style={{ marginBottom: 10 }}>
-                    <label className="form-label" style={{ fontSize: 12 }}>Nouvelle date de fin</label>
+                    <label className="form-label" style={{ fontSize: 12 }}>{t('extend.newEnd')}</label>
                     <input
                       className="form-input"
                       type="date"
@@ -569,7 +576,7 @@ export function Contracts({ onRestitution }) {
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#ea580c', borderColor: '#ea580c' }}
                   onClick={() => { setSelected(null); onRestitution(panelContract) }}
                 >
-                  🔑 Restituer le véhicule
+                  {t('panel.restitute')}
                 </button>
               )}
               <button
@@ -577,7 +584,7 @@ export function Contracts({ onRestitution }) {
                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                 onClick={() => downloadPDF(panelContract)}
               >
-                <Download size={15} /> Télécharger le contrat PDF
+                <Download size={15} /> {t('panel.downloadPdf')}
               </button>
             </div>
           </div>
@@ -614,25 +621,26 @@ function InfoRow({ label, value, isBold }) {
 // ─────────────────────────────────────────────────────────
 
 export function Invoices() {
+  const { t } = useTranslation('invoices')
   const [invoices, setInvoices] = useState(() => getInvoices())
   const total = invoices.reduce((s, i) => s + (i.totalTTC || 0), 0)
   return (
     <div>
-      <div className="page-header"><div><h2>Factures</h2><p>{invoices.length} factures · {(total || 0).toLocaleString('fr-MA')} MAD total</p></div></div>
+      <div className="page-header"><div><h2>{t('title')}</h2><p>{t('count', { count: invoices.length, total: (total || 0).toLocaleString('fr-MA') })}</p></div></div>
       <div className="page-body">
         <div className="card">
           <div className="card-body">
-            {invoices.length === 0 && <p style={{ color: 'var(--text3)', fontSize: 13 }}>Aucune facture pour l'instant.</p>}
+            {invoices.length === 0 && <p style={{ color: 'var(--text3)', fontSize: 13 }}>{t('empty')}</p>}
             {invoices.map(inv => (
               <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
                 <div>
                   <div style={{ fontWeight: 500, fontSize: 14 }}>{inv.invoiceNumber}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text3)' }}>{inv.clientName} · Réf: {inv.contractNumber}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text3)' }}>{inv.clientName} · {t('ref')} {inv.contractNumber}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, fontWeight: 600 }}>{(inv.totalTTC || 0).toLocaleString('fr-MA')} MAD</span>
                   <span className={`badge ${inv.status === 'paid' ? 'badge-green' : inv.status === 'pending' ? 'badge-orange' : 'badge-gray'}`}>
-                    {inv.status === 'paid' ? 'Payée' : inv.status === 'pending' ? 'En attente' : inv.status || 'En attente'}
+                    {inv.status === 'paid' ? t('status.paid') : inv.status === 'pending' ? t('status.pending') : inv.status || t('status.pending')}
                   </span>
                 </div>
               </div>
@@ -648,23 +656,24 @@ export function Invoices() {
 // SETTINGS
 // ─────────────────────────────────────────────────────────
 
-const SETTINGS_TABS = [
-  { id: 'agence', label: 'Agence' },
-  { id: 'parc', label: 'Configuration parc' },
-  { id: 'general', label: 'Configuration générale' },
-  { id: 'equipe', label: 'Équipe' },
+const SETTINGS_TABS_KEYS = [
+  { id: 'agence',  key: 'tabs.agency' },
+  { id: 'parc',    key: 'tabs.fleetConfig' },
+  { id: 'general', key: 'tabs.general' },
+  { id: 'equipe',  key: 'tabs.team' },
 ]
 
 export function Settings() {
+  const { t } = useTranslation('settings')
   const [activeTab, setActiveTab] = useState('agence')
 
   return (
     <div>
-      <div className="page-header"><div><h2>Paramètres</h2><p>Configuration de l'agence</p></div></div>
+      <div className="page-header"><div><h2>{t('title')}</h2><p>{t('subtitle')}</p></div></div>
       <div className="page-body">
         {/* Tab bar */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid var(--border)', marginBottom: 20 }}>
-          {SETTINGS_TABS.map(tab => (
+          {SETTINGS_TABS_KEYS.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -677,7 +686,7 @@ export function Settings() {
                 transition: 'color .15s',
               }}
             >
-              {tab.label}
+              {t(tab.key)}
             </button>
           ))}
         </div>
