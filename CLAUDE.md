@@ -5,6 +5,7 @@
 - **Read-Only Context:** Use this file to understand the current state of the app. Do not re-explain or repeat information already here unless explicitly asked.
 - **Token Efficiency:** Skip re-summarising the stack, file structure, or completed work — it's already documented below.
 - **Ledger Update:** At the end of each session, or when asked, produce a `Context Update` block — a concise summary of new features, bug fixes, and environment changes. Format it as a code block so it can be copied back into this file.
+- **Verify Before Responding:** Before submitting any answer — code, SQL, instructions, or explanations — re-read it and confirm it is correct, complete, and consistent with the current codebase. Do not send a response that you are not confident in.
 
 ---
 
