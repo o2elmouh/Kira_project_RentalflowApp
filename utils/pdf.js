@@ -906,3 +906,263 @@ export function generateInvoiceBuffer(invoice, contract, client, vehicle, agency
 
   return doc.output('arraybuffer')
 }
+
+/**
+ * Same as generateRestitutionPDF (defined in Restitution.jsx) but returns an ArrayBuffer.
+ * Used for WhatsApp sending without triggering a file download.
+ */
+export function generateRestitutionPDFBuffer({ agency = {}, contract, returnDate, returnTime, returnMileage, returnFuelLevel,
+  returnDamages, extraKmFee, fuelFee, damageFee, totalExtraFees, extraKm, fuelDiff }) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+
+  const ACCENT = [199, 75, 31]
+  const GRAY_C = [120, 116, 108]
+  const LIGHT_C = [245, 243, 238]
+
+  doc.setFillColor(...ACCENT)
+  doc.rect(0, 0, 210, 28, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text('PROCÈS-VERBAL DE RESTITUTION', 14, 12)
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.text(agency.name || 'Agence', 14, 19)
+  doc.text(`Contrat: ${contract.contractNumber || '—'}`, 14, 24)
+  doc.setTextColor(...DARK)
+
+  let y = 36
+
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...GRAY_C)
+  doc.text('CLIENT', 14, y)
+  doc.text('VÉHICULE', 110, y)
+  y += 4
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(...DARK)
+  doc.text(contract.clientName || '—', 14, y)
+  doc.text(contract.vehicleName || '—', 110, y)
+  y += 9
+
+  doc.autoTable({
+    startY: y,
+    head: [['', 'Départ', 'Retour']],
+    body: [
+      ['Date', contract.startDate || '—', returnDate || '—'],
+      ['Heure', contract.startTime || '—', returnTime || '—'],
+      ['Kilométrage', `${contract.startMileage || contract.mileageOut || '—'} km`, `${returnMileage || '—'} km`],
+      ['Carburant', contract.fuelLevel || '—', returnFuelLevel || '—'],
+    ],
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: ACCENT, textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: LIGHT_C },
+    margin: { left: 14, right: 14 },
+    theme: 'grid',
+  })
+  y = doc.lastAutoTable.finalY + 8
+
+  const damagedZones = (returnDamages || []).filter(d => d.checked)
+  if (damagedZones.length > 0) {
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...GRAY_C)
+    doc.text('DOMMAGES CONSTATÉS', 14, y)
+    y += 3
+    doc.autoTable({
+      startY: y,
+      head: [['Zone', 'Description']],
+      body: damagedZones.map(d => [d.zone, d.description || '—']),
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [180, 60, 20], textColor: 255, fontStyle: 'bold' },
+      margin: { left: 14, right: 14 },
+      theme: 'grid',
+    })
+    y = doc.lastAutoTable.finalY + 8
+  }
+
+  const feeRows = []
+  if (extraKmFee > 0) feeRows.push([`Km supplémentaires (${extraKm} km × 2 MAD)`, `${extraKmFee} MAD`])
+  if (fuelFee > 0) feeRows.push([`Manque carburant (${fuelDiff} quart(s) × 100 MAD)`, `${fuelFee} MAD`])
+  if (damageFee > 0) feeRows.push([`Frais dommages`, `${damageFee} MAD`])
+  feeRows.push([{ content: 'TOTAL FRAIS SUPPLÉMENTAIRES', styles: { fontStyle: 'bold' } }, { content: `${totalExtraFees} MAD`, styles: { fontStyle: 'bold' } }])
+
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...GRAY_C)
+  doc.text('FRAIS SUPPLÉMENTAIRES', 14, y)
+  y += 3
+  doc.autoTable({
+    startY: y,
+    body: feeRows,
+    styles: { fontSize: 9, cellPadding: 3 },
+    alternateRowStyles: { fillColor: LIGHT_C },
+    margin: { left: 14, right: 14 },
+    theme: 'grid',
+  })
+
+  return doc.output('arraybuffer')
+}
+
+/**
+ * Generate a timestamped AI damage analysis report PDF.
+ * Includes side-by-side photo comparison + AI findings table.
+ *
+ * @param {object} params
+ * @param {object} params.agency
+ * @param {object} params.contract
+ * @param {object} params.analysis  — result from /ai/detect-damage
+ * @param {string[]} params.beforePhotos — base64 data-URLs
+ * @param {string[]} params.afterPhotos  — base64 data-URLs
+ * @returns {void}  — triggers browser download
+ */
+export function generateDamageReport({ agency = {}, contract, analysis, beforePhotos = [], afterPhotos = [] }) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+
+  const RED    = [220, 38, 38]
+  const GREEN  = [22, 163, 74]
+  const ORANGE = [234, 88, 12]
+
+  // ── Header ──
+  doc.setFillColor(...DARK)
+  doc.rect(0, 0, 210, 28, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(14)
+  doc.setTextColor(255, 255, 255)
+  doc.text('RAPPORT D\'ANALYSE IA — DOMMAGES', 14, 12)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(200, 195, 185)
+  doc.text(agency.name || '', 14, 19)
+  doc.text(`Généré le ${new Date(analysis.analysedAt).toLocaleString('fr-MA')}`, 14, 24)
+
+  let y = 36
+
+  // ── Contract summary ──
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...GRAY)
+  doc.text('CONTRAT', 14, y)
+  y += 4
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(...DARK)
+  doc.text(`${contract.contractNumber || '—'}  ·  ${contract.clientName || '—'}  ·  ${contract.vehicleName || '—'}`, 14, y)
+  y += 8
+
+  // ── AI verdict badge ──
+  const hasDamage = analysis.hasDamage
+  const badgeColor = hasDamage ? RED : GREEN
+  doc.setFillColor(...badgeColor)
+  doc.roundedRect(14, y, 80, 10, 2, 2, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.setTextColor(255, 255, 255)
+  doc.text(hasDamage ? '⚠ DOMMAGES DÉTECTÉS' : '✓ AUCUN DOMMAGE DÉTECTÉ', 54, y + 7, { align: 'center' })
+
+  const confColor = analysis.confidence === 'high' ? GREEN : analysis.confidence === 'medium' ? ORANGE : GRAY
+  doc.setFillColor(...confColor)
+  doc.roundedRect(100, y, 40, 10, 2, 2, 'F')
+  doc.setFontSize(8)
+  doc.text(`Confiance: ${analysis.confidence === 'high' ? 'Élevée' : analysis.confidence === 'medium' ? 'Moyenne' : 'Faible'}`, 120, y + 7, { align: 'center' })
+  y += 16
+
+  // ── Summary ──
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(9)
+  doc.setTextColor(...DARK)
+  const summaryLines = doc.splitTextToSize(analysis.summary || '', 182)
+  doc.text(summaryLines, 14, y)
+  y += summaryLines.length * 5 + 6
+
+  // ── Damage table ──
+  if (hasDamage && analysis.damages?.length > 0) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.setTextColor(...GRAY)
+    doc.text('DOMMAGES IDENTIFIÉS', 14, y)
+    y += 3
+
+    doc.autoTable({
+      startY: y,
+      head: [['Zone', 'Description', 'Sévérité']],
+      body: analysis.damages.map(d => [
+        d.zone || '—',
+        d.description || '—',
+        d.severity === 'major' ? 'Majeur' : d.severity === 'minor' ? 'Mineur' : 'Cosmétique',
+      ]),
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: RED, textColor: 255, fontStyle: 'bold' },
+      columnStyles: {
+        2: { halign: 'center', fontStyle: 'bold' },
+      },
+      didParseCell: (data) => {
+        if (data.column.index === 2 && data.section === 'body') {
+          const sev = data.cell.raw
+          if (sev === 'Majeur') data.cell.styles.textColor = RED
+          else if (sev === 'Mineur') data.cell.styles.textColor = ORANGE
+        }
+      },
+      margin: { left: 14, right: 14 },
+      theme: 'grid',
+    })
+    y = doc.lastAutoTable.finalY + 10
+  }
+
+  // ── Recommendation ──
+  if (analysis.recommendation) {
+    doc.setFillColor(245, 243, 238)
+    const recLines = doc.splitTextToSize(`Recommandation: ${analysis.recommendation}`, 174)
+    doc.rect(14, y - 2, 182, recLines.length * 5 + 6, 'F')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.setTextColor(...DARK)
+    doc.text(recLines, 17, y + 3)
+    y += recLines.length * 5 + 12
+  }
+
+  // ── Photo comparison (up to 2 before + 2 after) ──
+  const addPhoto = (dataUrl, x, py, w, h, label) => {
+    try {
+      const fmt = dataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG'
+      doc.addImage(dataUrl, fmt, x, py, w, h)
+    } catch (_) { /* skip bad image */ }
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'italic')
+    doc.setTextColor(...GRAY)
+    doc.text(label, x + w / 2, py + h + 4, { align: 'center' })
+  }
+
+  const photoW = 85
+  const photoH = 55
+  const maxPairs = Math.min(Math.max(beforePhotos.length, afterPhotos.length), 3)
+
+  for (let i = 0; i < maxPairs; i++) {
+    if (y + photoH + 12 > 280) { doc.addPage(); y = 20 }
+
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...GRAY)
+    doc.text(`PHOTO ${i + 1}`, 14, y)
+    y += 3
+
+    if (beforePhotos[i]) addPhoto(beforePhotos[i], 14, y, photoW, photoH, 'AVANT LOCATION')
+    if (afterPhotos[i])  addPhoto(afterPhotos[i], 111, y, photoW, photoH, 'APRÈS LOCATION')
+
+    // Draw red border around after photo if damage detected
+    if (hasDamage && afterPhotos[i]) {
+      doc.setDrawColor(...RED)
+      doc.setLineWidth(0.6)
+      doc.rect(111, y, photoW, photoH)
+    }
+
+    y += photoH + 10
+  }
+
+  // ── Footer ──
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(7.5)
+  doc.setTextColor(...GRAY)
+  doc.text('Document généré automatiquement par RentaFlow AI — à conserver comme preuve en cas de litige.', 105, 288, { align: 'center' })
+
+  doc.save(`rapport-dommages-${contract.contractNumber || 'doc'}-${new Date().toISOString().slice(0, 10)}.pdf`)
+}

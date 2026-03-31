@@ -39,13 +39,10 @@ export default function Invoices() {
     if (!phone) { alert('Numéro de téléphone client introuvable sur ce contrat.'); return }
     setWaSending(inv.id)
     try {
-      const doc = generateInvoice({}, inv, contract)
-      const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(doc.output('arraybuffer'))))
       await api.sendInvoiceWhatsApp({
         to: phone,
         clientName: inv.clientName,
         invoiceNumber: inv.invoiceNumber,
-        pdfBase64,
         totalTTC: inv.totalTTC,
       })
       setWaStatus(s => ({ ...s, [inv.id]: 'ok' }))

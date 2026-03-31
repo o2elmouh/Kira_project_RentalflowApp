@@ -2,6 +2,8 @@
 
 ## Instructions for Claude
 
+- **MANDATORY FIRST STEP:** At the start of EVERY conversation, read this entire CLAUDE.md file. No exceptions. Never start working without knowing the current project state.
+- **Never Lose Context:** If the user says "keep going" or continues mid-task, re-read CLAUDE.md first to reconstruct context before acting. Do not guess what was in progress.
 - **Read-Only Context:** Use this file to understand the current state of the app. Do not re-explain or repeat information already here unless explicitly asked.
 - **Token Efficiency:** Skip re-summarising the stack, file structure, or completed work — it's already documented below.
 - **Ledger Update:** At the end of each session, or when asked, produce a `Context Update` block — a concise summary of new features, bug fixes, and environment changes. Format it as a code block so it can be copied back into this file.
@@ -152,7 +154,16 @@ FRONTEND_URL=https://rentaflow.vercel.app
 NODE_ENV=production
 PORT=                         ← set by Railway automatically
 RESEND_API_KEY=               ← optional, for email
+TWILIO_ACCOUNT_SID=           ← Twilio account SID
+TWILIO_AUTH_TOKEN=            ← Twilio auth token (secret)
+TWILIO_WHATSAPP_FROM=         ← e.g. whatsapp:+14155238886 (Twilio sandbox or approved number)
+ANTHROPIC_API_KEY=            ← Claude API key for AI damage detection
+VITE_CMI_MERCHANT_ID=         ← CMI merchant ID for payment links (can be in frontend)
 ```
+
+### Supabase Storage
+- Bucket `whatsapp-temp` must exist and be **public** — used by WhatsApp routes to host PDFs for Twilio MediaUrl
+- Sub-folders: `contracts/`, `invoices/`, `restitutions/`
 
 ---
 
@@ -190,12 +201,17 @@ RESEND_API_KEY=               ← optional, for email
 - i18n wired into: Auth, Onboarding, Dashboard, Sidebar, Fleet, Restitution, Clients, Contracts, Invoices, Settings
 - Auth P1: Login/Signup screens, Agency onboarding (with ICE + RC), Multi-user roles
 - Infrastructure: Vercel + CI/CD, Railway backend, env vars documented
+- WhatsApp: Contract, Invoice, Restitution PV sending via Twilio + Supabase Storage PDF hosting
+- AI damage detection: `server/routes/ai.js` → Claude Haiku Vision API; Restitution Step3 panel; `generateDamageReportPDF` export
 
 ### Pending
 - Wire Resend email provider (`server/routes/email.js` — needs `RESEND_API_KEY`)
 - Supabase: add `p_ice`/`p_rc` params to `onboard_new_agency` RPC
 - Supabase: add `role` + `agency_id` columns to `profiles` table (if not present)
 - English locale files for all namespaces beyond `common.json`
+- AI: side-by-side before/after comparison (before photos from fleet vehicle photos — currently only after photos sent to AI)
+- AI: damage auto-flagging on contract record when AI detects damage
+- Supabase: create `whatsapp-temp` storage bucket (public) with folders contracts/ invoices/ restitutions/
 
 ---
 

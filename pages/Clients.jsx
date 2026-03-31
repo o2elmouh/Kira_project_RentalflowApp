@@ -52,13 +52,18 @@ export default function Clients() {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    Promise.all([getClients(), getContracts(), getAgency()]).then(([c, ct, ag]) => {
-      if (cancelled) return
-      setClients(c)
-      setContracts(ct)
-      setAgency(ag)
-      setLoading(false)
-    })
+    Promise.all([getClients(), getContracts(), getAgency()])
+      .then(([c, ct, ag]) => {
+        if (cancelled) return
+        setClients(c)
+        setContracts(ct)
+        setAgency(ag)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('[Clients] load error', err)
+        if (!cancelled) setLoading(false)
+      })
     return () => { cancelled = true }
   }, [])
 
@@ -73,9 +78,13 @@ export default function Clients() {
   }, [flagId])
 
   const reload = async () => {
-    const [c, ct] = await Promise.all([getClients(), getContracts()])
-    setClients(c)
-    setContracts(ct)
+    try {
+      const [c, ct] = await Promise.all([getClients(), getContracts()])
+      setClients(c)
+      setContracts(ct)
+    } catch (err) {
+      console.error('[Clients] reload', err)
+    }
   }
 
   const startEdit = (c) => {
@@ -85,9 +94,13 @@ export default function Clients() {
   }
 
   const saveEdit = async (c) => {
-    await saveClient({ ...c, phone: editData.phone, email: editData.email })
-    setEditId(null)
-    reload()
+    try {
+      await saveClient({ ...c, phone: editData.phone, email: editData.email })
+      setEditId(null)
+      reload()
+    } catch (err) {
+      console.error('[Clients] saveEdit', err)
+    }
   }
 
   const openFlag = (c) => {
@@ -97,15 +110,23 @@ export default function Clients() {
   }
 
   const saveFlag = async (c) => {
-    await saveClient({ ...c, flag: { category: flagData.category, note: flagData.note } })
-    setFlagId(null)
-    reload()
+    try {
+      await saveClient({ ...c, flag: { category: flagData.category, note: flagData.note } })
+      setFlagId(null)
+      reload()
+    } catch (err) {
+      console.error('[Clients] saveFlag', err)
+    }
   }
 
   const removeFlag = async (c) => {
-    await saveClient({ ...c, flag: null })
-    setFlagId(null)
-    reload()
+    try {
+      await saveClient({ ...c, flag: null })
+      setFlagId(null)
+      reload()
+    } catch (err) {
+      console.error('[Clients] removeFlag', err)
+    }
   }
 
   const exportPDF = () => {

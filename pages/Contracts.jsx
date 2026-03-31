@@ -86,14 +86,19 @@ export default function Contracts({ onRestitution }) {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    Promise.all([getContracts(), getClients(), getFleet(), getAgency()]).then(([ct, cl, fl, ag]) => {
-      if (cancelled) return
-      setContracts(ct)
-      setClients(cl)
-      setFleet(fl)
-      setAgency(ag)
-      setLoading(false)
-    })
+    Promise.all([getContracts(), getClients(), getFleet(), getAgency()])
+      .then(([ct, cl, fl, ag]) => {
+        if (cancelled) return
+        setContracts(ct)
+        setClients(cl)
+        setFleet(fl)
+        setAgency(ag)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('[Contracts] load error', err)
+        if (!cancelled) setLoading(false)
+      })
     return () => { cancelled = true }
   }, [])
 
@@ -118,23 +123,14 @@ export default function Contracts({ onRestitution }) {
     setWaContractSending(true)
     setWaContractToast(null)
     try {
-      // Generate PDF as ArrayBuffer, convert to base64
-      const { jsPDF } = await import('jspdf')
-      // Re-use generateContract but capture the doc before saving
-      // We call a helper that returns the arraybuffer instead of saving
-      const { generateContractBuffer } = await import('../utils/pdf')
-      const buffer = await generateContractBuffer(contract, client, vehicle, agency)
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)))
-
-      const vehicleName = vehicle.make
+      const vehicleName = vehicle?.make
         ? `${vehicle.make} ${vehicle.model}`
         : (contract.vehicleName || '')
 
       await api.sendContractWhatsApp({
         to: phone,
-        clientName: client.firstName ? `${client.firstName} ${client.lastName}` : (contract.clientName || ''),
+        clientName: client?.firstName ? `${client.firstName} ${client.lastName}` : (contract.clientName || ''),
         contractNumber: contract.contractNumber,
-        pdfBase64: base64,
         vehicleName,
         startDate: contract.startDate,
         endDate: contract.endDate,
@@ -199,46 +195,51 @@ export default function Contracts({ onRestitution }) {
     const newTotalTTC = (Number(contract.totalTTC) || 0) + extraAmount
     const newTotalHT = newTotalTTC / 1.20
     const newTva = newTotalTTC - newTotalHT
-    await updateContract({
-      ...contract,
-      endDate: newEndDate,
-      days: (contract.days || daysBetween(contract.startDate, contract.endDate)) + extraDays,
-      totalTTC: Math.round(newTotalTTC * 100) / 100,
-      totalHT: Math.round(newTotalHT * 100) / 100,
-      tva: Math.round(newTva * 100) / 100,
-    })
-    const originalRate = Number(contract.dailyRate) || 0
-    const rateChanged = rate !== originalRate && originalRate > 0
-    if (rateChanged) {
-      await saveInvoice({
-        clientId: contract.clientId,
-        clientName: contract.clientName,
-        contractId: contract.id,
-        contractNumber: contract.contractNumber,
-        vehicleName: contract.vehicleName,
-        items: [{ label: `Prolongation ${extraDays} jour(s)`, qty: extraDays, unitPrice: rate }],
-        totalHT: Math.round((extraAmount / 1.20) * 100) / 100,
-        tva: Math.round((extraAmount - extraAmount / 1.20) * 100) / 100,
-        totalTTC: Math.round(extraAmount * 100) / 100,
-        notes: 'Facture de prolongation',
+    try {
+      await updateContract({
+        ...contract,
+        endDate: newEndDate,
+        days: (contract.days || daysBetween(contract.startDate, contract.endDate)) + extraDays,
+        totalTTC: Math.round(newTotalTTC * 100) / 100,
+        totalHT: Math.round(newTotalHT * 100) / 100,
+        tva: Math.round(newTva * 100) / 100,
       })
-      setProlongMsg(t('panel.extendSuccess'))
-    } else {
-      const invoices = await getInvoices()
-      const existing = invoices.find(i => i.contractId === contract.id)
-      if (existing) {
-        await updateInvoice({
-          ...existing,
-          totalTTC: Math.round(((existing.totalTTC || 0) + extraAmount) * 100) / 100,
-          totalHT: Math.round(((existing.totalHT || 0) + extraAmount / 1.20) * 100) / 100,
-          tva: Math.round(((existing.tva || 0) + extraAmount - extraAmount / 1.20) * 100) / 100,
+      const originalRate = Number(contract.dailyRate) || 0
+      const rateChanged = rate !== originalRate && originalRate > 0
+      if (rateChanged) {
+        await saveInvoice({
+          clientId: contract.clientId,
+          clientName: contract.clientName,
+          contractId: contract.id,
+          contractNumber: contract.contractNumber,
+          vehicleName: contract.vehicleName,
+          items: [{ label: `Prolongation ${extraDays} jour(s)`, qty: extraDays, unitPrice: rate }],
+          totalHT: Math.round((extraAmount / 1.20) * 100) / 100,
+          tva: Math.round((extraAmount - extraAmount / 1.20) * 100) / 100,
+          totalTTC: Math.round(extraAmount * 100) / 100,
+          notes: 'Facture de prolongation',
         })
+        setProlongMsg(t('panel.extendSuccess'))
+      } else {
+        const invoices = await getInvoices()
+        const existing = invoices.find(i => i.contractId === contract.id)
+        if (existing) {
+          await updateInvoice({
+            ...existing,
+            totalTTC: Math.round(((existing.totalTTC || 0) + extraAmount) * 100) / 100,
+            totalHT: Math.round(((existing.totalHT || 0) + extraAmount / 1.20) * 100) / 100,
+            tva: Math.round(((existing.tva || 0) + extraAmount - extraAmount / 1.20) * 100) / 100,
+          })
+        }
+        setProlongMsg(t('panel.extendSuccessUpdated'))
       }
-      setProlongMsg(t('panel.extendSuccessUpdated'))
+      const refreshed = await getContracts()
+      setContracts(refreshed)
+      setShowProlonger(false)
+    } catch (err) {
+      console.error('[Contracts] confirmProlongation', err)
+      setProlongMsg(t('panel.extendError', { defaultValue: 'Erreur lors de la prolongation. Veuillez réessayer.' }))
     }
-    const refreshed = await getContracts()
-    setContracts(refreshed)
-    setShowProlonger(false)
   }
 
   const panelContract = selected ? contracts.find(c => c.id === selected) : null

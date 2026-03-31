@@ -48,18 +48,27 @@ function AgenceTab() {
 
   useEffect(() => {
     let cancelled = false
-    getAgency().then(ag => {
-      if (cancelled) return
-      setAgency(ag)
-      setLoading(false)
-    })
+    getAgency()
+      .then(ag => {
+        if (cancelled) return
+        setAgency(ag)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('[Settings] getAgency', err)
+        if (!cancelled) setLoading(false)
+      })
     return () => { cancelled = true }
   }, [])
 
   const save = async () => {
-    await saveAgency(agency)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    try {
+      await saveAgency(agency)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      console.error('[Settings] saveAgency', err)
+    }
   }
 
   const field = (label, key, placeholder = '') => (
@@ -424,11 +433,16 @@ function FleetConfigTab() {
 
   useEffect(() => {
     let cancelled = false
-    getFleetConfig().then(data => {
-      if (cancelled) return
-      setConfig(data)
-      setLoading(false)
-    })
+    getFleetConfig()
+      .then(data => {
+        if (cancelled) return
+        setConfig(data)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('[Settings] getFleetConfig', err)
+        if (!cancelled) setLoading(false)
+      })
     return () => { cancelled = true }
   }, [])
 
@@ -440,10 +454,15 @@ function FleetConfigTab() {
   const saveRow = async (i) => {
     const updated = config.map((r, idx) => idx === i ? { ...editData } : r)
     setConfig(updated)
-    await saveFleetConfig(updated)
-    setEditRow(null)
-    setSavedRow(i)
-    setTimeout(() => setSavedRow(null), 1500)
+    try {
+      await saveFleetConfig(updated)
+      setEditRow(null)
+      setSavedRow(i)
+      setTimeout(() => setSavedRow(null), 1500)
+    } catch (err) {
+      console.error('[Settings] saveFleetConfig', err)
+      setEditRow(null)
+    }
   }
 
   const handleReset = () => {

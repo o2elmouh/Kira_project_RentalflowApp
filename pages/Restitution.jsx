@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle, ArrowRight, ArrowLeft, Download } from 'lucide-react'
 import { updateContract, saveInvoice, getFleet, saveVehicle, getAgency } from '../lib/db'
+import { api } from '../lib/api'
 import CarPhotoGuide from '../components/CarPhotoGuide'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
@@ -38,6 +39,10 @@ async function compressImage(file, maxW = 1200, quality = 0.78) {
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
       URL.revokeObjectURL(url)
       resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(null)
     }
     img.src = url
   })
@@ -409,7 +414,7 @@ function Step2Photos({ contract, photos, onChange, onNext, onBack }) {
 
 // ── Step 3: État des lieux & frais ────────────────────────
 
-function Step3Damages({ contract, vehicle, returnMileage, returnFuelLevel, damages, onChange, damageFee, onDamageFee, onNext, onBack }) {
+function Step3Damages({ contract, vehicle, agency, returnMileage, returnFuelLevel, returnPhotos, damages, onChange, damageFee, onDamageFee, onNext, onBack }) {
   const { t } = useTranslation('restitution')
   const { extraKm, extraKmFee, kmAllowed, kmDriven, fuelDiff, fuelFee, totalExtraFees } =
     computeExtraFees({ vehicle, returnMileage, returnFuelLevel, contract, damageFee })
@@ -428,6 +433,61 @@ function Step3Damages({ contract, vehicle, returnMileage, returnFuelLevel, damag
   }
 
   const getDamage = (zone) => damages.find(d => d.zone === zone) || { checked: false, description: '' }
+
+  // ── AI damage detection ──
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiResult, setAiResult]   = useState(null)
+  const [aiError, setAiError]     = useState(null)
+
+  const runAiAnalysis = async () => {
+    const photos = (returnPhotos || []).filter(Boolean)
+    if (photos.length === 0) { alert('Aucune photo disponible. Prenez des photos à l\'étape précédente.'); return }
+    setAiLoading(true)
+    setAiError(null)
+    setAiResult(null)
+    try {
+      const result = await api.detectDamage({
+        afterPhotos: photos,
+        contractNumber: contract.contractNumber,
+        vehicleName: contract.vehicleName,
+        clientName: contract.clientName,
+      })
+      setAiResult(result)
+      // Auto-populate damage checkboxes from AI findings
+      if (result.hasDamage && result.damages?.length > 0) {
+        const newDamages = [...damages]
+        result.damages.forEach(d => {
+          const zone = ZONES.find(z => d.zone?.toLowerCase().includes(z.toLowerCase()))
+          if (zone) {
+            const existing = newDamages.find(dmg => dmg.zone === zone)
+            if (existing) {
+              existing.checked = true
+              if (!existing.description) existing.description = d.description || ''
+            } else {
+              newDamages.push({ zone, checked: true, description: d.description || '' })
+            }
+          }
+        })
+        onChange(newDamages)
+      }
+    } catch (err) {
+      console.error('[AI analysis]', err)
+      setAiError(err.message || 'Erreur lors de l\'analyse IA')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  const downloadAiReport = async () => {
+    if (!aiResult) return
+    const { generateDamageReport } = await import('../utils/pdf')
+    generateDamageReport({
+      agency,
+      contract,
+      analysis: aiResult,
+      afterPhotos: returnPhotos || [],
+    })
+  }
 
   return (
     <div className="card" style={{ maxWidth: 600, margin: '0 auto' }}>
@@ -463,6 +523,86 @@ function Step3Damages({ contract, vehicle, returnMileage, returnFuelLevel, damag
               </div>
             )
           })}
+        </div>
+
+        {/* AI Damage Detection */}
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)' }}>
+              🤖 Analyse IA des dommages
+            </div>
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: 12, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }}
+              onClick={runAiAnalysis}
+              disabled={aiLoading}
+            >
+              {aiLoading ? 'Analyse en cours…' : '✦ Lancer l\'analyse IA'}
+            </button>
+          </div>
+
+          {aiError && (
+            <div style={{ background: '#fee2e2', color: '#b91c1c', borderRadius: 6, padding: '8px 10px', fontSize: 12 }}>
+              {aiError}
+            </div>
+          )}
+
+          {aiResult && (
+            <div>
+              {/* Verdict */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+                background: aiResult.hasDamage ? '#fee2e2' : '#dcfce7',
+                borderRadius: 6, padding: '8px 12px',
+              }}>
+                <span style={{ fontSize: 16 }}>{aiResult.hasDamage ? '⚠️' : '✅'}</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: aiResult.hasDamage ? '#b91c1c' : '#15803d' }}>
+                    {aiResult.hasDamage ? 'Dommages détectés' : 'Aucun dommage détecté'}
+                    <span style={{ fontSize: 11, fontWeight: 400, marginLeft: 8, opacity: 0.7 }}>
+                      Confiance: {aiResult.confidence === 'high' ? 'Élevée' : aiResult.confidence === 'medium' ? 'Moyenne' : 'Faible'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>{aiResult.summary}</div>
+                </div>
+              </div>
+
+              {/* Damage list */}
+              {aiResult.damages?.length > 0 && (
+                <div style={{ marginBottom: 10 }}>
+                  {aiResult.damages.map((d, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12, marginBottom: 4, alignItems: 'flex-start' }}>
+                      <span style={{
+                        background: d.severity === 'major' ? '#fee2e2' : d.severity === 'minor' ? '#fff7ed' : '#f3f4f6',
+                        color: d.severity === 'major' ? '#b91c1c' : d.severity === 'minor' ? '#c2410c' : '#374151',
+                        borderRadius: 4, padding: '1px 6px', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap', marginTop: 1,
+                      }}>
+                        {d.severity === 'major' ? 'Majeur' : d.severity === 'minor' ? 'Mineur' : 'Cosmétique'}
+                      </span>
+                      <span style={{ fontWeight: 600 }}>{d.zone}</span>
+                      <span style={{ color: 'var(--text3)' }}>{d.description}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Recommendation */}
+              {aiResult.recommendation && (
+                <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic', marginBottom: 10 }}>
+                  💡 {aiResult.recommendation}
+                </div>
+              )}
+
+              {/* Download report button */}
+              <button
+                className="btn btn-secondary"
+                style={{ fontSize: 12, padding: '4px 12px' }}
+                onClick={downloadAiReport}
+              >
+                📄 Télécharger rapport IA
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Auto-calculated fees */}
@@ -539,6 +679,8 @@ function Step4Closure({ agency, contract, vehicle, returnDate, returnTime, retur
 
   const { t } = useTranslation('restitution')
   const [closing, setClosing] = useState(false)
+  const [waSending, setWaSending] = useState(false)
+  const [waStatus, setWaStatus] = useState(null) // 'ok' | 'err' | null
 
   const startDate = contract.startDate
   const realDays = daysBetween(startDate, returnDate || today())
@@ -554,6 +696,36 @@ function Step4Closure({ agency, contract, vehicle, returnDate, returnTime, retur
       returnPhotos, returnDamages, extraKmFee, fuelFee, damageFee: damageFee || 0,
       totalExtraFees, extraKm, fuelDiff,
     })
+  }
+
+  const handleSendWhatsApp = async () => {
+    const phone = contract.clientPhone || ''
+    if (!phone) { alert('Numéro de téléphone client introuvable.'); return }
+    setWaSending(true)
+    setWaStatus(null)
+    try {
+      const { generateRestitutionPDFBuffer } = await import('../utils/pdf')
+      const buffer = generateRestitutionPDFBuffer({
+        agency, contract, returnDate, returnTime, returnMileage, returnFuelLevel,
+        returnDamages, extraKmFee, fuelFee, damageFee: damageFee || 0,
+        totalExtraFees, extraKm, fuelDiff,
+      })
+      const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(buffer)))
+      await api.sendRestitutionWhatsApp({
+        to: phone,
+        clientName: contract.clientName || '',
+        contractNumber: contract.contractNumber,
+        pdfBase64,
+        totalExtraFees,
+      })
+      setWaStatus('ok')
+    } catch (err) {
+      console.error('[WhatsApp restitution]', err)
+      setWaStatus('err')
+    } finally {
+      setWaSending(false)
+      setTimeout(() => setWaStatus(null), 4000)
+    }
   }
 
   const handleClose = async () => {
@@ -665,6 +837,14 @@ function Step4Closure({ agency, contract, vehicle, returnDate, returnTime, retur
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
           >
             <Download size={15} /> {t('step4.downloadPdf')}
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={handleSendWhatsApp}
+            disabled={waSending}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+          >
+            {waSending ? '…' : waStatus === 'ok' ? '✅ PV envoyé' : waStatus === 'err' ? '❌ Échec' : '📱 Envoyer PV par WhatsApp'}
           </button>
           <button
             className="btn btn-primary"
@@ -780,8 +960,10 @@ export default function Restitution({ contract, onDone }) {
             <Step3Damages
               contract={contract}
               vehicle={vehicle}
+              agency={agency}
               returnMileage={returnData.returnMileage}
               returnFuelLevel={returnData.returnFuelLevel}
+              returnPhotos={returnPhotos}
               damages={damages}
               onChange={setDamages}
               damageFee={damageFee}

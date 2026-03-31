@@ -46,30 +46,34 @@ export default function Sidebar({ active, onNav, user, profile, onSignOut }) {
         })}
       </nav>
 
+      {/* Footer — always visible; sign-out section only when authenticated */}
+      <div style={{ padding: '12px 10px', borderTop: '1px solid var(--border)', marginTop: 'auto' }}>
+        <div style={{ marginBottom: user && onSignOut ? 8 : 0 }}>
+          <LanguageSelector />
+        </div>
+      </div>
+
       {user && onSignOut && (
-        <div style={{ padding: '12px 10px', borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 'auto' }}>
+        <div style={{ padding: '12px 10px', borderTop: '1px solid var(--border)', marginTop: 'auto' }}>
           {agencyName && (
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4, paddingLeft: 8 }}>
               {agencyName}
             </div>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 12, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+            <span style={{ fontSize: 12, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
               {displayName}
             </span>
             {profile?.role && (
               <span style={{
                 fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, flexShrink: 0,
-                background: profile.role === 'admin' ? 'rgba(99,102,241,0.2)' : 'rgba(34,197,94,0.15)',
-                color:      profile.role === 'admin' ? '#a5b4fc' : '#86efac',
+                background: profile.role === 'admin' ? '#ede7f6' : '#e8f5e9',
+                color:      profile.role === 'admin' ? '#6a1b9a' : '#388e3c',
                 textTransform: 'uppercase', letterSpacing: '0.5px',
               }}>
                 {profile.role}
               </span>
             )}
-          </div>
-          <div style={{ marginBottom: 8 }}>
-            <LanguageSelector />
           </div>
           <button
             className="nav-item"

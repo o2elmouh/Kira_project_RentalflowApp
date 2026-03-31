@@ -1,11 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
-import { supabaseAdmin } from '../lib/supabaseAdmin.js'
+import supabaseAdmin from '../lib/supabaseAdmin.js'
 
 // Verify the JWT the frontend sends in Authorization: Bearer <token>
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-)
+const supabase = (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY)
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)
+  : null
 
 export async function requireAuth(req, res, next) {
   const header = req.headers.authorization

@@ -314,7 +314,7 @@ function RepairsTab({ vehicle }) {
     try { setRepairs(await getRepairs(vehicle.id)) } catch (e) { console.error(e) }
   }
 
-  useEffect(() => { refresh() }, [vehicle.id])
+  useEffect(() => { refresh() }, [vehicle.id])  // refresh() has its own internal cancel guard
 
   const save = async () => {
     try {
@@ -419,7 +419,11 @@ function RentalsTab({ vehicle }) {
   const [contracts, setContracts] = useState([])
 
   useEffect(() => {
-    getContracts().then(all => setContracts(all.filter(c => c.vehicleId === vehicle.id))).catch(console.error)
+    let cancelled = false
+    getContracts()
+      .then(all => { if (!cancelled) setContracts(all.filter(c => c.vehicleId === vehicle.id)) })
+      .catch(console.error)
+    return () => { cancelled = true }
   }, [vehicle.id])
 
   const total     = contracts.reduce((s, c) => s + (c.totalTTC || 0), 0)
@@ -469,8 +473,14 @@ function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDelete }) {
   const [repairs, setRepairs] = useState([])
 
   useEffect(() => {
-    getContracts().then(all => setContracts(all.filter(c => c.vehicleId === vehicle.id))).catch(console.error)
-    getRepairs(vehicle.id).then(setRepairs).catch(console.error)
+    let cancelled = false
+    getContracts()
+      .then(all => { if (!cancelled) setContracts(all.filter(c => c.vehicleId === vehicle.id)) })
+      .catch(console.error)
+    getRepairs(vehicle.id)
+      .then(data => { if (!cancelled) setRepairs(data) })
+      .catch(console.error)
+    return () => { cancelled = true }
   }, [vehicle.id])
 
   // Locations metrics
@@ -580,18 +590,26 @@ function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDelete }) {
           <div className="dashboard-tile-value">{repairTotal.toLocaleString()}<span>MAD total</span></div>
           <div className="dashboard-tile-meta">
             {lastRepair ? (
-              <>
-                <div className="dashboard-tile-meta-row">
-                  <span>Dernière intervention</span>
-                  <span style={{ fontWeight: 600 }}>{lastRepair.type}</span>
-                </div>
-                <div className="dashboard-tile-meta-row">
-                  <span>Date</span>
-                  <span>{new Date(lastRepair.date).toLocaleDateString('fr-MA')}</span>
-                </div>
-              </>
+              <div className="dashboard-tile-meta-row">
+                <span>Dernière</span>
+                <span style={{ fontWeight: 600, textAlign: 'right' }}>
+                  {lastRepair.type}<br />
+                  <span style={{ fontWeight: 400, fontSize: 11 }}>{new Date(lastRepair.date).toLocaleDateString('fr-MA')}</span>
+                </span>
+              </div>
             ) : (
               <div style={{ color: 'var(--text3)', fontSize: 12 }}>Aucune intervention</div>
+            )}
+            {vehicle.nextRepair ? (
+              <div className="dashboard-tile-meta-row">
+                <span>Prochaine</span>
+                <DeadlineBadge date={vehicle.nextRepair} />
+              </div>
+            ) : (
+              <div className="dashboard-tile-meta-row" style={{ color: 'var(--text3)', fontSize: 12 }}>
+                <span>Prochaine</span>
+                <span>—</span>
+              </div>
             )}
           </div>
         </div>

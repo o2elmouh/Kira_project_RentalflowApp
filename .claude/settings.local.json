@@ -9,7 +9,9 @@
       "Bash(npm run:*)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5174)",
-      "Bash(cmd /c \"taskkill /F /IM node.exe\")"
+      "Bash(cmd /c \"taskkill /F /IM node.exe\")",
+      "Bash(curl:*)",
+      "Bash(cmd /c \"for /f \"\"tokens=5\"\" %a in \\(''netstat -aon ^| findstr :3001''\\) do taskkill /PID %a /F\")"
     ]
   }
 }

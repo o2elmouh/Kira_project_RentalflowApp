@@ -9,6 +9,7 @@ import contractsRouter from './routes/contracts.js'
 import emailRouter     from './routes/email.js'
 import teamRouter      from './routes/team.js'
 import whatsappRouter  from './routes/whatsapp.js'
+import aiRouter        from './routes/ai.js'
 
 const app  = express()
 const PORT = process.env.PORT || 3001
@@ -30,7 +31,7 @@ app.use(cors({
 }))
 
 // ── Body parsing ──────────────────────────────────────────
-app.use(express.json({ limit: '10mb' }))
+app.use(express.json({ limit: '20mb' }))
 
 // ── Global rate limit ─────────────────────────────────────
 app.use(rateLimit({
@@ -48,6 +49,7 @@ app.use('/contracts', contractsRouter)
 app.use('/email',     emailRouter)
 app.use('/team',      teamRouter)
 app.use('/whatsapp',  whatsappRouter)
+app.use('/ai',        aiRouter)
 
 // ── 404 ───────────────────────────────────────────────────
 app.use((req, res) => {

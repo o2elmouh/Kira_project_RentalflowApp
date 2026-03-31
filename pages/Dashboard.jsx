@@ -9,10 +9,10 @@ function inMonth(dateStr, year, month) {
   return d.getFullYear() === year && d.getMonth() === month
 }
 
-function StatCard({ icon: Icon, label, value, color, sub }) {
+function StatCard({ icon: Icon, label, value, variant = 'dark', sub }) {
   return (
     <div className="card stat-card">
-      <div className="stat-icon" style={{ color }}>
+      <div className={`stat-icon ${variant}`}>
         <Icon size={22} />
       </div>
       <div>
@@ -129,12 +129,12 @@ export default function Dashboard({ onNav }) {
         </div>
 
         <div className="stats-grid">
-          <StatCard icon={Car}        label={t('stats.availableVehicles')} value={available}                        color="var(--green)"  />
-          <StatCard icon={Car}        label={t('stats.rentedVehicles')}    value={rented}                           color="var(--accent)" />
-          <StatCard icon={Users}      label={t('stats.newClients')}        value={filteredClients.length}            color="#6366f1"       />
-          <StatCard icon={FileText}   label={t('stats.monthContracts')}    value={filteredContracts.length}          color="#f59e0b"       sub={t('stats.activeCount', { count: active })} />
-          <StatCard icon={Receipt}    label={t('stats.monthInvoices')}     value={filteredInvoices.length}           color="#10b981"       />
-          <StatCard icon={TrendingUp} label={t('stats.revenue')}          value={`${revenue.toLocaleString()} ${tc('currency')}`} color="var(--accent)" />
+          <StatCard icon={Car}        label={t('stats.availableVehicles')} value={available}                        variant="green"  />
+          <StatCard icon={Car}        label={t('stats.rentedVehicles')}    value={rented}                           variant="pink"   />
+          <StatCard icon={Users}      label={t('stats.newClients')}        value={filteredClients.length}            variant="blue"   />
+          <StatCard icon={FileText}   label={t('stats.monthContracts')}    value={filteredContracts.length}          variant="orange" sub={t('stats.activeCount', { count: active })} />
+          <StatCard icon={Receipt}    label={t('stats.monthInvoices')}     value={filteredInvoices.length}           variant="green"  />
+          <StatCard icon={TrendingUp} label={t('stats.revenue')}          value={`${revenue.toLocaleString()} ${tc('currency')}`} variant="pink" />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 24 }}>

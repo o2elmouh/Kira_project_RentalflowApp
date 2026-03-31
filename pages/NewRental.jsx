@@ -1,9 +1,24 @@
 import { useState, useEffect, useRef } from 'react'
-import { Upload, Camera, CheckCircle, AlertCircle, Printer, Download, ArrowRight, ArrowLeft } from 'lucide-react'
+import { Upload, Camera, CheckCircle, AlertCircle, Printer, Download, ArrowRight, ArrowLeft, X } from 'lucide-react'
 import { runOCR } from '../lib/ocr'
 import { getAvailableVehicles, saveClient, saveContract, saveInvoice, getAgency, getFleet, saveVehicle } from '../lib/db'
 import { generateContract, generateInvoice } from '../utils/pdf'
 import CarPhotoGuide from '../components/CarPhotoGuide'
+import { getGeneralConfig } from '../storage'
+
+const DEFAULT_RENTAL_OPTIONS = [
+  { id: 'cdw', name: 'CDW — Collision Damage Waiver', pricingType: 'per_day', price: 80, enabled: true },
+  { id: 'pai', name: 'PAI — Protection Accident Individuel', pricingType: 'per_day', price: 50, enabled: true },
+]
+
+function getRentalOptions() {
+  try {
+    const cfg = getGeneralConfig()
+    return cfg.rentalOptions && cfg.rentalOptions.length > 0 ? cfg.rentalOptions : DEFAULT_RENTAL_OPTIONS
+  } catch {
+    return DEFAULT_RENTAL_OPTIONS
+  }
+}
 
 const STEPS = ['Scan ID', 'Rental Details', 'Photos', 'Contract', 'Invoice']
 
@@ -124,7 +139,7 @@ function ScanStep({ onNext }) {
   const simulateScan = (type) => {
     const demo = type === 'cin'
       ? { firstName: 'Karim', lastName: 'El Fassi', cinNumber: 'BJ987654', cinExpiry: '2029-03-15', nationality: 'Marocain', dateOfBirth: '1990-06-15', docType: 'cin' }
-      : { drivingLicenseNumber: 'W87654321', licenseExpiry: '2028-11-20' }
+      : { drivingLicenseNumber: 'W87654321', licenseExpiry: '2028-11-20', dateOfBirth: '1990-06-15' }
     setExtracted(prev => ({ ...prev, [type]: demo }))
     setClient(prev => ({ ...prev, ...demo }))
   }
@@ -266,12 +281,14 @@ function ScanStep({ onNext }) {
 // ── Step 2: Rental Details ───────────────────────────────
 function RentalStep({ client, onNext, onBack }) {
   const today = new Date().toISOString().split('T')[0]
+  const rentalOptions = getRentalOptions()
   const [form, setForm] = useState({
     startDate: today, endDate: '', vehicleId: '',
     startTime: '09:00', endTime: '09:00', fuelLevel: 'Plein',
     paymentMethod: 'Carte bancaire', deposit: 2400,
-    pai: false, cdw: true,
     pickupLocation: '', returnLocation: '',
+    mileageOut: '',
+    selectedOptions: Object.fromEntries(rentalOptions.map(o => [o.id, o.enabled])),
   })
   const [vehicles, setVehicles] = useState([])
   const [vehicle, setVehicle] = useState(null)
@@ -296,8 +313,11 @@ function RentalStep({ client, onNext, onBack }) {
   const days = form.startDate && form.endDate
     ? Math.max(1, Math.ceil((new Date(form.endDate) - new Date(form.startDate)) / 86400000))
     : 0
-  const totalHT  = vehicle ? vehicle.dailyRate * days : 0
-  const extras   = (form.pai ? 50 * days : 0) + (form.cdw ? 80 * days : 0)
+  const totalHT = vehicle ? vehicle.dailyRate * days : 0
+  const extras = rentalOptions.reduce((sum, opt) => {
+    if (!form.selectedOptions[opt.id]) return sum
+    return sum + (opt.pricingType === 'per_day' ? opt.price * days : opt.price)
+  }, 0)
   const totalTTC = Math.round((totalHT + extras) * 1.2)
   const tva      = Math.round((totalHT + extras) * 0.2)
 
@@ -305,7 +325,16 @@ function RentalStep({ client, onNext, onBack }) {
   const canContinue = vehicle && form.startDate && form.endDate && dateValid && days > 0
 
   const handleNext = () => {
-    onNext({ ...form, vehicle, days, totalHT: totalHT + extras, tva, totalTTC })
+    onNext({
+      ...form,
+      vehicle, days,
+      totalHT: totalHT + extras,
+      tva, totalTTC,
+      mileageOut: Number(form.mileageOut) || 0,
+      // keep legacy cdw/pai flags for contract display backward-compat
+      cdw: !!(form.selectedOptions['cdw']),
+      pai: !!(form.selectedOptions['pai']),
+    })
   }
 
   return (
@@ -404,6 +433,14 @@ function RentalStep({ client, onNext, onBack }) {
             </div>
             <div className="form-row cols-2">
               <div className="form-group">
+                <label className="form-label">Kilométrage départ (km) *</label>
+                <input className="form-input text-mono" type="number" min={0} value={form.mileageOut}
+                  placeholder="ex: 45230"
+                  onChange={e => setForm(p => ({...p, mileageOut: e.target.value}))} />
+              </div>
+            </div>
+            <div className="form-row cols-2">
+              <div className="form-group">
                 <label className="form-label">Payment Method</label>
                 <select className="form-select" value={form.paymentMethod}
                   onChange={e => setForm(p => ({...p, paymentMethod: e.target.value}))}>
@@ -416,22 +453,27 @@ function RentalStep({ client, onNext, onBack }) {
                   onChange={e => setForm(p => ({...p, deposit: e.target.value}))} />
               </div>
             </div>
-            <div style={{ display:'flex', gap:16 }}>
-              {[
-                { key:'cdw', label:'CDW — Collision Damage Waiver', sub:'+80 MAD/day' },
-                { key:'pai', label:'PAI — Passenger Accident Insurance', sub:'+50 MAD/day' },
-              ].map(({ key, label, sub }) => (
-                <label key={key} style={{ display:'flex', alignItems:'flex-start', gap:8, cursor:'pointer', flex:1,
-                  background: form[key] ? 'var(--green-bg)' : 'var(--bg)',
-                  border: `1px solid ${form[key] ? 'var(--green)' : 'var(--border)'}`,
-                  borderRadius: 'var(--radius)', padding: '10px 12px' }}>
-                  <input type="checkbox" checked={form[key]} onChange={e => setForm(p => ({...p, [key]: e.target.checked}))} style={{ marginTop:2 }} />
-                  <div>
-                    <div style={{ fontSize:13, fontWeight:500 }}>{label}</div>
-                    <div style={{ fontSize:11, color:'var(--text3)' }}>{sub}</div>
-                  </div>
-                </label>
-              ))}
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {rentalOptions.map(opt => {
+                const checked = !!form.selectedOptions[opt.id]
+                const priceLbl = opt.pricingType === 'per_day'
+                  ? `+${opt.price} MAD/jour`
+                  : `+${opt.price} MAD (fixe)`
+                return (
+                  <label key={opt.id} style={{ display:'flex', alignItems:'flex-start', gap:8, cursor:'pointer',
+                    background: checked ? 'var(--green-bg)' : 'var(--bg)',
+                    border: `1px solid ${checked ? 'var(--green)' : 'var(--border)'}`,
+                    borderRadius: 'var(--radius)', padding: '10px 12px' }}>
+                    <input type="checkbox" checked={checked}
+                      onChange={e => setForm(p => ({ ...p, selectedOptions: { ...p.selectedOptions, [opt.id]: e.target.checked } }))}
+                      style={{ marginTop:2 }} />
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:500 }}>{opt.name}</div>
+                      <div style={{ fontSize:11, color:'var(--text3)' }}>{priceLbl}</div>
+                    </div>
+                  </label>
+                )
+              })}
             </div>
           </div>
         </div>
@@ -441,8 +483,13 @@ function RentalStep({ client, onNext, onBack }) {
           <div className="card-body">
             {[
               { label: 'Vehicle rental', value: `${vehicle?.dailyRate || 0} × ${days} days`, amount: totalHT },
-              ...(form.cdw ? [{ label: 'CDW insurance', value: `80 × ${days} days`, amount: 80*days }] : []),
-              ...(form.pai ? [{ label: 'PAI insurance', value: `50 × ${days} days`, amount: 50*days }] : []),
+              ...rentalOptions
+                .filter(opt => form.selectedOptions[opt.id])
+                .map(opt => ({
+                  label: opt.name,
+                  value: opt.pricingType === 'per_day' ? `${opt.price} × ${days} days` : 'Forfait',
+                  amount: opt.pricingType === 'per_day' ? opt.price * days : opt.price,
+                })),
               { label: 'TVA (20%)', value: '', amount: tva },
             ].map(({ label, value, amount }) => (
               <div key={label} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid var(--border)', fontSize:13 }}>
@@ -674,6 +721,8 @@ function ContractStep({ client, rental, photos, onNext, onBack }) {
   const [agency, setAgency] = useState({})
   const [saved, setSaved] = useState(false)
   const [contract, setContract] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -684,6 +733,9 @@ function ContractStep({ client, rental, photos, onNext, onBack }) {
   }, [])
 
   const confirmAndSave = async () => {
+    if (saving || saved) return
+    setSaving(true)
+    setSaveError(null)
     try {
       const savedClient = await saveClient(client)
       const c = await saveContract({
@@ -702,6 +754,9 @@ function ContractStep({ client, rental, photos, onNext, onBack }) {
       setSaved(true)
     } catch (err) {
       console.error('[NewRental] confirmAndSave', err)
+      setSaveError(err.message || 'Une erreur est survenue. Veuillez réessayer.')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -774,8 +829,15 @@ function ContractStep({ client, rental, photos, onNext, onBack }) {
         </div>
       </div>
 
+      {saveError && (
+        <div className="alert alert-danger mb-3" style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span>{saveError}</span>
+        </div>
+      )}
+
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <button className="btn btn-ghost btn-lg" onClick={onBack}><ArrowLeft size={15} /> Back</button>
+        <button className="btn btn-ghost btn-lg" onClick={onBack} disabled={saving}><ArrowLeft size={15} /> Back</button>
         <div style={{ display:'flex', gap:10 }}>
           {saved ? (
             <>
@@ -785,8 +847,8 @@ function ContractStep({ client, rental, photos, onNext, onBack }) {
               </button>
             </>
           ) : (
-            <button className="btn btn-primary btn-lg" onClick={confirmAndSave}>
-              <CheckCircle size={15} /> Confirm & Save Contract
+            <button className="btn btn-primary btn-lg" disabled={saving} onClick={confirmAndSave}>
+              <CheckCircle size={15} /> {saving ? 'Enregistrement…' : 'Confirm & Save Contract'}
             </button>
           )}
         </div>
@@ -920,6 +982,7 @@ export default function NewRental({ onDone }) {
   const [rental,   setRental]   = useState(draft?.rental   ?? null)
   const [photos,   setPhotos]   = useState(draft?.photos   ?? {})
   const [contract, setContract] = useState(draft?.contract ?? null)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
 
   const persist = (patch) => {
     saveDraft({ step, client, rental, photos, contract, ...patch })
@@ -993,11 +1056,6 @@ export default function NewRental({ onDone }) {
           <h2>New Rental</h2>
           <p>Complete all steps to generate the contract and invoice</p>
         </div>
-        {step < 4 && (
-          <button className="btn btn-ghost" onClick={handleQuit} title="Sauvegarder et quitter">
-            💾 Quitter & sauvegarder
-          </button>
-        )}
       </div>
       <div className="page-body">
         <StepBar current={step} />
@@ -1006,7 +1064,41 @@ export default function NewRental({ onDone }) {
         {step === 2 && <PhotoStep onNext={p => advance({ photos: p, step: 3 })} onBack={() => advance({ step: 1 })} />}
         {step === 3 && <ContractStep client={client} rental={rental} photos={photos} onNext={c => advance({ contract: c, step: 4 })} onBack={() => advance({ step: 2 })} />}
         {step === 4 && <InvoiceStep client={client} rental={rental} contract={contract} onDone={handleDone} />}
+
+        {step < 4 && (
+          <div style={{ display: 'flex', gap: 10, marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+            <button className="btn btn-ghost" onClick={handleQuit} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              💾 Sauvegarder & quitter
+            </button>
+            <button className="btn btn-ghost" style={{ color: '#dc2626', display: 'flex', alignItems: 'center', gap: 6 }}
+              onClick={() => setShowCancelConfirm(true)}>
+              <X size={14} /> Annuler la location
+            </button>
+          </div>
+        )}
       </div>
+
+      {showCancelConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setShowCancelConfirm(false)}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 28, maxWidth: 400, width: '90%' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginBottom: 10 }}>Annuler la location ?</h3>
+            <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
+              Toutes les données saisies seront supprimées et le brouillon sera effacé. Cette action est irréversible.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn btn-primary" style={{ background: '#dc2626', borderColor: '#dc2626', flex: 1 }}
+                onClick={() => { setShowCancelConfirm(false); handleDiscard(); onDone() }}>
+                Oui, annuler
+              </button>
+              <button className="btn btn-ghost" onClick={() => setShowCancelConfirm(false)}>
+                Retour
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
