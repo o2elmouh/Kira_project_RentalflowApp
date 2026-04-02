@@ -546,8 +546,8 @@ function RentalStep({ client, onNext, onBack, onSaveAndQuit, onCancel }) {
       <StepButtons
         leftBtns={
           <>
-            <button className="btn btn-primary btn-lg" onClick={onBack}><ArrowLeft size={15} /> Retour</button>
-            <button className="btn btn-primary btn-lg" style={{ color: '#dc2626' }} onClick={onCancel}>
+            <button className="btn btn-primary btn-lg" onClick={onBack} style={{ color: 'white' }}><ArrowLeft size={15} /> Retour</button>
+            <button className="btn btn-primary btn-lg" style={{ color: 'white' }} onClick={onCancel}>
               <X size={15} /> Annuler la location
             </button>
           </>
@@ -758,8 +758,8 @@ function PhotoStep({ onNext, onBack, onSaveAndQuit, onCancel }) {
       <StepButtons
         leftBtns={
           <>
-            <button className="btn btn-primary btn-lg" onClick={onBack}><ArrowLeft size={15} /> Retour</button>
-            <button className="btn btn-primary btn-lg" style={{ color: '#dc2626' }} onClick={onCancel}>
+            <button className="btn btn-primary btn-lg" onClick={onBack} style={{ color: 'white' }}><ArrowLeft size={15} /> Retour</button>
+            <button className="btn btn-primary btn-lg" style={{ color: 'white' }} onClick={onCancel}>
               <X size={15} /> Annuler la location
             </button>
           </>
@@ -770,7 +770,7 @@ function PhotoStep({ onNext, onBack, onSaveAndQuit, onCancel }) {
               💾 Sauvegarder & quitter
             </button>
             <button className="btn btn-primary btn-lg" onClick={() => onNext(photos)}>
-              {takenCount === 0 ? 'Passer' : 'Continuer'} <ArrowRight size={15} />
+              Continuer <ArrowRight size={15} />
             </button>
           </>
         }
