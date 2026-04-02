@@ -220,11 +220,14 @@ FLESPI_TOKEN=                 ← Flespi API token
   - Restitution.jsx Step1 — detects end-snapshot for tracked vehicles, shows pre-fill banner with one-click apply
   - Settings.jsx — "Télématique" tab: provider selector (mock/traccar/flespi) + manual device↔vehicle mapping table + auto-detected list from fleet
   - localStorage: `rf_snapshots`, `rf_telemetry_map` (device↔vehicle mappings)
+- Dev server port: fixed to 5173 via `vite.config.js` `server.port` + `strictPort: true`
+- English locale files: all 9 namespaces (auth, dashboard, onboarding, fleet, contracts, clients, invoices, restitution, settings)
+- Telematics snapshot wiring (2026-04-02):
+  - NewRental.jsx: `snapshotOnStart()` called after contract saved as active
+  - Restitution.jsx: `snapshotOnEnd()` called after invoice saved before onDone()
 
 ### Pending
 - Wire Resend email provider (`server/routes/email.js` — needs `RESEND_API_KEY`)
-- English locale files for all namespaces beyond `common.json`
-- Telematics: Wire `snapshotOnStart` in NewRental.jsx (after contract saved as active); `snapshotOnEnd` in Restitution.jsx Step 4 before invoice finalised
 - Supabase migration (full push deferred — all data currently localStorage)
 
 ---
