@@ -917,23 +917,26 @@ function ContractStep({ client, rental, photos, onNext, onBack, onSaveAndQuit, o
           </>
         }
         rightBtns={
-          saved ? (
-            <>
-              <button className="btn btn-ghost" onClick={onSaveAndQuit} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                💾 Sauvegarder & quitter
+          <>
+            {!saved && (
+              <button className="btn btn-primary btn-lg" disabled={saving} onClick={confirmAndSave}>
+                <CheckCircle size={15} /> {saving ? 'Enregistrement…' : 'Sauvegarder & quitter'}
               </button>
-              <button className="btn btn-primary btn-lg" onClick={download}>
-                <Download size={14} /> Télécharger PDF
-              </button>
-              <button className="btn btn-primary btn-lg" onClick={() => onNext(contract)}>
-                Continuer <ArrowRight size={15} />
-              </button>
-            </>
-          ) : (
-            <button className="btn btn-primary btn-lg" disabled={saving} onClick={confirmAndSave}>
-              <CheckCircle size={15} /> {saving ? 'Enregistrement…' : 'Sauvegarder & quitter'}
+            )}
+            {saved && (
+              <>
+                <button className="btn btn-ghost" onClick={onSaveAndQuit} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  💾 Sauvegarder & quitter
+                </button>
+                <button className="btn btn-primary btn-lg" onClick={download}>
+                  <Download size={14} /> Télécharger PDF
+                </button>
+              </>
+            )}
+            <button className="btn btn-primary btn-lg" disabled={!saved} onClick={() => onNext(contract)}>
+              Continuer <ArrowRight size={15} />
             </button>
-          )
+          </>
         }
       />
     </div>
