@@ -908,19 +908,19 @@ function ContractStep({ client, rental, photos, onNext, onBack, onSaveAndQuit, o
       <StepButtons
         leftBtns={
           <>
-            <button className="btn btn-primary btn-lg" onClick={onBack} disabled={saving}>
+            <button className="btn btn-primary btn-lg" onClick={onBack} disabled={saving} style={{ color: 'white' }}>
               <ArrowLeft size={15} /> Retour
             </button>
-            <button className="btn btn-primary btn-lg" style={{ color: '#dc2626' }} disabled={saving} onClick={onCancel}>
-              <X size={15} /> Annuler
+            <button className="btn btn-primary btn-lg" style={{ color: 'white' }} disabled={saving} onClick={onCancel}>
+              <X size={15} /> Annuler la location
             </button>
           </>
         }
         rightBtns={
           <>
             {!saved && (
-              <button className="btn btn-primary btn-lg" disabled={saving} onClick={confirmAndSave}>
-                <CheckCircle size={15} /> {saving ? 'Enregistrement…' : 'Sauvegarder & quitter'}
+              <button className="btn btn-ghost" disabled={saving} onClick={confirmAndSave} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                💾 {saving ? 'Enregistrement…' : 'Sauvegarder & quitter'}
               </button>
             )}
             {saved && (
