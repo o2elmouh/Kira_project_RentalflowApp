@@ -14,7 +14,7 @@
 ## Overview
 **RentaFlow** is a Moroccan car rental agency SaaS (location de voitures).
 Target market: small/mid-size Moroccan rental agencies.
-Stack: React 18 + Vite 5 SPA, localStorage primary data layer, Supabase secondary.
+Stack: React 18 + Vite 5 SPA, **localStorage-only** data layer. Supabase is NOT used.
 
 ---
 
@@ -159,6 +159,11 @@ TWILIO_AUTH_TOKEN=            ← Twilio auth token (secret)
 TWILIO_WHATSAPP_FROM=         ← e.g. whatsapp:+14155238886 (Twilio sandbox or approved number)
 ANTHROPIC_API_KEY=            ← Claude API key for AI damage detection
 VITE_CMI_MERCHANT_ID=         ← CMI merchant ID for payment links (can be in frontend)
+TELEMETRY_PROVIDER=           ← 'traccar' | 'flespi' | 'mock' (default: mock)
+TRACCAR_URL=                  ← https://your-traccar-host
+TRACCAR_EMAIL=                ← Traccar admin email
+TRACCAR_PASSWORD=             ← Traccar admin password
+FLESPI_TOKEN=                 ← Flespi API token
 ```
 
 ### Supabase Storage
@@ -201,17 +206,26 @@ VITE_CMI_MERCHANT_ID=         ← CMI merchant ID for payment links (can be in f
 - i18n wired into: Auth, Onboarding, Dashboard, Sidebar, Fleet, Restitution, Clients, Contracts, Invoices, Settings
 - Auth P1: Login/Signup screens, Agency onboarding (with ICE + RC), Multi-user roles
 - Infrastructure: Vercel + CI/CD, Railway backend, env vars documented
-- WhatsApp: Contract, Invoice, Restitution PV sending via Twilio + Supabase Storage PDF hosting
-- AI damage detection: `server/routes/ai.js` → Claude Haiku Vision API; Restitution Step3 panel; `generateDamageReportPDF` export
+- WhatsApp: Contract, Invoice, Restitution PV sending via Twilio + temp-file PDF hosting (no Supabase)
+- AI damage detection: `server/routes/ai.js` → Claude Haiku Vision API; Restitution Step3 panel; before/after photos; dispute evidence package PDF
+- Accounting module: `pages/Accounting.jsx` — double-entry bookkeeping, chart of accounts, journal, deposits, agency payout; `utils/accounting.js`; localStorage keys rf_accounts/rf_transactions/rf_journal_entries/rf_deposits
+- Accounting dashboard: P&L view, Utilization vs Revenue SVG chart, Aged Receivables table
+- Telematics module (2026-04-01):
+  - `utils/telemetry.js` — adapter pattern: Traccar + Flespi normalizers → VehicleData; `computeDeltas()`; DTC helpers
+  - `server/routes/telemetry.js` — Railway proxy for Traccar/Flespi/mock; GET positions/position/:id/devices + POST snapshot
+  - `utils/snapshots.js` — `snapshotOnStart()` / `snapshotOnEnd()` client-side hooks; auto-flags vehicle to maintenance on DTC
+  - `pages/FleetMap.jsx` — react-leaflet live GPS map; green/orange/red dot markers by status; 30s auto-refresh; telemetry popup
+  - Fleet.jsx — "Carte GPS" tab toggle, DTC alert banner, lazy-loaded FleetMap, `vehicle.trackedDevice` field in edit form
+  - FleetMap.jsx — only tracked vehicles shown on map; untracked count shown below; device matching via `vehicle.trackedDevice`
+  - Restitution.jsx Step1 — detects end-snapshot for tracked vehicles, shows pre-fill banner with one-click apply
+  - Settings.jsx — "Télématique" tab: provider selector (mock/traccar/flespi) + manual device↔vehicle mapping table + auto-detected list from fleet
+  - localStorage: `rf_snapshots`, `rf_telemetry_map` (device↔vehicle mappings)
 
 ### Pending
 - Wire Resend email provider (`server/routes/email.js` — needs `RESEND_API_KEY`)
-- Supabase: add `p_ice`/`p_rc` params to `onboard_new_agency` RPC
-- Supabase: add `role` + `agency_id` columns to `profiles` table (if not present)
 - English locale files for all namespaces beyond `common.json`
-- AI: side-by-side before/after comparison (before photos from fleet vehicle photos — currently only after photos sent to AI)
-- AI: damage auto-flagging on contract record when AI detects damage
-- Supabase: create `whatsapp-temp` storage bucket (public) with folders contracts/ invoices/ restitutions/
+- Telematics: Wire `snapshotOnStart` in NewRental.jsx (after contract saved as active); `snapshotOnEnd` in Restitution.jsx Step 4 before invoice finalised
+- Supabase migration (full push deferred — all data currently localStorage)
 
 ---
 

@@ -14,7 +14,8 @@ import RestitutionPicker from './pages/RestitutionPicker'
 import AuthPage from './pages/Auth'
 import OnboardingPage from './pages/Onboarding'
 import SignContract from './pages/SignContract'
-import { seedDemoData } from './utils/storage'
+import { seedDemoData, initDefaultAccounts } from './utils/storage'
+import Accounting from './pages/Accounting'
 
 const USE_AUTH = import.meta.env.VITE_USE_AUTH === 'true'
 const PREVIEW  = new URLSearchParams(window.location.search).get('preview')
@@ -33,6 +34,7 @@ export default function App() {
   useEffect(() => {
     if (!USE_AUTH || !isSupabaseEnabled()) {
       seedDemoData()
+      initDefaultAccounts()
       setAuthState('ready')
       return
     }
@@ -122,6 +124,7 @@ export default function App() {
       case 'invoices':   return <Invoices />
       case 'clients':    return <Clients />
       case 'fleet':      return <Fleet />
+      case 'accounting': return <Accounting />
       case 'settings':   return <Settings />
       case 'restitution-picker':
         return <RestitutionPicker onPick={handleRestitution} onCancel={() => setPage('contracts')} />

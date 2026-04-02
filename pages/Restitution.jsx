@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle, ArrowRight, ArrowLeft, Download } from 'lucide-react'
+import { CheckCircle, ArrowRight, ArrowLeft, Download, Radio } from 'lucide-react'
 import { updateContract, saveInvoice, getFleet, saveVehicle, getAgency } from '../lib/db'
+import { getSnapshotsForContract } from '../storage'
+import { snapshotOnEnd } from '../utils/snapshots'
 import { api } from '../lib/api'
 import CarPhotoGuide from '../components/CarPhotoGuide'
 import jsPDF from 'jspdf'
@@ -230,19 +232,67 @@ function generateRestitutionPDF({ agency = {}, contract, returnDate, returnTime,
 
 // ── Step 1: Retour kilométrage & carburant ────────────────
 
-function Step1Return({ contract, data, onChange, onNext }) {
+function Step1Return({ contract, vehicle, data, onChange, onNext }) {
   const { t } = useTranslation('restitution')
-  const startMileage = contract.startMileage || contract.mileageOut || 0
+  const startMileage   = contract.startMileage || contract.mileageOut || 0
   const departureLevel = contract.fuelLevel || 'Plein'
   const kmDriven = data.returnMileage ? Math.max(0, data.returnMileage - startMileage) : 0
   const fuelDiff = (FUEL_LEVELS[departureLevel] || 0) - (FUEL_LEVELS[data.returnFuelLevel] || 0)
 
   const isValid = data.returnMileage >= startMileage && data.returnDate && data.returnTime
 
+  // Check for a telemetry end-snapshot for pre-fill
+  const [snapFill, setSnapFill] = useState(null)
+  useEffect(() => {
+    const snaps   = getSnapshotsForContract(contract.id)
+    const endSnap = snaps.find(s => s.phase === 'end')
+    if (endSnap && vehicle?.trackedDevice) setSnapFill(endSnap)
+  }, [contract.id, vehicle])
+
+  const applySnapshot = () => {
+    if (!snapFill) return
+    // Convert fuel % to nearest FUEL_OPTIONS label
+    const fuelPct = snapFill.fuel ?? -1
+    let fuelLabel = data.returnFuelLevel
+    if (fuelPct >= 90) fuelLabel = 'Plein'
+    else if (fuelPct >= 65) fuelLabel = '3/4'
+    else if (fuelPct >= 40) fuelLabel = '1/2'
+    else if (fuelPct >= 15) fuelLabel = '1/4'
+    else if (fuelPct >= 0)  fuelLabel = 'Vide'
+    onChange({ returnMileage: snapFill.mileage, returnFuelLevel: fuelLabel })
+  }
+
   return (
     <div className="card" style={{ maxWidth: 540, margin: '0 auto' }}>
       <div className="card-header"><h3 style={{ margin: 0, fontSize: 16 }}>{t('step1.title')}</h3></div>
       <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+        {/* Telemetry pre-fill banner */}
+        {snapFill ? (
+          <div style={{ background: '#0f2a1a', border: '1px solid #166534', borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Radio size={14} color="#4ade80" />
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#4ade80' }}>Données télématiques disponibles</div>
+                <div style={{ fontSize: 11, color: '#86efac', marginTop: 2 }}>
+                  {snapFill.mileage?.toLocaleString()} km · Carburant {Math.round(snapFill.fuel ?? 0)}%
+                  {snapFill.dtcCodes?.length > 0 && <span style={{ color: '#f87171', marginLeft: 8 }}>⚠ DTC: {snapFill.dtcCodes.join(', ')}</span>}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={applySnapshot}
+              style={{ background: '#166534', color: '#4ade80', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              Pré-remplir
+            </button>
+          </div>
+        ) : vehicle?.trackedDevice ? (
+          <div style={{ background: '#1e1e2a', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 14px', fontSize: 12, color: 'var(--text3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Radio size={12} />
+            Véhicule GPS — aucun snapshot de fin disponible. Saisie manuelle.
+          </div>
+        ) : null}
 
         <div className="form-group">
           <label className="form-label">{t('step1.returnKm')}</label>
@@ -414,7 +464,7 @@ function Step2Photos({ contract, photos, onChange, onNext, onBack }) {
 
 // ── Step 3: État des lieux & frais ────────────────────────
 
-function Step3Damages({ contract, vehicle, agency, returnMileage, returnFuelLevel, returnPhotos, damages, onChange, damageFee, onDamageFee, onNext, onBack }) {
+function Step3Damages({ contract, vehicle, agency, returnMileage, returnFuelLevel, returnPhotos, beforePhotos, damages, onChange, damageFee, onDamageFee, onNext, onBack }) {
   const { t } = useTranslation('restitution')
   const { extraKm, extraKmFee, kmAllowed, kmDriven, fuelDiff, fuelFee, totalExtraFees } =
     computeExtraFees({ vehicle, returnMileage, returnFuelLevel, contract, damageFee })
@@ -440,19 +490,31 @@ function Step3Damages({ contract, vehicle, agency, returnMileage, returnFuelLeve
   const [aiError, setAiError]     = useState(null)
 
   const runAiAnalysis = async () => {
-    const photos = (returnPhotos || []).filter(Boolean)
-    if (photos.length === 0) { alert('Aucune photo disponible. Prenez des photos à l\'étape précédente.'); return }
+    const afterPhotos = Object.values(returnPhotos || {}).filter(Boolean)
+    if (afterPhotos.length === 0) { alert('Aucune photo disponible. Prenez des photos à l\'étape précédente.'); return }
     setAiLoading(true)
     setAiError(null)
     setAiResult(null)
     try {
       const result = await api.detectDamage({
-        afterPhotos: photos,
+        afterPhotos,
+        beforePhotos: beforePhotos || [],
         contractNumber: contract.contractNumber,
         vehicleName: contract.vehicleName,
         clientName: contract.clientName,
       })
       setAiResult(result)
+      // Persist AI result to contract in localStorage
+      try {
+        await updateContract({
+          ...contract,
+          aiAnalysis: result,
+          damageFlagged: result.hasDamage,
+          aiAnalysedAt: result.analysedAt,
+        })
+      } catch (e) {
+        console.error('[AI] updateContract', e)
+      }
       // Auto-populate damage checkboxes from AI findings
       if (result.hasDamage && result.damages?.length > 0) {
         const newDamages = [...damages]
@@ -485,7 +547,21 @@ function Step3Damages({ contract, vehicle, agency, returnMileage, returnFuelLeve
       agency,
       contract,
       analysis: aiResult,
-      afterPhotos: returnPhotos || [],
+      beforePhotos: beforePhotos || [],
+      afterPhotos: Object.values(returnPhotos || {}).filter(Boolean),
+    })
+  }
+
+  const downloadDisputePackage = async () => {
+    if (!aiResult) return
+    const { generateDisputePackage } = await import('../utils/pdf')
+    generateDisputePackage({
+      agency,
+      contract,
+      vehicle,
+      beforePhotos: beforePhotos || [],
+      afterPhotos: Object.values(returnPhotos || {}).filter(Boolean),
+      aiAnalysis: aiResult,
     })
   }
 
@@ -594,13 +670,22 @@ function Step3Damages({ contract, vehicle, agency, returnMileage, returnFuelLeve
               )}
 
               {/* Download report button */}
-              <button
-                className="btn btn-secondary"
-                style={{ fontSize: 12, padding: '4px 12px' }}
-                onClick={downloadAiReport}
-              >
-                📄 Télécharger rapport IA
-              </button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  className="btn btn-secondary"
+                  style={{ fontSize: 12, padding: '4px 12px' }}
+                  onClick={downloadAiReport}
+                >
+                  📄 Télécharger rapport IA
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  style={{ fontSize: 12, padding: '4px 12px', background: '#fff7ed', borderColor: '#fdba74', color: '#c2410c' }}
+                  onClick={downloadDisputePackage}
+                >
+                  🗂 Dossier de litige
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -775,6 +860,13 @@ function Step4Closure({ agency, contract, vehicle, returnDate, returnTime, retur
         })
       }
 
+      // 4. Capture telemetry snapshot at rental end
+      try {
+        await snapshotOnEnd(contract)
+      } catch (err) {
+        console.warn('[Restitution] snapshotOnEnd failed:', err)
+      }
+
       onDone()
     } catch (err) {
       console.error('[Restitution] handleClose', err)
@@ -940,6 +1032,7 @@ export default function Restitution({ contract, onDone }) {
           {step === 0 && (
             <Step1Return
               contract={contract}
+              vehicle={vehicle}
               data={returnData}
               onChange={patch => setReturnData(prev => ({ ...prev, ...patch }))}
               onNext={() => setStep(1)}
@@ -964,6 +1057,7 @@ export default function Restitution({ contract, onDone }) {
               returnMileage={returnData.returnMileage}
               returnFuelLevel={returnData.returnFuelLevel}
               returnPhotos={returnPhotos}
+              beforePhotos={Object.values(vehicle?.photos || {}).filter(Boolean)}
               damages={damages}
               onChange={setDamages}
               damageFee={damageFee}

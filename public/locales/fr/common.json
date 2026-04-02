@@ -54,6 +54,7 @@
     "clients": "Clients",
     "contracts": "Contrats",
     "invoices": "Factures",
+    "accounting": "Comptabilité",
     "settings": "Paramètres"
   }
 }

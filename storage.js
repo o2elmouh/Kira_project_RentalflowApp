@@ -1,11 +1,17 @@
 // Keys
 const KEYS = {
-  clients:   'rf_clients',
-  contracts: 'rf_contracts',
-  fleet:     'rf_fleet',
-  invoices:  'rf_invoices',
-  agency:    'rf_agency',
-  repairs:   'rf_repairs',
+  clients:        'rf_clients',
+  contracts:      'rf_contracts',
+  fleet:          'rf_fleet',
+  invoices:       'rf_invoices',
+  agency:         'rf_agency',
+  repairs:        'rf_repairs',
+  accounts:       'rf_accounts',
+  transactions:   'rf_transactions',
+  journalEntries: 'rf_journal_entries',
+  deposits:       'rf_deposits',
+  snapshots:      'rf_snapshots',
+  telemetryMap:   'rf_telemetry_map',    // deviceId ↔ vehicleId mapping + provider config
 }
 
 const read  = k => JSON.parse(localStorage.getItem(k) || '[]')
@@ -42,6 +48,7 @@ export const saveVehicle = (vehicle) => {
   else list.unshift({ ...vehicle, id: vehicle.id || uid(), addedAt: new Date().toISOString() })
   write(KEYS.fleet, list)
 }
+export const getVehicle = (id) => read(KEYS.fleet).find(v => v.id === id) || null
 export const deleteVehicle = (id) => write(KEYS.fleet, read(KEYS.fleet).filter(v => v.id !== id))
 export const getAvailableVehicles = (startDate, endDate) => {
   const fleet = read(KEYS.fleet)
@@ -260,4 +267,152 @@ export const seedDemoData = () => {
   }
   write(KEYS.contracts, [demoContract, activeContract])
   localStorage.setItem('rf_contract_seq', '2')
+}
+
+// ── Accounting: Chart of Accounts ────────────────────────
+const DEFAULT_ACCOUNTS = [
+  { code: '1000', name: 'Caisse / Espèces',                  type: 'asset',     normalBalance: 'debit',  category: 'Actifs' },
+  { code: '1010', name: 'Banque',                             type: 'asset',     normalBalance: 'debit',  category: 'Actifs' },
+  { code: '1100', name: 'Créances clients',                   type: 'asset',     normalBalance: 'debit',  category: 'Actifs' },
+  { code: '1200', name: 'Dépôts de garantie à recevoir',      type: 'asset',     normalBalance: 'debit',  category: 'Actifs' },
+  { code: '1300', name: 'Parc automobile',                    type: 'asset',     normalBalance: 'debit',  category: 'Actifs' },
+  { code: '2000', name: 'Dépôts de garantie clients',         type: 'liability', normalBalance: 'credit', category: 'Passifs' },
+  { code: '2100', name: 'TVA collectée (20%)',                 type: 'liability', normalBalance: 'credit', category: 'Passifs' },
+  { code: '2200', name: 'Fournisseurs',                        type: 'liability', normalBalance: 'credit', category: 'Passifs' },
+  { code: '3000', name: "Chiffre d'affaires — Location",       type: 'revenue',   normalBalance: 'credit', category: 'Produits' },
+  { code: '3010', name: 'Extras et assurances',                type: 'revenue',   normalBalance: 'credit', category: 'Produits' },
+  { code: '3020', name: 'Frais de restitution',                type: 'revenue',   normalBalance: 'credit', category: 'Produits' },
+  { code: '3030', name: 'Frais kilométriques supplémentaires', type: 'revenue',   normalBalance: 'credit', category: 'Produits' },
+  { code: '4000', name: 'Entretien et réparations',            type: 'expense',   normalBalance: 'debit',  category: 'Charges' },
+  { code: '4010', name: 'Carburant',                           type: 'expense',   normalBalance: 'debit',  category: 'Charges' },
+  { code: '4020', name: 'Assurances véhicules',                type: 'expense',   normalBalance: 'debit',  category: 'Charges' },
+  { code: '4030', name: 'Commission plateforme',               type: 'expense',   normalBalance: 'debit',  category: 'Charges' },
+  { code: '4040', name: 'Amortissements',                      type: 'expense',   normalBalance: 'debit',  category: 'Charges' },
+]
+
+export const getAccounts = () => read(KEYS.accounts)
+
+export const saveAccount = (account) => {
+  const list = read(KEYS.accounts)
+  const idx = list.findIndex(a => a.id === account.id)
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], ...account }
+  } else {
+    list.push({ ...account, id: account.id || (typeof crypto !== 'undefined' ? crypto.randomUUID() : uid()), createdAt: new Date().toISOString() })
+    list.sort((a, b) => a.code.localeCompare(b.code))
+  }
+  write(KEYS.accounts, list)
+}
+
+export const initDefaultAccounts = () => {
+  const existing = read(KEYS.accounts)
+  if (existing.length > 0) return
+  const seeded = DEFAULT_ACCOUNTS.map(a => ({
+    ...a,
+    id: (typeof crypto !== 'undefined' ? crypto.randomUUID() : uid()),
+    isSystem: true,
+    createdAt: new Date().toISOString(),
+  }))
+  write(KEYS.accounts, seeded)
+}
+
+// ── Accounting: Transactions ──────────────────────────────
+export const getTransactions = () => read(KEYS.transactions)
+
+export const saveTransaction = (tx) => {
+  const list = read(KEYS.transactions)
+  const idx = list.findIndex(t => t.id === tx.id)
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], ...tx }
+    write(KEYS.transactions, list)
+    return list[idx]
+  } else {
+    const seq = (parseInt(localStorage.getItem('rf_txn_seq') || '0', 10)) + 1
+    localStorage.setItem('rf_txn_seq', String(seq))
+    const year = new Date().getFullYear()
+    const newTx = {
+      ...tx,
+      id: tx.id || (typeof crypto !== 'undefined' ? crypto.randomUUID() : uid()),
+      reference: tx.reference || `TXN-${year}-${String(seq).padStart(4, '0')}`,
+      createdAt: new Date().toISOString(),
+    }
+    list.unshift(newTx)
+    write(KEYS.transactions, list)
+    return newTx
+  }
+}
+
+// ── Accounting: Journal Entries ───────────────────────────
+export const getJournalEntries = () => read(KEYS.journalEntries)
+
+export const getEntriesForTransaction = (txId) =>
+  read(KEYS.journalEntries).filter(e => e.transactionId === txId)
+
+export const saveJournalEntry = (entry) => {
+  const list = read(KEYS.journalEntries)
+  const idx = list.findIndex(e => e.id === entry.id)
+  const saved = { ...entry, id: entry.id || (typeof crypto !== 'undefined' ? crypto.randomUUID() : uid()), createdAt: new Date().toISOString() }
+  if (idx >= 0) list[idx] = saved
+  else list.push(saved)
+  write(KEYS.journalEntries, list)
+  return saved
+}
+
+export const saveJournalEntries = (entries) => {
+  const list = read(KEYS.journalEntries)
+  entries.forEach(entry => {
+    const saved = { ...entry, id: entry.id || (typeof crypto !== 'undefined' ? crypto.randomUUID() : uid()), createdAt: new Date().toISOString() }
+    const idx = list.findIndex(e => e.id === saved.id)
+    if (idx >= 0) list[idx] = saved
+    else list.push(saved)
+  })
+  write(KEYS.journalEntries, list)
+}
+
+// ── Accounting: Deposits ──────────────────────────────────
+export const getDeposits = () => read(KEYS.deposits)
+
+export const saveDeposit = (deposit) => {
+  const list = read(KEYS.deposits)
+  const idx = list.findIndex(d => d.id === deposit.id)
+  const saved = { ...deposit, id: deposit.id || (typeof crypto !== 'undefined' ? crypto.randomUUID() : uid()), createdAt: deposit.createdAt || new Date().toISOString() }
+  if (idx >= 0) list[idx] = saved
+  else list.unshift(saved)
+  write(KEYS.deposits, list)
+  return saved
+}
+
+export const getDepositByContract = (contractId) =>
+  read(KEYS.deposits).find(d => d.contractId === contractId) || null
+
+// ── Telematics: Contract Snapshots ───────────────────────
+// Snapshot: { id, contractId, vehicleId, phase:'start'|'end', mileage, fuel,
+//             lat, lng, engineOn, dtcCodes, takenAt, provider }
+export const getSnapshots = () => read(KEYS.snapshots)
+
+export const saveSnapshot = (snapshot) => {
+  const list = read(KEYS.snapshots)
+  const saved = { id: uid(), takenAt: new Date().toISOString(), ...snapshot }
+  const idx   = list.findIndex(s => s.id === saved.id)
+  if (idx >= 0) list[idx] = saved
+  else list.unshift(saved)
+  write(KEYS.snapshots, list)
+  return saved
+}
+
+export const getSnapshotsForContract = (contractId) =>
+  read(KEYS.snapshots).filter(s => s.contractId === contractId)
+
+// ── Telematics: Device↔Vehicle mapping + provider config ─
+export const getTelemetryConfig = () =>
+  JSON.parse(localStorage.getItem(KEYS.telemetryMap) || '{"provider":"mock","mappings":[]}')
+
+export const saveTelemetryConfig = (config) =>
+  localStorage.setItem(KEYS.telemetryMap, JSON.stringify(config))
+
+// Returns the deviceId mapped to a vehicleId (or null)
+export const getDeviceForVehicle = (vehicleId) => {
+  const cfg = getTelemetryConfig()
+  const m   = (cfg.mappings || []).find(m => m.vehicleId === vehicleId)
+  return m ? m.deviceId : null
 }

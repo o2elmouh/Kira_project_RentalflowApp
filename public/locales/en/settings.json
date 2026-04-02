@@ -1,0 +1,85 @@
+{
+  "title": "Settings",
+  "subtitle": "Agency configuration",
+  "tabs": {
+    "agency": "Agency",
+    "fleetConfig": "Fleet config",
+    "general": "General",
+    "team": "Team",
+    "telematique": "Telematics"
+  },
+  "agency": {
+    "generalInfo": "General information",
+    "name": "Agency name",
+    "namePlaceholder": "Ex: Auto Rental Morocco",
+    "city": "City",
+    "cityPlaceholder": "Ex: Casablanca",
+    "address": "Address",
+    "addressPlaceholder": "Ex: 12 Flower Street, Casablanca",
+    "phone": "Phone",
+    "phonePlaceholder": "Ex: +212 6XX XXX XXX",
+    "email": "Agency email",
+    "emailPlaceholder": "Ex: contact@agency.ma",
+    "legalSection": "Tax & legal identifiers",
+    "ice": "ICE",
+    "icePlaceholder": "Common Company Identifier",
+    "rc": "RC",
+    "rcPlaceholder": "Business Register",
+    "if": "IF — Tax Identifier",
+    "ifPlaceholder": "Ex: 12345678",
+    "patente": "License",
+    "patentePlaceholder": "License number",
+    "insurance": "Insurance policy #",
+    "insurancePlaceholder": "Ex: ASS-2024-00123",
+    "saveBtn": "Save settings",
+    "saved": "Saved"
+  },
+  "fleetConfig": {
+    "title": "Fleet configuration",
+    "resetBtn": "Reset to defaults",
+    "headers": {
+      "brand": "Brand",
+      "generalWarranty": "General warranty",
+      "durationYears": "Duration (years)",
+      "batteryWarranty": "Battery warranty",
+      "controleTech": "Technical inspection (years)",
+      "oilChange": "Oil change (km)",
+      "timingBelt": "Timing belt (km)",
+      "extensible": "Extensible"
+    }
+  },
+  "general": {
+    "tabs": {
+      "options": "Rental options",
+      "signature": "Default signature",
+      "params": "Parameters"
+    },
+    "options": {
+      "title": "Rental options",
+      "saved": "Saved",
+      "editBtn": "Edit",
+      "namePlaceholder": "Option name",
+      "perDay": "Per day",
+      "fixed": "Fixed",
+      "addBtn": "+ Add option",
+      "saveBtn": "Save",
+      "cancelBtn": "Cancel",
+      "defaultCDW": "CDW — Collision Damage Waiver",
+      "defaultPAI": "PAI — Personal Accident Insurance"
+    },
+    "signature": {
+      "title": "Default signature",
+      "saved": "Saved",
+      "editBtn": "Edit signature",
+      "instruction": "Draw your signature below:",
+      "clearBtn": "Clear",
+      "saveBtn": "Save signature",
+      "savedMsg": "Signature saved"
+    },
+    "params": {
+      "title": "General parameters",
+      "comingSoon": "More general parameters will be added here soon.",
+      "kmNote": "ℹ️ Mileage limit is now configurable per vehicle in the Fleet page."
+    }
+  }
+}

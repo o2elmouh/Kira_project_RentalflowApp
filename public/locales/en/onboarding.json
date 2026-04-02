@@ -1,0 +1,34 @@
+{
+  "step1": {
+    "title": "Welcome! 👋",
+    "subtitle": "Let's set up your account in 2 steps.",
+    "fullName": "Your full name",
+    "fullNamePlaceholder": "First Last",
+    "phone": "Phone",
+    "phonePlaceholder": "+212 6XX XXX XXX",
+    "next": "Next →",
+    "errors": {
+      "nameRequired": "Your name is required."
+    }
+  },
+  "step2": {
+    "title": "Your agency",
+    "subtitle": "This information will appear on your contracts and invoices.",
+    "agencyName": "Agency name *",
+    "agencyNamePlaceholder": "Atlas Car Rental",
+    "city": "City",
+    "cityPlaceholder": "Casablanca",
+    "back": "← Back",
+    "submit": "Create my agency 🚀",
+    "submitting": "Creating…",
+    "errors": {
+      "required": "Agency name and your name are required.",
+      "generic": "Error creating agency. Check the console."
+    },
+    "ice": "ICE",
+    "icePlaceholder": "000000000000000",
+    "rc": "Business Register (RC)",
+    "rcPlaceholder": "123456"
+  },
+  "loggedInAs": "Logged in as {{email}} ·"
+}

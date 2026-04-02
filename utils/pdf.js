@@ -1166,3 +1166,404 @@ export function generateDamageReport({ agency = {}, contract, analysis, beforePh
 
   doc.save(`rapport-dommages-${contract.contractNumber || 'doc'}-${new Date().toISOString().slice(0, 10)}.pdf`)
 }
+
+/**
+ * Generate a comprehensive timestamped dispute evidence package PDF.
+ * Multi-page: cover, before photos, after photos, AI findings, legal summary.
+ *
+ * @param {object} params
+ * @param {object} params.agency
+ * @param {object} params.contract
+ * @param {object} params.vehicle
+ * @param {string[]} params.beforePhotos — base64 data-URLs (fleet reference photos)
+ * @param {string[]} params.afterPhotos  — base64 data-URLs (return photos)
+ * @param {object} params.aiAnalysis    — result from /ai/detect-damage
+ * @returns {void}  — triggers browser download
+ */
+export function generateDisputePackage({ agency = {}, contract, vehicle, beforePhotos = [], afterPhotos = [], aiAnalysis }) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+
+  const RED    = [220, 38, 38]
+  const GREEN  = [22, 163, 74]
+  const ORANGE = [234, 88, 12]
+  const SEAL   = [199, 75, 31]
+
+  const generatedAt = new Date()
+  const generatedStr = generatedAt.toLocaleString('fr-MA')
+  const dateSlug = generatedAt.toISOString().slice(0, 10)
+
+  const FOOTER_TEXT = `Généré le ${generatedStr} par RentaFlow — Document horodaté à valeur probatoire`
+
+  function pageFooter(pageDoc) {
+    pageDoc.setFont('helvetica', 'italic')
+    pageDoc.setFontSize(7)
+    pageDoc.setTextColor(...GRAY)
+    pageDoc.text(FOOTER_TEXT, 105, 291, { align: 'center' })
+    pageDoc.setDrawColor(...GRAY)
+    pageDoc.setLineWidth(0.2)
+    pageDoc.line(14, 288, 196, 288)
+  }
+
+  function photoGrid(pageDoc, photos, startY, dateLabel) {
+    const photoW = 84
+    const photoH = 56
+    let y = startY
+    const cols = 2
+    for (let i = 0; i < photos.length; i++) {
+      const col = i % cols
+      const x = col === 0 ? 14 : 112
+      if (col === 0 && i > 0) y += photoH + 12
+      if (y + photoH > 278) { pageFooter(pageDoc); pageDoc.addPage(); y = 20 }
+      try {
+        const fmt = photos[i].startsWith('data:image/png') ? 'PNG' : 'JPEG'
+        pageDoc.addImage(photos[i], fmt, x, y, photoW, photoH)
+      } catch (_) {
+        pageDoc.setFillColor(230, 228, 222)
+        pageDoc.rect(x, y, photoW, photoH, 'F')
+        pageDoc.setFont('helvetica', 'italic')
+        pageDoc.setFontSize(8)
+        pageDoc.setTextColor(...GRAY)
+        pageDoc.text('Photo non disponible', x + photoW / 2, y + photoH / 2, { align: 'center' })
+      }
+      pageDoc.setFont('helvetica', 'italic')
+      pageDoc.setFontSize(7)
+      pageDoc.setTextColor(...GRAY)
+      pageDoc.text(`Photo ${i + 1}`, x + photoW / 2, y + photoH + 4, { align: 'center' })
+    }
+    return y + photoH + 10
+  }
+
+  // ── PAGE 1: Cover ──────────────────────────────────────
+  // Dark header band
+  doc.setFillColor(...DARK)
+  doc.rect(0, 0, 210, 40, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(15)
+  doc.setTextColor(255, 255, 255)
+  doc.text('DOSSIER DE LITIGE', 105, 14, { align: 'center' })
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(200, 195, 185)
+  doc.text('PREUVE HORODATÉE', 105, 21, { align: 'center' })
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(8)
+  doc.setTextColor(255, 255, 255)
+  doc.text(agency.name || '', 14, 33)
+  doc.text(generatedStr, 196, 33, { align: 'right' })
+
+  // Accent sub-bar
+  doc.setFillColor(...SEAL)
+  doc.rect(0, 40, 210, 6, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7)
+  doc.setTextColor(255, 255, 255)
+  doc.text('Document généré automatiquement — à conserver pour usage légal et administratif', 105, 44.5, { align: 'center' })
+
+  let y = 56
+
+  // Digital seal box
+  doc.setFillColor(245, 243, 238)
+  doc.roundedRect(14, y, 182, 28, 3, 3, 'F')
+  doc.setDrawColor(...SEAL)
+  doc.setLineWidth(0.6)
+  doc.roundedRect(14, y, 182, 28, 3, 3, 'D')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  doc.setTextColor(...SEAL)
+  doc.text('🔐 CACHET NUMÉRIQUE', 105, y + 8, { align: 'center' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7.5)
+  doc.setTextColor(...DARK)
+  doc.text(`Horodatage: ${generatedStr}`, 105, y + 15, { align: 'center' })
+  doc.text(`Référence contrat: ${contract.contractNumber || '—'}   |   Agence: ${agency.name || '—'}`, 105, y + 21, { align: 'center' })
+  y += 36
+
+  // Contract info section
+  y = sectionTitle(doc, 'INFORMATIONS DU CONTRAT', y)
+  y = fieldRow(doc, 'N° Contrat:', contract.contractNumber || '—', 14, y)
+  y = fieldRow(doc, 'Client:', contract.clientName || '—', 14, y)
+  y = fieldRow(doc, 'Véhicule:', contract.vehicleName || '—', 14, y)
+  if (vehicle?.plate) {
+    y = fieldRow(doc, 'Immatriculation:', displayPlate(vehicle.plate), 14, y)
+  }
+  y = fieldRow(doc, 'Date de départ:', contract.startDate || '—', 14, y)
+  y = fieldRow(doc, 'Date de retour:', contract.returnDate || contract.endDate || '—', 14, y)
+  y += 4
+
+  // AI verdict summary on cover page
+  if (aiAnalysis) {
+    y = sectionTitle(doc, 'RÉSULTAT DE L\'ANALYSE IA', y)
+    const hasDamage = aiAnalysis.hasDamage
+    doc.setFillColor(...(hasDamage ? RED : GREEN))
+    doc.roundedRect(14, y, 182, 12, 2, 2, 'F')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.setTextColor(255, 255, 255)
+    doc.text(
+      hasDamage ? '⚠ DOMMAGES DÉTECTÉS — VOIR DÉTAILS PAGE 4' : '✓ AUCUN DOMMAGE DÉTECTÉ',
+      105, y + 8, { align: 'center' }
+    )
+    y += 16
+    if (aiAnalysis.summary) {
+      doc.setFont('helvetica', 'italic')
+      doc.setFontSize(9)
+      doc.setTextColor(...DARK)
+      const lines = doc.splitTextToSize(aiAnalysis.summary, 182)
+      doc.text(lines, 14, y)
+      y += lines.length * 5 + 4
+    }
+  }
+
+  // Table of contents
+  y += 4
+  y = sectionTitle(doc, 'TABLE DES MATIÈRES', y)
+  const toc = [
+    ['Page 1', 'Page de garde — Informations du contrat et résultat IA'],
+    ['Page 2', `Photos au départ — ${contract.startDate || '—'} (photos de référence)`],
+    ['Page 3', `Photos au retour — ${contract.returnDate || contract.endDate || '—'}`],
+    ['Page 4', 'Analyse IA détaillée — Dommages identifiés par zone'],
+    ['Page 5', 'Récapitulatif et mentions légales'],
+  ]
+  doc.autoTable({
+    startY: y,
+    body: toc,
+    styles: { fontSize: 8, cellPadding: 3 },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 20 } },
+    alternateRowStyles: { fillColor: LIGHT },
+    margin: { left: 14, right: 14 },
+    theme: 'grid',
+  })
+
+  pageFooter(doc)
+
+  // ── PAGE 2: Before photos ──────────────────────────────
+  doc.addPage()
+  doc.setFillColor(...DARK)
+  doc.rect(0, 0, 210, 18, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(255, 255, 255)
+  doc.text('PHOTOS AU DÉPART', 105, 8, { align: 'center' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(200, 195, 185)
+  doc.text(`Date de départ: ${contract.startDate || '—'}  |  ${contract.vehicleName || '—'}  |  État avant location`, 105, 14, { align: 'center' })
+
+  if (beforePhotos.length === 0) {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(10)
+    doc.setTextColor(...GRAY)
+    doc.text('Aucune photo de référence disponible pour ce véhicule.', 105, 60, { align: 'center' })
+    doc.setFontSize(8)
+    doc.text('Conseil : ajoutez des photos de référence dans la fiche véhicule (Parc automobile).', 105, 70, { align: 'center' })
+  } else {
+    photoGrid(doc, beforePhotos, 26, contract.startDate)
+  }
+  pageFooter(doc)
+
+  // ── PAGE 3: After photos ───────────────────────────────
+  doc.addPage()
+  doc.setFillColor(...DARK)
+  doc.rect(0, 0, 210, 18, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(255, 255, 255)
+  doc.text('PHOTOS AU RETOUR', 105, 8, { align: 'center' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(200, 195, 185)
+  doc.text(`Date de retour: ${contract.returnDate || contract.endDate || '—'}  |  ${contract.vehicleName || '—'}  |  État après location`, 105, 14, { align: 'center' })
+
+  if (afterPhotos.length === 0) {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(10)
+    doc.setTextColor(...GRAY)
+    doc.text('Aucune photo de retour disponible.', 105, 60, { align: 'center' })
+  } else {
+    photoGrid(doc, afterPhotos, 26, contract.returnDate || contract.endDate)
+  }
+  // Red border emphasis if damage detected
+  if (aiAnalysis?.hasDamage && afterPhotos.length > 0) {
+    doc.setDrawColor(...RED)
+    doc.setLineWidth(1.5)
+    doc.rect(12, 22, 186, 4)
+    doc.setLineWidth(0.2)
+  }
+  pageFooter(doc)
+
+  // ── PAGE 4: AI findings ────────────────────────────────
+  doc.addPage()
+  doc.setFillColor(...DARK)
+  doc.rect(0, 0, 210, 18, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(255, 255, 255)
+  doc.text('ANALYSE IA — DOMMAGES IDENTIFIÉS', 105, 8, { align: 'center' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(200, 195, 185)
+  const analysedStr = aiAnalysis?.analysedAt ? new Date(aiAnalysis.analysedAt).toLocaleString('fr-MA') : generatedStr
+  doc.text(`Analyse effectuée le: ${analysedStr}`, 105, 14, { align: 'center' })
+
+  let y4 = 26
+
+  if (!aiAnalysis) {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(10)
+    doc.setTextColor(...GRAY)
+    doc.text('Analyse IA non disponible.', 105, 60, { align: 'center' })
+  } else {
+    // Verdict badge
+    const hasDamage = aiAnalysis.hasDamage
+    const badgeColor = hasDamage ? RED : GREEN
+    doc.setFillColor(...badgeColor)
+    doc.roundedRect(14, y4, 182, 12, 2, 2, 'F')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.setTextColor(255, 255, 255)
+    doc.text(hasDamage ? '⚠ DOMMAGES DÉTECTÉS' : '✓ AUCUN DOMMAGE DÉTECTÉ', 105, y4 + 8, { align: 'center' })
+    y4 += 16
+
+    // Confidence
+    const confColor = aiAnalysis.confidence === 'high' ? GREEN : aiAnalysis.confidence === 'medium' ? ORANGE : GRAY
+    doc.setFillColor(...confColor)
+    doc.roundedRect(14, y4, 50, 8, 2, 2, 'F')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8)
+    doc.setTextColor(255, 255, 255)
+    const confLabel = aiAnalysis.confidence === 'high' ? 'Confiance: Élevée' : aiAnalysis.confidence === 'medium' ? 'Confiance: Moyenne' : 'Confiance: Faible'
+    doc.text(confLabel, 39, y4 + 5.5, { align: 'center' })
+    y4 += 14
+
+    // Summary
+    if (aiAnalysis.summary) {
+      doc.setFont('helvetica', 'italic')
+      doc.setFontSize(9)
+      doc.setTextColor(...DARK)
+      const lines = doc.splitTextToSize(aiAnalysis.summary, 182)
+      doc.text(lines, 14, y4)
+      y4 += lines.length * 5 + 6
+    }
+
+    // Damage table
+    if (hasDamage && aiAnalysis.damages?.length > 0) {
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9)
+      doc.setTextColor(...GRAY)
+      doc.text('ZONES ENDOMMAGÉES', 14, y4)
+      y4 += 3
+      doc.autoTable({
+        startY: y4,
+        head: [['Zone', 'Description', 'Sévérité']],
+        body: aiAnalysis.damages.map(d => [
+          d.zone || '—',
+          d.description || '—',
+          d.severity === 'major' ? 'Majeur' : d.severity === 'minor' ? 'Mineur' : 'Cosmétique',
+        ]),
+        styles: { fontSize: 9, cellPadding: 3 },
+        headStyles: { fillColor: RED, textColor: 255, fontStyle: 'bold' },
+        columnStyles: { 2: { halign: 'center', fontStyle: 'bold' } },
+        didParseCell: (data) => {
+          if (data.column.index === 2 && data.section === 'body') {
+            const sev = data.cell.raw
+            if (sev === 'Majeur') data.cell.styles.textColor = RED
+            else if (sev === 'Mineur') data.cell.styles.textColor = ORANGE
+          }
+        },
+        margin: { left: 14, right: 14 },
+        theme: 'grid',
+      })
+      y4 = doc.lastAutoTable.finalY + 10
+    }
+
+    // Recommendation
+    if (aiAnalysis.recommendation) {
+      doc.setFillColor(245, 243, 238)
+      const recLines = doc.splitTextToSize(`Recommandation: ${aiAnalysis.recommendation}`, 174)
+      doc.rect(14, y4 - 2, 182, recLines.length * 5 + 8, 'F')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9)
+      doc.setTextColor(...DARK)
+      doc.text(recLines, 17, y4 + 4)
+    }
+  }
+
+  pageFooter(doc)
+
+  // ── PAGE 5: Summary + legal notice ────────────────────
+  doc.addPage()
+  doc.setFillColor(...DARK)
+  doc.rect(0, 0, 210, 18, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(255, 255, 255)
+  doc.text('RÉCAPITULATIF & MENTIONS LÉGALES', 105, 8, { align: 'center' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(200, 195, 185)
+  doc.text(`Dossier généré le ${generatedStr}`, 105, 14, { align: 'center' })
+
+  let y5 = 26
+
+  // Summary table
+  y5 = sectionTitle(doc, 'RÉCAPITULATIF DU DOSSIER', y5)
+  doc.autoTable({
+    startY: y5,
+    body: [
+      ['Contrat N°', contract.contractNumber || '—'],
+      ['Client', contract.clientName || '—'],
+      ['Véhicule', contract.vehicleName || '—'],
+      ['Date départ', contract.startDate || '—'],
+      ['Date retour', contract.returnDate || contract.endDate || '—'],
+      ['Photos avant', `${beforePhotos.length} photo(s) de référence`],
+      ['Photos après', `${afterPhotos.length} photo(s) de retour`],
+      ['Résultat IA', aiAnalysis ? (aiAnalysis.hasDamage ? 'Dommages détectés' : 'Aucun dommage') : 'Non analysé'],
+      ['Horodatage', generatedStr],
+    ],
+    styles: { fontSize: 9, cellPadding: 3 },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } },
+    alternateRowStyles: { fillColor: LIGHT },
+    margin: { left: 14, right: 14 },
+    theme: 'grid',
+  })
+  y5 = doc.lastAutoTable.finalY + 12
+
+  // Legal notice
+  y5 = sectionTitle(doc, 'MENTIONS LÉGALES', y5)
+  const legalText = [
+    'Ce document a été généré automatiquement par le système RentaFlow et constitue un dossier de preuve horodaté.',
+    'Les photographies incluses ont été compressées mais conservent leur valeur probatoire.',
+    "L'analyse IA est fournie à titre indicatif et ne remplace pas l'expertise d'un professionnel.",
+    'Ce document peut être utilisé dans le cadre de procédures amiables ou judiciaires concernant des litiges de location.',
+    'Toute modification de ce document après génération annule sa valeur probatoire.',
+    `Agence: ${agency.name || '—'}  |  ICE: ${agency.ice || '—'}  |  RC: ${agency.rc || '—'}`,
+  ]
+  legalText.forEach(line => {
+    const lines = doc.splitTextToSize(`• ${line}`, 178)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...DARK)
+    doc.text(lines, 16, y5)
+    y5 += lines.length * 5 + 2
+  })
+
+  y5 += 10
+
+  // Signature boxes
+  if (y5 < 240) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.setTextColor(...DARK)
+    doc.text('Signature Locataire', 14, y5)
+    doc.text('Signature Agence', 120, y5)
+    y5 += 3
+    doc.setDrawColor(...GRAY)
+    doc.setLineWidth(0.4)
+    doc.rect(14, y5, 80, 28)
+    doc.rect(120, y5, 72, 28)
+  }
+
+  pageFooter(doc)
+
+  doc.save(`dossier-litige-${contract.contractNumber || 'doc'}-${dateSlug}.pdf`)
+}

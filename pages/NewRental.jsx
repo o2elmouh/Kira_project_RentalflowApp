@@ -3,6 +3,7 @@ import { Upload, Camera, CheckCircle, AlertCircle, Printer, Download, ArrowRight
 import { runOCR } from '../lib/ocr'
 import { getAvailableVehicles, saveClient, saveContract, saveInvoice, getAgency, getFleet, saveVehicle } from '../lib/db'
 import { generateContract, generateInvoice } from '../utils/pdf'
+import { snapshotOnStart } from '../utils/snapshots'
 import CarPhotoGuide from '../components/CarPhotoGuide'
 import { getGeneralConfig } from '../storage'
 
@@ -269,9 +270,9 @@ function ScanStep({ onNext }) {
 
       <ClientAlerts client={client} />
 
-      <div style={{ display:'flex', justifyContent:'flex-end', marginTop: 16 }}>
+      <div style={{ display:'flex', justifyContent:'center', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
         <button className="btn btn-primary btn-lg" disabled={!allFilled} onClick={() => onNext(client)}>
-          Continue <ArrowRight size={15} />
+          Continuer <ArrowRight size={15} />
         </button>
       </div>
     </div>
@@ -508,10 +509,10 @@ function RentalStep({ client, onNext, onBack }) {
         </div>
       </div>
 
-      <div style={{ display:'flex', justifyContent:'space-between', marginTop:16 }}>
-        <button className="btn btn-ghost btn-lg" onClick={onBack}><ArrowLeft size={15} /> Back</button>
+      <div style={{ display:'flex', justifyContent:'center', gap: 12, marginTop:16, flexWrap: 'wrap' }}>
+        <button className="btn btn-primary btn-lg" onClick={onBack}><ArrowLeft size={15} /> Retour</button>
         <button className="btn btn-primary btn-lg" disabled={!canContinue} onClick={handleNext}>
-          Generate Contract <ArrowRight size={15} />
+          Continuer <ArrowRight size={15} />
         </button>
       </div>
     </div>
@@ -706,8 +707,8 @@ function PhotoStep({ onNext, onBack }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <button className="btn btn-ghost btn-lg" onClick={onBack}><ArrowLeft size={15} /> Back</button>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <button className="btn btn-primary btn-lg" onClick={onBack}><ArrowLeft size={15} /> Retour</button>
         <button className="btn btn-primary btn-lg" onClick={() => onNext(photos)}>
           {takenCount === 0 ? 'Passer' : 'Continuer'} <ArrowRight size={15} />
         </button>
@@ -752,6 +753,12 @@ function ContractStep({ client, rental, photos, onNext, onBack }) {
       if (v) await saveVehicle({ ...v, status: 'rented' })
       setContract(c)
       setSaved(true)
+      // Capture telemetry snapshot at rental start
+      try {
+        await snapshotOnStart(c)
+      } catch (err) {
+        console.warn('[NewRental] snapshotOnStart failed:', err)
+      }
     } catch (err) {
       console.error('[NewRental] confirmAndSave', err)
       setSaveError(err.message || 'Une erreur est survenue. Veuillez réessayer.')
@@ -836,22 +843,27 @@ function ContractStep({ client, rental, photos, onNext, onBack }) {
         </div>
       )}
 
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <button className="btn btn-ghost btn-lg" onClick={onBack} disabled={saving}><ArrowLeft size={15} /> Back</button>
-        <div style={{ display:'flex', gap:10 }}>
-          {saved ? (
-            <>
-              <button className="btn btn-secondary" onClick={download}><Download size={14} /> Download PDF</button>
-              <button className="btn btn-primary btn-lg" onClick={() => onNext(contract)}>
-                Generate Invoice <ArrowRight size={15} />
-              </button>
-            </>
-          ) : (
-            <button className="btn btn-primary btn-lg" disabled={saving} onClick={confirmAndSave}>
-              <CheckCircle size={15} /> {saving ? 'Enregistrement…' : 'Confirm & Save Contract'}
+      <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap: 12, flexWrap: 'wrap' }}>
+        <button className="btn btn-primary btn-lg" onClick={onBack} disabled={saving}>
+          <ArrowLeft size={15} /> Retour
+        </button>
+        <button className="btn btn-primary btn-lg" disabled={saving} onClick={() => { setContract(null); setSaved(false) }}>
+          Annuler la location
+        </button>
+        {saved ? (
+          <>
+            <button className="btn btn-primary btn-lg" onClick={download}>
+              <Download size={14} /> Télécharger PDF
             </button>
-          )}
-        </div>
+            <button className="btn btn-primary btn-lg" onClick={() => onNext(contract)}>
+              Générer facture <ArrowRight size={15} />
+            </button>
+          </>
+        ) : (
+          <button className="btn btn-primary btn-lg" disabled={saving} onClick={confirmAndSave}>
+            <CheckCircle size={15} /> {saving ? 'Enregistrement…' : 'Sauvegarder et quitter'}
+          </button>
+        )}
       </div>
     </div>
   )

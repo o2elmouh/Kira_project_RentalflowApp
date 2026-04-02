@@ -5,7 +5,8 @@
     "agency": "Agence",
     "fleetConfig": "Configuration parc",
     "general": "Configuration générale",
-    "team": "Équipe"
+    "team": "Équipe",
+    "telematique": "Télématique"
   },
   "agency": {
     "generalInfo": "Informations générales",

@@ -1,7 +1,38 @@
-import { useState, useEffect } from 'react'
-import { PlusCircle, Trash2, Edit2, ChevronLeft, AlertTriangle, Clock, Wrench, TrendingDown, History } from 'lucide-react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import { PlusCircle, Trash2, Edit2, ChevronLeft, AlertTriangle, Clock, Wrench, TrendingDown, History, Map, Radio } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { getFleet, saveVehicle, deleteVehicle, getContracts, getRepairs, saveRepair, deleteRepair, getFleetConfigForMake } from '../lib/db'
+
+// Lazy-load FleetMap — keeps leaflet out of main bundle
+const FleetMap = lazy(() => import('./FleetMap.jsx'))
+
+// ── Image compression (same as Restitution.jsx) ───────────────
+async function compressImage(file, maxW = 1200, quality = 0.78) {
+  return new Promise(resolve => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const scale = Math.min(1, maxW / img.width)
+      const canvas = document.createElement('canvas')
+      canvas.width  = Math.round(img.width  * scale)
+      canvas.height = Math.round(img.height * scale)
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+      URL.revokeObjectURL(url)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
+    img.src = url
+  })
+}
+
+const REFERENCE_PHOTO_SLOTS = [
+  { id: 'front',    label: 'Avant' },
+  { id: 'rear',     label: 'Arrière' },
+  { id: 'left',     label: 'Côté gauche' },
+  { id: 'right',    label: 'Côté droit' },
+  { id: 'interior', label: 'Intérieur' },
+  { id: 'detail',   label: 'Détail' },
+]
 
 // ── Car catalogue ─────────────────────────────────────────
 const CAR_CATALOGUE = {
@@ -464,6 +495,68 @@ function RentalsTab({ vehicle }) {
   )
 }
 
+// ── Reference photos section ──────────────────────────────
+function ReferencePhotosSection({ photos, onChange }) {
+  const fileRefs = useRef({})
+
+  const handleFile = async (slotId, file) => {
+    if (!file) return
+    const compressed = await compressImage(file)
+    if (compressed) onChange({ ...photos, [slotId]: compressed })
+  }
+
+  const removePhoto = (slotId) => {
+    const updated = { ...photos }
+    delete updated[slotId]
+    onChange(updated)
+  }
+
+  const hasAny = REFERENCE_PHOTO_SLOTS.some(s => photos[s.id])
+
+  return (
+    <div style={{ marginTop: 8, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        Photos de référence
+        {hasAny && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--green)', fontWeight: 400, textTransform: 'none' }}>({REFERENCE_PHOTO_SLOTS.filter(s => photos[s.id]).length}/6 photos)</span>}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+        {REFERENCE_PHOTO_SLOTS.map(slot => (
+          <div key={slot.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500 }}>{slot.label}</div>
+            {photos[slot.id] ? (
+              <div style={{ position: 'relative' }}>
+                <img
+                  src={photos[slot.id]}
+                  alt={slot.label}
+                  style={{ width: '100%', height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => removePhoto(slot.id)}
+                  style={{ position: 'absolute', top: 3, right: 3, background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%', width: 18, height: 18, cursor: 'pointer', color: 'white', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+                >×</button>
+              </div>
+            ) : (
+              <div
+                onClick={() => fileRefs.current[slot.id]?.click()}
+                style={{ height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg2)', border: '2px dashed var(--border)', borderRadius: 6, cursor: 'pointer', fontSize: 20, color: 'var(--text3)' }}
+              >+</div>
+            )}
+            <input
+              ref={el => fileRefs.current[slot.id] = el}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              style={{ display: 'none' }}
+              onChange={e => handleFile(slot.id, e.target.files[0])}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Vehicle dashboard (Kanban Tiles 2x2) ─────────────────
 function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDelete }) {
   const [showDeadlineEdit, setShowDeadlineEdit] = useState(false)
@@ -721,6 +814,7 @@ const EMPTY = {
   plate: '', category: 'Economy', dailyRate: 300,
   status: 'available', mileage: 0, color: '', fuelType: 'Essence',
   purchasePrice: '', purchaseDate: '', residualValue: '', lifespan: 5,
+  trackedDevice: null,   // null = no GPS; string deviceId = tracked
 }
 
 // ── Auto-fill maintenance from Fleet_Config ───────────────
@@ -765,6 +859,7 @@ export default function Fleet() {
   const [form,         setForm]        = useState(EMPTY)
   const [configBanner, setConfigBanner] = useState(null)
   const [editingHadPurchaseDate, setEditingHadPurchaseDate] = useState(false)
+  const [fleetView,    setFleetView]   = useState('grid')  // 'grid' | 'map'
 
   const refresh = async (currentDetail) => {
     try {
@@ -829,19 +924,66 @@ export default function Fleet() {
 
   const models = CAR_CATALOGUE[form.make] || []
 
+  // DTC alerts from vehicles flagged automatically by telematics
+  const dtcAlerts = fleet.filter(v => v.dtcCodes?.length > 0 && v.status === 'maintenance')
+
   return (
     <div>
       <div className="page-header">
         <div><h2>Parc automobile</h2><p>Gérez votre flotte de véhicules</p></div>
-        {!detail && !editing && (
-          <button className="btn btn-primary" onClick={openAdd}><PlusCircle size={15} /> Ajouter</button>
-        )}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* View switcher */}
+          {!detail && !editing && (
+            <div style={{ display: 'flex', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 7, padding: 3, gap: 2 }}>
+              <button
+                onClick={() => setFleetView('grid')}
+                style={{ padding: '5px 12px', borderRadius: 5, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                  background: fleetView === 'grid' ? 'var(--accent)' : 'transparent',
+                  color: fleetView === 'grid' ? '#fff' : 'var(--text3)' }}
+              >Grille</button>
+              <button
+                onClick={() => setFleetView('map')}
+                style={{ padding: '5px 12px', borderRadius: 5, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  background: fleetView === 'map' ? 'var(--accent)' : 'transparent',
+                  color: fleetView === 'map' ? '#fff' : 'var(--text3)' }}
+              ><Map size={12} />Carte GPS</button>
+            </div>
+          )}
+          {!detail && !editing && (
+            <button className="btn btn-primary" onClick={openAdd}><PlusCircle size={15} /> Ajouter</button>
+          )}
+        </div>
       </div>
 
       <div className="page-body">
 
+        {/* DTC / Engine-light alerts banner */}
+        {dtcAlerts.length > 0 && !detail && !editing && (
+          <div style={{ background: '#3b1215', border: '1px solid #7f1d1d', borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: '#f87171', fontSize: 13 }}>
+              <Radio size={14} />
+              Alertes moteur détectées par télématique ({dtcAlerts.length} véhicule{dtcAlerts.length > 1 ? 's' : ''})
+            </div>
+            {dtcAlerts.map(v => (
+              <div key={v.id} style={{ fontSize: 12, color: '#fca5a5', display: 'flex', gap: 8 }}>
+                <span style={{ fontWeight: 600 }}>{v.make} {v.model} — {v.plate}</span>
+                <span>Codes DTC: <b>{v.dtcCodes.join(', ')}</b></span>
+                {v.dtcDetectedAt && <span style={{ color: '#9ca3af' }}>{new Date(v.dtcDetectedAt).toLocaleDateString('fr-MA')}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* GPS Map view */}
+        {fleetView === 'map' && !editing && !detail && (
+          <Suspense fallback={<p style={{ color: 'var(--text3)', fontSize: 13 }}>Chargement de la carte…</p>}>
+            <FleetMap height={560} />
+          </Suspense>
+        )}
+
         {/* Add / Edit form */}
-        {editing && (
+        {fleetView === 'grid' && editing && (
           <div className="card mb-4">
             <div className="card-header"><h3>{editing === 'new' ? 'Nouveau véhicule' : 'Modifier le véhicule'}</h3></div>
             <div className="card-body">
@@ -977,6 +1119,44 @@ export default function Fleet() {
                 </div>
               </div>
 
+              {/* Reference photos section */}
+              <ReferencePhotosSection
+                photos={form.photos || {}}
+                onChange={photos => set('photos', photos)}
+              />
+
+              {/* GPS device */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <Radio size={14} color="var(--accent)" />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>Télématique GPS</span>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text2)', cursor: 'pointer', marginBottom: 10 }}>
+                  <input
+                    type="checkbox"
+                    checked={!!form.trackedDevice !== false && form.trackedDevice !== null}
+                    onChange={e => set('trackedDevice', e.target.checked ? '' : null)}
+                    style={{ accentColor: 'var(--accent)' }}
+                  />
+                  Ce véhicule est équipé d'un boîtier GPS
+                </label>
+                {form.trackedDevice !== null && form.trackedDevice !== undefined && (
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: 12 }}>ID du boîtier (fourni par Traccar / Flespi)</label>
+                    <input
+                      className="form-input"
+                      style={{ fontFamily: 'monospace', fontSize: 13 }}
+                      placeholder="ex: device-001 ou IMEI 123456789"
+                      value={form.trackedDevice || ''}
+                      onChange={e => set('trackedDevice', e.target.value)}
+                    />
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
+                      Doit correspondre à l'identifiant configuré dans votre plateforme télématique.
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
                 <button className="btn btn-primary" onClick={save} disabled={!form.make || !form.model || !form.plate}>Enregistrer</button>
                 <button className="btn btn-ghost" onClick={() => setEditing(null)}>Annuler</button>
@@ -997,7 +1177,7 @@ export default function Fleet() {
         )}
 
         {/* Fleet grid */}
-        {!detail && (
+        {!detail && fleetView === 'grid' && (
           <div className="fleet-grid">
             {fleet.map(v => {
               const urgentCount = [v.nextOilChange, v.nextTimingBelt, v.nextControleTech, v.nextRepair, v.warrantyEnd]

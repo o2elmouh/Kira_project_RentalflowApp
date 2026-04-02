@@ -1,0 +1,23 @@
+{
+  "title": "Dashboard",
+  "subtitle": "Overview of your rental operations",
+  "newRental": "New Rental",
+  "thisMonth": "This month",
+  "today": "Today",
+  "stats": {
+    "availableVehicles": "Available vehicles",
+    "rentedVehicles": "Rented vehicles",
+    "newClients": "New clients",
+    "monthContracts": "Month contracts",
+    "monthInvoices": "Month invoices",
+    "revenue": "Revenue",
+    "activeCount": "{{count}} active"
+  },
+  "contracts": {
+    "title": "Contracts — {{month}}",
+    "empty": "No contracts this month."
+  },
+  "fleetStatus": {
+    "title": "Fleet status"
+  }
+}

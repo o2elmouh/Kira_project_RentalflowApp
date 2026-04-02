@@ -1,17 +1,17 @@
 import { Router } from 'express'
-import { requireAuth } from '../middleware/auth.js'
 import rateLimit from 'express-rate-limit'
-import supabaseAdmin from '../lib/supabaseAdmin.js'
+import { writeFileSync, unlinkSync, mkdirSync } from 'fs'
+import { join } from 'path'
+import { randomUUID } from 'crypto'
 
 const router = Router()
-router.use(requireAuth)
 
 // ── Rate limits ──────────────────────────────────────────
 // 20 WhatsApp messages per hour per user (global for this router)
 const whatsappLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 20,
-  keyGenerator: (req) => req.user.id,
+  keyGenerator: (req) => req.ip,
   message: { error: 'WhatsApp message limit reached. Try again in 1 hour.' },
 })
 
@@ -19,7 +19,7 @@ const whatsappLimit = rateLimit({
 const paymentLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
-  keyGenerator: (req) => req.user.id,
+  keyGenerator: (req) => req.ip,
   message: { error: 'Payment link limit reached (5/hour). Try again later.' },
 })
 
@@ -50,30 +50,6 @@ function normalisePhone(raw) {
   if (!num.startsWith('+')) num = '+' + num
 
   return `whatsapp:${num}`
-}
-
-/**
- * Upload a base64-encoded PDF to Supabase Storage and return a public URL.
- * Bucket: whatsapp-temp  |  Path: {folder}/{filename}.pdf
- */
-async function uploadPdfToSupabase(pdfBase64, folder, filename) {
-  const buffer = Buffer.from(pdfBase64, 'base64')
-  const path = `${folder}/${filename}.pdf`
-
-  const { error } = await supabaseAdmin.storage
-    .from('whatsapp-temp')
-    .upload(path, buffer, {
-      contentType: 'application/pdf',
-      upsert: true,
-    })
-
-  if (error) throw new Error(`Supabase upload failed: ${error.message}`)
-
-  const { data } = supabaseAdmin.storage
-    .from('whatsapp-temp')
-    .getPublicUrl(path)
-
-  return data.publicUrl
 }
 
 /**
@@ -113,13 +89,31 @@ async function sendWhatsAppMessage({ to, body, mediaUrl }) {
   return result
 }
 
+// ── PDF temp-file hosting ─────────────────────────────────
+// Writes base64 PDF to a temp file, returns a public URL, auto-deletes after 10 min.
+const TEMP_DIR = join(process.cwd(), 'tmp_pdfs')
+try { mkdirSync(TEMP_DIR, { recursive: true }) } catch {}
+
+function hostPdfTemp(pdfBase64) {
+  const filename = `${randomUUID()}.pdf`
+  const filepath = join(TEMP_DIR, filename)
+  const buffer = Buffer.from(pdfBase64, 'base64')
+  writeFileSync(filepath, buffer)
+  // Auto-delete after 10 minutes
+  setTimeout(() => { try { unlinkSync(filepath) } catch {} }, 10 * 60 * 1000)
+  const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : (process.env.API_URL || 'http://localhost:3001')
+  return `${baseUrl}/tmp_pdfs/${filename}`
+}
+
 // ── POST /whatsapp/contract ───────────────────────────────
 router.post('/contract', async (req, res) => {
-  const { to, clientName, contractNumber, pdfBase64, vehicleName, startDate, endDate } = req.body
+  const { to, clientName, contractNumber, vehicleName, startDate, endDate } = req.body
 
-  if (!to || !clientName || !contractNumber || !pdfBase64 || !vehicleName || !startDate || !endDate) {
+  if (!to || !clientName || !contractNumber || !vehicleName || !startDate || !endDate) {
     return res.status(400).json({
-      error: 'Missing required fields: to, clientName, contractNumber, pdfBase64, vehicleName, startDate, endDate',
+      error: 'Missing required fields: to, clientName, contractNumber, vehicleName, startDate, endDate',
     })
   }
 
@@ -129,12 +123,9 @@ router.post('/contract', async (req, res) => {
   }
 
   try {
-    // Upload PDF to Supabase Storage to get a public URL for Twilio MediaUrl
-    const pdfUrl = await uploadPdfToSupabase(pdfBase64, 'contracts', contractNumber)
+    const body = `Bonjour ${clientName}, votre contrat de location *${contractNumber}* pour le véhicule *${vehicleName}* du ${startDate} au ${endDate} a bien été enregistré.`
 
-    const body = `Bonjour ${clientName}, veuillez trouver ci-joint votre contrat de location ${contractNumber} pour le véhicule ${vehicleName} du ${startDate} au ${endDate}.`
-
-    const result = await sendWhatsAppMessage({ to: whatsappTo, body, mediaUrl: pdfUrl })
+    const result = await sendWhatsAppMessage({ to: whatsappTo, body })
 
     console.log(`[WhatsApp] Contract ${contractNumber} sent to ${whatsappTo} — SID: ${result.sid}`)
     res.json({ sent: true, sid: result.sid, to: whatsappTo, contractNumber })
@@ -146,11 +137,11 @@ router.post('/contract', async (req, res) => {
 
 // ── POST /whatsapp/invoice ────────────────────────────────
 router.post('/invoice', async (req, res) => {
-  const { to, clientName, invoiceNumber, pdfBase64, totalTTC } = req.body
+  const { to, clientName, invoiceNumber, totalTTC } = req.body
 
-  if (!to || !clientName || !invoiceNumber || !pdfBase64 || totalTTC == null) {
+  if (!to || !clientName || !invoiceNumber || totalTTC == null) {
     return res.status(400).json({
-      error: 'Missing required fields: to, clientName, invoiceNumber, pdfBase64, totalTTC',
+      error: 'Missing required fields: to, clientName, invoiceNumber, totalTTC',
     })
   }
 
@@ -160,11 +151,9 @@ router.post('/invoice', async (req, res) => {
   }
 
   try {
-    const pdfUrl = await uploadPdfToSupabase(pdfBase64, 'invoices', invoiceNumber)
+    const body = `Bonjour ${clientName}, votre facture *${invoiceNumber}* d'un montant de *${totalTTC} MAD* a bien été générée.`
 
-    const body = `Bonjour ${clientName}, votre facture ${invoiceNumber} d'un montant de ${totalTTC} MAD est disponible en pièce jointe.`
-
-    const result = await sendWhatsAppMessage({ to: whatsappTo, body, mediaUrl: pdfUrl })
+    const result = await sendWhatsAppMessage({ to: whatsappTo, body })
 
     console.log(`[WhatsApp] Invoice ${invoiceNumber} sent to ${whatsappTo} — SID: ${result.sid}`)
     res.json({ sent: true, sid: result.sid, to: whatsappTo, invoiceNumber })
@@ -198,6 +187,38 @@ router.post('/payment', paymentLimit, async (req, res) => {
     res.json({ sent: true, sid: result.sid, to: whatsappTo, contractNumber })
   } catch (err) {
     console.error('[WhatsApp/payment]', err.message)
+    res.status(502).json({ error: err.message })
+  }
+})
+
+// ── POST /whatsapp/restitution ────────────────────────────
+router.post('/restitution', async (req, res) => {
+  const { to, clientName, contractNumber, pdfBase64, totalExtraFees } = req.body
+
+  if (!to || !clientName || !contractNumber || !pdfBase64 || totalExtraFees == null) {
+    return res.status(400).json({
+      error: 'Missing required fields: to, clientName, contractNumber, pdfBase64, totalExtraFees',
+    })
+  }
+
+  const whatsappTo = normalisePhone(to)
+  if (!whatsappTo) {
+    return res.status(400).json({ error: 'Invalid phone number' })
+  }
+
+  try {
+    const pdfUrl = hostPdfTemp(pdfBase64)
+
+    const body = totalExtraFees > 0
+      ? `Bonjour ${clientName}, votre procès-verbal de restitution pour le contrat ${contractNumber} est disponible en pièce jointe. Frais supplémentaires : ${totalExtraFees} MAD.`
+      : `Bonjour ${clientName}, votre procès-verbal de restitution pour le contrat ${contractNumber} est disponible en pièce jointe. Aucun frais supplémentaire.`
+
+    const result = await sendWhatsAppMessage({ to: whatsappTo, body, mediaUrl: pdfUrl })
+
+    console.log(`[WhatsApp] Restitution PV ${contractNumber} sent to ${whatsappTo} — SID: ${result.sid}`)
+    res.json({ sent: true, sid: result.sid, to: whatsappTo, contractNumber })
+  } catch (err) {
+    console.error('[WhatsApp/restitution]', err.message)
     res.status(502).json({ error: err.message })
   }
 })

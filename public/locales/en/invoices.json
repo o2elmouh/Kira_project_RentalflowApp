@@ -1,0 +1,11 @@
+{
+  "title": "Invoices",
+  "count": "{{count}} invoice · {{total}} MAD total",
+  "count_plural": "{{count}} invoices · {{total}} MAD total",
+  "empty": "No invoices yet.",
+  "ref": "Ref:",
+  "status": {
+    "paid": "Paid",
+    "pending": "Pending"
+  }
+}

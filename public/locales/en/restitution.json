@@ -1,0 +1,113 @@
+{
+  "picker": {
+    "title": "Return",
+    "subtitle": "Select vehicle to return",
+    "empty": "No vehicles currently rented.",
+    "badge": "Rented",
+    "contract": "Contract {{number}}"
+  },
+  "title": "Vehicle return",
+  "subtitle": "Contract {{number}} · {{clientName}} · {{vehicleName}}",
+  "noContract": "No contract selected.",
+  "steps": {
+    "return": "Return",
+    "photos": "Photos",
+    "inspection": "Inspection",
+    "closure": "Closure"
+  },
+  "step1": {
+    "title": "Return — Mileage & Fuel",
+    "returnKm": "Return mileage (km)",
+    "kmHint": "Departure: {{departure}} km — Driven: {{driven}} km",
+    "kmError": "⚠️ Return mileage cannot be less than departure mileage ({{departure}} km).",
+    "fuelLevel": "Return fuel level",
+    "fuelDepartureHint": "Departure level: {{level}}",
+    "fuelWarning": "Warning: fuel level is lower than departure ({{diff}} quarter(s) missing)",
+    "returnDate": "Return date",
+    "returnTime": "Return time"
+  },
+  "step2": {
+    "title": "Return photos",
+    "departure": "Departure",
+    "return": "Return",
+    "add": "Add"
+  },
+  "step3": {
+    "title": "Inspection & Fees",
+    "damages": "Damages found",
+    "damagePlaceholder": "Damage description...",
+    "extraCosts": "Extra fees",
+    "noExtraKm": "No extra kilometers",
+    "extraKm": "Extra km: {{count}} km × 2 MAD = {{fee}} MAD",
+    "kmAllowed": "(allowed: {{km}} km)",
+    "noKmLimit": "No mileage limit configured for this vehicle",
+    "fuelShortage": "Fuel shortage: {{diff}} quarter(s) × 100 MAD = {{fee}} MAD",
+    "noFuelFee": "Fuel: no fees",
+    "damageFee": "Damage fees (MAD)",
+    "totalFees": "Total extra fees"
+  },
+  "step4": {
+    "title": "Contract closure",
+    "summary": "Summary",
+    "contract": "Contract",
+    "client": "Client",
+    "vehicle": "Vehicle",
+    "actualDuration": "Actual duration",
+    "drivenKm": "Km driven",
+    "rentalAmount": "Rental amount",
+    "extraFees": "Extra fees",
+    "totalFinal": "Final total",
+    "damagesFound": "Damages found",
+    "downloadPdf": "Download return report PDF",
+    "closing": "Closing...",
+    "close": "Close contract"
+  },
+  "pdf": {
+    "title": "RETURN REPORT",
+    "contract": "Contract:",
+    "client": "CLIENT",
+    "vehicle": "VEHICLE",
+    "departure": "Departure",
+    "return": "Return",
+    "date": "Date",
+    "time": "Time",
+    "mileage": "Mileage",
+    "fuelLevel": "Fuel",
+    "damages": "DAMAGES FOUND",
+    "zone": "Zone",
+    "description": "Description",
+    "extraFees": "EXTRA FEES",
+    "extraKm": "Extra kilometers",
+    "fuelShortage": "Fuel shortage",
+    "damageFee": "Damage fees",
+    "totalFees": "TOTAL EXTRA FEES",
+    "clientSignature": "Client signature",
+    "agencySignature": "Agency signature"
+  },
+  "zones": {
+    "A": "A - Front",
+    "B": "B - Rear",
+    "C": "C - Left side",
+    "D": "D - Right side",
+    "E": "E - Roof / Underside"
+  },
+  "fuelLevels": {
+    "Vide": "Empty",
+    "1/4": "1/4",
+    "1/2": "1/2",
+    "3/4": "3/4",
+    "Plein": "Full"
+  },
+  "photos": {
+    "front": "Front",
+    "rear": "Rear",
+    "left": "Left side",
+    "right": "Right side",
+    "interior": "Interior",
+    "damage": "Detail / Damage"
+  },
+  "nav": {
+    "prev": "← Previous",
+    "next": "Next →"
+  }
+}

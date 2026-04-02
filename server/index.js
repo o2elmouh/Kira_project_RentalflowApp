@@ -2,6 +2,8 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import rateLimit from 'express-rate-limit'
+import { join } from 'path'
+import { mkdirSync } from 'fs'
 
 import healthRouter    from './routes/health.js'
 import agencyRouter    from './routes/agency.js'
@@ -10,6 +12,7 @@ import emailRouter     from './routes/email.js'
 import teamRouter      from './routes/team.js'
 import whatsappRouter  from './routes/whatsapp.js'
 import aiRouter        from './routes/ai.js'
+import telemetryRouter from './routes/telemetry.js'
 
 const app  = express()
 const PORT = process.env.PORT || 3001
@@ -42,6 +45,11 @@ app.use(rateLimit({
   message: { error: 'Too many requests — please retry later.' },
 }))
 
+// ── Temp PDF static hosting (for WhatsApp MediaUrl) ───────
+const TEMP_DIR = join(process.cwd(), 'tmp_pdfs')
+try { mkdirSync(TEMP_DIR, { recursive: true }) } catch {}
+app.use('/tmp_pdfs', express.static(TEMP_DIR))
+
 // ── Routes ────────────────────────────────────────────────
 app.use('/health',    healthRouter)
 app.use('/agency',    agencyRouter)
@@ -50,6 +58,7 @@ app.use('/email',     emailRouter)
 app.use('/team',      teamRouter)
 app.use('/whatsapp',  whatsappRouter)
 app.use('/ai',        aiRouter)
+app.use('/telemetry', telemetryRouter)
 
 // ── 404 ───────────────────────────────────────────────────
 app.use((req, res) => {
