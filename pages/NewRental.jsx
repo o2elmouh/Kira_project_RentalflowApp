@@ -943,8 +943,8 @@ function ContractStep({ client, rental, photos, onNext, onBack, onSaveAndQuit, o
   )
 }
 
-// ── Step 4: Invoice ──────────────────────────────────────
-function InvoiceStep({ client, rental, contract, onDone }) {
+// ── Step 5: Invoice ──────────────────────────────────────
+function InvoiceStep({ client, rental, contract, onDone, onSaveAndQuit }) {
   const [agency, setAgency] = useState({})
   const [invoice, setInvoice] = useState(null)
 
@@ -1016,25 +1016,29 @@ function InvoiceStep({ client, rental, contract, onDone }) {
         </div>
       </div>
 
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <div />
-        <div style={{ display:'flex', gap:10 }}>
-          {!invoice ? (
+      <StepButtons
+        leftBtns={
+          <button className="btn btn-ghost" onClick={onSaveAndQuit} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            💾 Sauvegarder & quitter
+          </button>
+        }
+        rightBtns={
+          !invoice ? (
             <button className="btn btn-primary btn-lg" onClick={generate}>
-              <Printer size={15} /> Generate & Download Invoice
+              <Printer size={15} /> Générer & Télécharger
             </button>
           ) : (
             <>
               <button className="btn btn-secondary" onClick={() => generateInvoice(invoice, contract, client, rental.vehicle, agency)}>
-                <Download size={14} /> Re-download PDF
+                <Download size={14} /> Télécharger à nouveau
               </button>
               <button className="btn btn-primary btn-lg" onClick={onDone}>
-                <CheckCircle size={15} /> Finish
+                <CheckCircle size={15} /> Terminer
               </button>
             </>
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
     </div>
   )
 }
@@ -1149,7 +1153,7 @@ export default function NewRental({ onDone }) {
         {step === 1 && <RentalStep client={client} onNext={r => advance({ rental: r, step: 2 })} onBack={() => advance({ step: 0 })} onSaveAndQuit={handleQuit} onCancel={() => setShowCancelConfirm(true)} />}
         {step === 2 && <PhotoStep onNext={p => advance({ photos: p, step: 3 })} onBack={() => advance({ step: 1 })} onSaveAndQuit={handleQuit} onCancel={() => setShowCancelConfirm(true)} />}
         {step === 3 && <ContractStep client={client} rental={rental} photos={photos} onNext={c => advance({ contract: c, step: 4 })} onBack={() => advance({ step: 2 })} onSaveAndQuit={handleQuit} onCancel={() => setShowCancelConfirm(true)} />}
-        {step === 4 && <InvoiceStep client={client} rental={rental} contract={contract} onDone={handleDone} />}
+        {step === 4 && <InvoiceStep client={client} rental={rental} contract={contract} onDone={handleDone} onSaveAndQuit={handleQuit} />}
       </div>
 
       {showCancelConfirm && (
