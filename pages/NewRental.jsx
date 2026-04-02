@@ -933,7 +933,10 @@ function ContractStep({ client, rental, photos, onNext, onBack, onSaveAndQuit, o
                 </button>
               </>
             )}
-            <button className="btn btn-primary btn-lg" disabled={!saved} onClick={() => onNext(contract)}>
+            <button className="btn btn-primary btn-lg" disabled={!saved} onClick={() => {
+              console.log('[ContractStep] Continuer clicked, saved:', saved, 'contract:', contract)
+              if (contract) onNext(contract)
+            }}>
               Continuer <ArrowRight size={15} />
             </button>
           </>
