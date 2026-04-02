@@ -23,6 +23,28 @@ function getRentalOptions() {
 
 const STEPS = ['Scan ID', 'Rental Details', 'Photos', 'Contract', 'Invoice']
 
+// ── Button Layout Component ─────────────────────────────────
+function StepButtons({ leftBtns, rightBtns }) {
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 12,
+      marginTop: 24,
+      paddingTop: 16,
+      borderTop: '1px solid var(--border)'
+    }}>
+      <div style={{ display: 'flex', gap: 10 }}>
+        {leftBtns}
+      </div>
+      <div style={{ display: 'flex', gap: 10 }}>
+        {rightBtns}
+      </div>
+    </div>
+  )
+}
+
 // ── Photo slots ───────────────────────────────────────────
 const PHOTO_SLOTS = [
   { id: 'front',    label: 'Avant' },
@@ -107,7 +129,7 @@ function ClientAlerts({ client }) {
 }
 
 // ── Step 1: ID Scan ──────────────────────────────────────
-function ScanStep({ onNext }) {
+function ScanStep({ onNext, onSaveAndQuit, onCancel }) {
   const [scanning, setScanning] = useState(false)
   const [progress, setProgress] = useState(0)
   const [scanType, setScanType] = useState(null)
@@ -270,17 +292,29 @@ function ScanStep({ onNext }) {
 
       <ClientAlerts client={client} />
 
-      <div style={{ display:'flex', justifyContent:'center', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
-        <button className="btn btn-primary btn-lg" disabled={!allFilled} onClick={() => onNext(client)}>
-          Continuer <ArrowRight size={15} />
-        </button>
-      </div>
+      <StepButtons
+        leftBtns={
+          <button className="btn btn-primary btn-lg" style={{ color: '#dc2626' }} onClick={onCancel}>
+            <X size={15} /> Annuler
+          </button>
+        }
+        rightBtns={
+          <>
+            <button className="btn btn-ghost" onClick={onSaveAndQuit} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              💾 Sauvegarder & quitter
+            </button>
+            <button className="btn btn-primary btn-lg" disabled={!allFilled} onClick={() => onNext(client)}>
+              Continuer <ArrowRight size={15} />
+            </button>
+          </>
+        }
+      />
     </div>
   )
 }
 
 // ── Step 2: Rental Details ───────────────────────────────
-function RentalStep({ client, onNext, onBack }) {
+function RentalStep({ client, onNext, onBack, onSaveAndQuit, onCancel }) {
   const today = new Date().toISOString().split('T')[0]
   const rentalOptions = getRentalOptions()
   const [form, setForm] = useState({
@@ -509,12 +543,26 @@ function RentalStep({ client, onNext, onBack }) {
         </div>
       </div>
 
-      <div style={{ display:'flex', justifyContent:'center', gap: 12, marginTop:16, flexWrap: 'wrap' }}>
-        <button className="btn btn-primary btn-lg" onClick={onBack}><ArrowLeft size={15} /> Retour</button>
-        <button className="btn btn-primary btn-lg" disabled={!canContinue} onClick={handleNext}>
-          Continuer <ArrowRight size={15} />
-        </button>
-      </div>
+      <StepButtons
+        leftBtns={
+          <>
+            <button className="btn btn-primary btn-lg" onClick={onBack}><ArrowLeft size={15} /> Retour</button>
+            <button className="btn btn-primary btn-lg" style={{ color: '#dc2626' }} onClick={onCancel}>
+              <X size={15} /> Annuler la location
+            </button>
+          </>
+        }
+        rightBtns={
+          <>
+            <button className="btn btn-ghost" onClick={onSaveAndQuit} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              💾 Sauvegarder & quitter
+            </button>
+            <button className="btn btn-primary btn-lg" disabled={!canContinue} onClick={handleNext}>
+              Continuer <ArrowRight size={15} />
+            </button>
+          </>
+        }
+      />
     </div>
   )
 }
@@ -587,7 +635,7 @@ function CarDiagram({ activeSlot, takenSlots }) {
 }
 
 // ── Step 3: Vehicle Photos ───────────────────────────────
-function PhotoStep({ onNext, onBack }) {
+function PhotoStep({ onNext, onBack, onSaveAndQuit, onCancel }) {
   const [photos,     setPhotos]     = useState({})
   const [loading,    setLoading]    = useState({})
   const [activeSlot, setActiveSlot] = useState(null)
@@ -707,18 +755,32 @@ function PhotoStep({ onNext, onBack }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <button className="btn btn-primary btn-lg" onClick={onBack}><ArrowLeft size={15} /> Retour</button>
-        <button className="btn btn-primary btn-lg" onClick={() => onNext(photos)}>
-          {takenCount === 0 ? 'Passer' : 'Continuer'} <ArrowRight size={15} />
-        </button>
-      </div>
+      <StepButtons
+        leftBtns={
+          <>
+            <button className="btn btn-primary btn-lg" onClick={onBack}><ArrowLeft size={15} /> Retour</button>
+            <button className="btn btn-primary btn-lg" style={{ color: '#dc2626' }} onClick={onCancel}>
+              <X size={15} /> Annuler la location
+            </button>
+          </>
+        }
+        rightBtns={
+          <>
+            <button className="btn btn-ghost" onClick={onSaveAndQuit} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              💾 Sauvegarder & quitter
+            </button>
+            <button className="btn btn-primary btn-lg" onClick={() => onNext(photos)}>
+              {takenCount === 0 ? 'Passer' : 'Continuer'} <ArrowRight size={15} />
+            </button>
+          </>
+        }
+      />
     </div>
   )
 }
 
 // ── Step 4: Contract Preview ─────────────────────────────
-function ContractStep({ client, rental, photos, onNext, onBack }) {
+function ContractStep({ client, rental, photos, onNext, onBack, onSaveAndQuit, onCancel }) {
   const [agency, setAgency] = useState({})
   const [saved, setSaved] = useState(false)
   const [contract, setContract] = useState(null)
@@ -843,28 +905,37 @@ function ContractStep({ client, rental, photos, onNext, onBack }) {
         </div>
       )}
 
-      <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap: 12, flexWrap: 'wrap' }}>
-        <button className="btn btn-primary btn-lg" onClick={onBack} disabled={saving}>
-          <ArrowLeft size={15} /> Retour
-        </button>
-        <button className="btn btn-primary btn-lg" disabled={saving} onClick={() => { setContract(null); setSaved(false) }}>
-          Annuler la location
-        </button>
-        {saved ? (
+      <StepButtons
+        leftBtns={
           <>
-            <button className="btn btn-primary btn-lg" onClick={download}>
-              <Download size={14} /> Télécharger PDF
+            <button className="btn btn-primary btn-lg" onClick={onBack} disabled={saving}>
+              <ArrowLeft size={15} /> Retour
             </button>
-            <button className="btn btn-primary btn-lg" onClick={() => onNext(contract)}>
-              Générer facture <ArrowRight size={15} />
+            <button className="btn btn-primary btn-lg" style={{ color: '#dc2626' }} disabled={saving} onClick={onCancel}>
+              <X size={15} /> Annuler
             </button>
           </>
-        ) : (
-          <button className="btn btn-primary btn-lg" disabled={saving} onClick={confirmAndSave}>
-            <CheckCircle size={15} /> {saving ? 'Enregistrement…' : 'Sauvegarder et quitter'}
-          </button>
-        )}
-      </div>
+        }
+        rightBtns={
+          saved ? (
+            <>
+              <button className="btn btn-ghost" onClick={onSaveAndQuit} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                💾 Sauvegarder & quitter
+              </button>
+              <button className="btn btn-primary btn-lg" onClick={download}>
+                <Download size={14} /> Télécharger PDF
+              </button>
+              <button className="btn btn-primary btn-lg" onClick={() => onNext(contract)}>
+                Continuer <ArrowRight size={15} />
+              </button>
+            </>
+          ) : (
+            <button className="btn btn-primary btn-lg" disabled={saving} onClick={confirmAndSave}>
+              <CheckCircle size={15} /> {saving ? 'Enregistrement…' : 'Sauvegarder & quitter'}
+            </button>
+          )
+        }
+      />
     </div>
   )
 }
@@ -1071,23 +1142,11 @@ export default function NewRental({ onDone }) {
       </div>
       <div className="page-body">
         <StepBar current={step} />
-        {step === 0 && <ScanStep onNext={c => advance({ client: c, step: 1 })} />}
-        {step === 1 && <RentalStep client={client} onNext={r => advance({ rental: r, step: 2 })} onBack={() => advance({ step: 0 })} />}
-        {step === 2 && <PhotoStep onNext={p => advance({ photos: p, step: 3 })} onBack={() => advance({ step: 1 })} />}
-        {step === 3 && <ContractStep client={client} rental={rental} photos={photos} onNext={c => advance({ contract: c, step: 4 })} onBack={() => advance({ step: 2 })} />}
+        {step === 0 && <ScanStep onNext={c => advance({ client: c, step: 1 })} onSaveAndQuit={handleQuit} onCancel={() => setShowCancelConfirm(true)} />}
+        {step === 1 && <RentalStep client={client} onNext={r => advance({ rental: r, step: 2 })} onBack={() => advance({ step: 0 })} onSaveAndQuit={handleQuit} onCancel={() => setShowCancelConfirm(true)} />}
+        {step === 2 && <PhotoStep onNext={p => advance({ photos: p, step: 3 })} onBack={() => advance({ step: 1 })} onSaveAndQuit={handleQuit} onCancel={() => setShowCancelConfirm(true)} />}
+        {step === 3 && <ContractStep client={client} rental={rental} photos={photos} onNext={c => advance({ contract: c, step: 4 })} onBack={() => advance({ step: 2 })} onSaveAndQuit={handleQuit} onCancel={() => setShowCancelConfirm(true)} />}
         {step === 4 && <InvoiceStep client={client} rental={rental} contract={contract} onDone={handleDone} />}
-
-        {step < 4 && (
-          <div style={{ display: 'flex', gap: 10, marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-            <button className="btn btn-ghost" onClick={handleQuit} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              💾 Sauvegarder & quitter
-            </button>
-            <button className="btn btn-ghost" style={{ color: '#dc2626', display: 'flex', alignItems: 'center', gap: 6 }}
-              onClick={() => setShowCancelConfirm(true)}>
-              <X size={14} /> Annuler la location
-            </button>
-          </div>
-        )}
       </div>
 
       {showCancelConfirm && (
