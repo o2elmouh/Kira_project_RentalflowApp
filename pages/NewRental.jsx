@@ -796,7 +796,7 @@ function ContractStep({ client, rental, photos, onNext, onBack, onSaveAndQuit, o
   }, [])
 
   const confirmAndSave = async () => {
-    if (saving || saved) return
+    if (saving || saved) return null
     setSaving(true)
     setSaveError(null)
     try {
@@ -815,15 +815,12 @@ function ContractStep({ client, rental, photos, onNext, onBack, onSaveAndQuit, o
       if (v) await saveVehicle({ ...v, status: 'rented' })
       setContract(c)
       setSaved(true)
-      // Capture telemetry snapshot at rental start
-      try {
-        await snapshotOnStart(c)
-      } catch (err) {
-        console.warn('[NewRental] snapshotOnStart failed:', err)
-      }
+      try { await snapshotOnStart(c) } catch (err) { console.warn('[NewRental] snapshotOnStart failed:', err) }
+      return c
     } catch (err) {
       console.error('[NewRental] confirmAndSave', err)
       setSaveError(err.message || 'Une erreur est survenue. Veuillez réessayer.')
+      return null
     } finally {
       setSaving(false)
     }
@@ -918,26 +915,19 @@ function ContractStep({ client, rental, photos, onNext, onBack, onSaveAndQuit, o
         }
         rightBtns={
           <>
-            {!saved && (
-              <button className="btn btn-ghost" disabled={saving} onClick={confirmAndSave} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                💾 {saving ? 'Enregistrement…' : 'Sauvegarder & quitter'}
+            <button className="btn btn-ghost" onClick={onSaveAndQuit} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              💾 Sauvegarder & quitter
+            </button>
+            {saved && (
+              <button className="btn btn-primary btn-lg" onClick={download}>
+                <Download size={14} /> Télécharger PDF
               </button>
             )}
-            {saved && (
-              <>
-                <button className="btn btn-ghost" onClick={onSaveAndQuit} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  💾 Sauvegarder & quitter
-                </button>
-                <button className="btn btn-primary btn-lg" onClick={download}>
-                  <Download size={14} /> Télécharger PDF
-                </button>
-              </>
-            )}
-            <button className="btn btn-primary btn-lg" disabled={!saved} onClick={() => {
-              console.log('[ContractStep] Continuer clicked, saved:', saved, 'contract:', contract)
-              if (contract) onNext(contract)
+            <button className="btn btn-primary btn-lg" disabled={saving} onClick={async () => {
+              const c = saved ? contract : await confirmAndSave()
+              if (c) onNext(c)
             }}>
-              Continuer <ArrowRight size={15} />
+              {saving ? 'Enregistrement…' : <>Continuer <ArrowRight size={15} /></>}
             </button>
           </>
         }
