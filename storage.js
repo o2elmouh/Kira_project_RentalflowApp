@@ -38,6 +38,7 @@ export const saveClient = (client) => {
   return list[existing >= 0 ? existing : 0]
 }
 export const getClient = (id) => read(KEYS.clients).find(c => c.id === id)
+export const deleteClient = (id) => write(KEYS.clients, read(KEYS.clients).filter(c => c.id !== id))
 
 // ── Fleet ────────────────────────────────────────────────
 export const getFleet = () => read(KEYS.fleet)
