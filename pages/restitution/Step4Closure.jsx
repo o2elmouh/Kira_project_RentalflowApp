@@ -81,10 +81,14 @@ export default function Step4Closure({ agency, contract, vehicle, returnDate, re
         finalTotal,
       })
 
-      // 2. Update vehicle status to available
+      // 2. Update vehicle status + mileage
       const fleet = await getFleet()
       const v = fleet.find(fv => fv.id === contract.vehicleId)
-      if (v) await saveVehicle({ ...v, status: 'available' })
+      if (v) await saveVehicle({
+        ...v,
+        status: 'available',
+        mileage: returnMileage ? Number(returnMileage) : v.mileage,
+      })
 
       // 3. Save invoice if extra fees
       if (totalExtraFees > 0) {
