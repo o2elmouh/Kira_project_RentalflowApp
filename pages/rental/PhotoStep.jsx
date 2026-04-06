@@ -14,8 +14,8 @@ const PHOTO_SLOTS = [
   { id: 'damage',   label: 'Détail / Dommage' },
 ]
 
-export default function PhotoStep({ onNext, onBack, onSaveAndQuit, onCancel }) {
-  const [photos,     setPhotos]     = useState({})
+export default function PhotoStep({ onNext, onBack, onSaveAndQuit, onCancel, initialPhotos }) {
+  const [photos,     setPhotos]     = useState(initialPhotos || {})
   const [loading,    setLoading]    = useState({})
   const [activeSlot, setActiveSlot] = useState(null)
   const refs = useRef({})

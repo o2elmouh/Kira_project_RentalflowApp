@@ -4,12 +4,12 @@ import { runOCR } from '../../lib/ocr'
 import ClientAlerts from './ClientAlerts'
 import StepButtons from './StepButtons'
 
-export default function ScanStep({ onNext, onSaveAndQuit, onCancel }) {
+export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClient }) {
   const [scanning, setScanning] = useState(false)
   const [progress, setProgress] = useState(0)
   const [scanType, setScanType] = useState(null)
   const [extracted, setExtracted] = useState({ cin: null, license: null })
-  const [client, setClient] = useState({
+  const [client, setClient] = useState(initialClient || {
     firstName: '', lastName: '', cinNumber: '', cinExpiry: '',
     drivingLicenseNumber: '', licenseExpiry: '', phone: '', email: '', nationality: 'Marocain',
     dateOfBirth: '',

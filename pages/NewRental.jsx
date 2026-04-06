@@ -112,9 +112,9 @@ export default function NewRental({ onDone }) {
       </div>
       <div className="page-body">
         <StepBar current={step} />
-        {step === 0 && <ScanStep onNext={c => advance({ client: c, step: 1 })} onSaveAndQuit={handleQuit} onCancel={() => setShowCancelConfirm(true)} />}
-        {step === 1 && <RentalStep client={client} onNext={r => advance({ rental: r, step: 2 })} onBack={() => advance({ step: 0 })} onSaveAndQuit={handleQuit} onCancel={() => setShowCancelConfirm(true)} />}
-        {step === 2 && <PhotoStep onNext={p => advance({ photos: p, step: 3 })} onBack={() => advance({ step: 1 })} onSaveAndQuit={handleQuit} onCancel={() => setShowCancelConfirm(true)} />}
+        {step === 0 && <ScanStep initialClient={client} onNext={c => advance({ client: c, step: 1 })} onSaveAndQuit={handleQuit} onCancel={() => setShowCancelConfirm(true)} />}
+        {step === 1 && <RentalStep client={client} initialRental={rental} onNext={r => advance({ rental: r, step: 2 })} onBack={() => advance({ step: 0 })} onSaveAndQuit={handleQuit} onCancel={() => setShowCancelConfirm(true)} />}
+        {step === 2 && <PhotoStep initialPhotos={photos} onNext={p => advance({ photos: p, step: 3 })} onBack={() => advance({ step: 1 })} onSaveAndQuit={handleQuit} onCancel={() => setShowCancelConfirm(true)} />}
         {step === 3 && <ContractStep client={client} rental={rental} photos={photos} onDone={handleDone} onBack={() => advance({ step: 2 })} onSaveAndQuit={handleQuit} onCancel={() => setShowCancelConfirm(true)} />}
       </div>
 

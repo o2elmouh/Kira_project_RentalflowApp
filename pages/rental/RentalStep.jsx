@@ -4,10 +4,10 @@ import { getAvailableVehicles } from '../../lib/db'
 import { getRentalOptions } from '../../utils/rentalOptions'
 import StepButtons from './StepButtons'
 
-export default function RentalStep({ client, onNext, onBack, onSaveAndQuit, onCancel }) {
+export default function RentalStep({ client, onNext, onBack, onSaveAndQuit, onCancel, initialRental }) {
   const today = new Date().toISOString().split('T')[0]
   const rentalOptions = getRentalOptions()
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(initialRental || {
     startDate: today, endDate: '', vehicleId: '',
     startTime: '09:00', endTime: '09:00', fuelLevel: 'Plein',
     paymentMethod: 'Carte bancaire', deposit: 2400,
