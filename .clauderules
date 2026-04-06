@@ -1,0 +1,27 @@
+# RentaFlow — Claude Rules
+
+## Stack (do not ask, do not explain basics)
+- React 18 + Vite 5 SPA (no react-router, useState-based routing)
+- localStorage primary data layer via storage.js / lib/db.js
+- Supabase Auth optional (VITE_USE_AUTH flag)
+- Express 4 backend on Railway
+- i18next for i18n (fr default, ar, en)
+- jsPDF + jspdf-autotable for PDFs
+- lucide-react for icons
+- All DB calls go through lib/db.js — assume it exists, do not rewrite it
+
+## Response rules
+- Do NOT explain basic React/JS/CSS syntax
+- Do NOT generate boilerplate comments or summaries after a change
+- When fixing a bug: output only the changed lines with enough context to locate them — NOT the whole file
+- When adding a feature: output only the new/changed code blocks
+- Do NOT restate what the user asked — go straight to the code
+- Prefer Edit tool over Write tool for existing files
+- Keep responses short and direct
+
+## Code rules
+- No Tailwind — use CSS variables and existing class names (btn, card, form-input, etc.)
+- No new npm packages without asking first
+- camelCase in frontend, snake_case in Supabase/SQL
+- All monetary values in MAD
+- Dates stored as ISO strings (YYYY-MM-DD)

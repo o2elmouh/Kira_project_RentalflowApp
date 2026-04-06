@@ -168,6 +168,17 @@ export const getFleetConfigForMake = (make) => {
 }
 
 // ── Repairs ──────────────────────────────────────────────
+// Repair object shape (all sinistre fields are optional — existing records are unaffected):
+// {
+//   id, vehicleId, date, type, cost, garage, mileage, description,
+//   isSinistre: false,            // bool  — flags accident-related repair
+//   sinistreId: '',               // string — groups repairs from the same accident
+//   insuranceRef: '',             // insurance claim reference number
+//   insuranceReimbursement: 0,    // amount reimbursed by insurer  (Credit 758)
+//   clientFranchise: 0,           // deductible paid by client     (Credit 411)
+//   contractId: null,             // optional link to the rental that caused the accident
+// }
+
 export const getRepairs = (vehicleId) => read(KEYS.repairs).filter(r => r.vehicleId === vehicleId)
 export const saveRepair = (repair) => {
   const list = read(KEYS.repairs)
@@ -179,6 +190,17 @@ export const saveRepair = (repair) => {
   return entry
 }
 export const deleteRepair = (id) => write(KEYS.repairs, read(KEYS.repairs).filter(r => r.id !== id))
+
+// TCO — Total Cost of Ownership per vehicle
+// TCO = Σ repair costs − (Σ insurance reimbursements + Σ client franchises)
+export const getTCO = (vehicleId) => {
+  const repairs = read(KEYS.repairs).filter(r => r.vehicleId === vehicleId)
+  const totalExpense      = repairs.reduce((s, r) => s + (Number(r.cost) || 0), 0)
+  const totalInsurance    = repairs.reduce((s, r) => s + (Number(r.insuranceReimbursement) || 0), 0)
+  const totalFranchise    = repairs.reduce((s, r) => s + (Number(r.clientFranchise) || 0), 0)
+  const totalRecovered    = totalInsurance + totalFranchise
+  return { totalExpense, totalInsurance, totalFranchise, totalRecovered, netTCO: totalExpense - totalRecovered }
+}
 
 // ── Seed demo data ────────────────────────────────────────
 export const seedDemoData = () => {

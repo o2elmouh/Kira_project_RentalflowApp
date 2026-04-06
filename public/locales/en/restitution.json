@@ -107,7 +107,7 @@
     "damage": "Detail / Damage"
   },
   "nav": {
-    "prev": "← Previous",
-    "next": "Next →"
+    "prev": "Previous",
+    "next": "Next"
   }
 }
