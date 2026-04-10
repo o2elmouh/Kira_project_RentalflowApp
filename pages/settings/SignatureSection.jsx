@@ -1,12 +1,21 @@
 import { useRef, useEffect, useState } from 'react'
-import { getGeneralConfig, saveGeneralConfig } from '../../storage'
+import { getGeneralConfig, saveGeneralConfig } from '../../lib/db'
 
 export default function SignatureSection() {
   const canvasRef = useRef(null)
   const [drawing, setDrawing] = useState(false)
-  const [savedSig, setSavedSig] = useState(() => getGeneralConfig().defaultSignature || null)
-  const [editMode, setEditMode] = useState(!getGeneralConfig().defaultSignature)
+  const [savedSig, setSavedSig] = useState(null)
+  const [editMode, setEditMode] = useState(true)
   const [saveFeedback, setSaveFeedback] = useState(false)
+
+  useEffect(() => {
+    (async () => {
+      const cfg = await getGeneralConfig()
+      const sig = cfg.defaultSignature || null
+      setSavedSig(sig)
+      setEditMode(!sig)
+    })()
+  }, [])
 
   const getPos = (e, canvas) => {
     const rect = canvas.getBoundingClientRect()
@@ -49,12 +58,12 @@ export default function SignatureSection() {
     canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
   }
 
-  const saveSig = () => {
+  const saveSig = async () => {
     const canvas = canvasRef.current
     if (!canvas) return
     const dataUrl = canvas.toDataURL('image/png')
-    const cfg = getGeneralConfig()
-    saveGeneralConfig({ ...cfg, defaultSignature: dataUrl })
+    const cfg = await getGeneralConfig()
+    await saveGeneralConfig({ ...cfg, defaultSignature: dataUrl })
     setSavedSig(dataUrl)
     setEditMode(false)
     setSaveFeedback(true)

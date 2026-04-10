@@ -72,8 +72,8 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
     }
   }
 
-  const downloadContract = () => contract && generateContract(contract, client, rental.vehicle, agency)
-  const downloadInvoice  = () => invoice  && generateInvoice(invoice, contract, client, rental.vehicle, agency)
+  const downloadContract = async () => contract && await generateContract(contract, client, rental.vehicle, agency)
+  const downloadInvoice  = async () => invoice  && await generateInvoice(invoice, contract, client, rental.vehicle, agency)
 
   const handleSign = async () => {
     if (!contract || signing) return

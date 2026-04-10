@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getTransactions, getJournalEntries } from '../../storage.js'
+import { getTransactions, getJournalEntries } from '../../lib/db'
 import { card, tableStyle, th, td, inputStyle, fmt, fmtDate } from './accountingStyles.js'
 
 export default function TabJournal() {
@@ -13,24 +13,27 @@ export default function TabJournal() {
   const [txMap,   setTxMap]   = useState({})
 
   useEffect(() => {
-    const txs = getTransactions()
-    const map = {}
-    txs.forEach(t => { map[t.id] = t })
-    setTxMap(map)
+    async function load() {
+      const txs = await getTransactions()
+      const map = {}
+      txs.forEach(t => { map[t.id] = t })
+      setTxMap(map)
 
-    const all = getJournalEntries()
-    const filtered = all.filter(e => {
-      if (from && e.date < from) return false
-      if (to   && e.date > to)   return false
-      return true
-    })
-    // Sort by date desc, then group by transactionId
-    filtered.sort((a, b) => {
-      const dateComp = b.date?.localeCompare(a.date || '') || 0
-      if (dateComp !== 0) return dateComp
-      return a.transactionId?.localeCompare(b.transactionId || '') || 0
-    })
-    setEntries(filtered)
+      const all = await getJournalEntries()
+      const filtered = all.filter(e => {
+        if (from && e.date < from) return false
+        if (to   && e.date > to)   return false
+        return true
+      })
+      // Sort by date desc, then group by transactionId
+      filtered.sort((a, b) => {
+        const dateComp = b.date?.localeCompare(a.date || '') || 0
+        if (dateComp !== 0) return dateComp
+        return a.transactionId?.localeCompare(b.transactionId || '') || 0
+      })
+      setEntries(filtered)
+    }
+    load()
   }, [from, to])
 
   const totalDebit  = entries.reduce((s, e) => s + (Number(e.debit)  || 0), 0)

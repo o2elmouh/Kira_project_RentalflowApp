@@ -1,31 +1,45 @@
 import { useState, useEffect } from 'react'
 import { Radio, Plus, Trash2 } from 'lucide-react'
-import { getFleet, getTelemetryConfig, saveTelemetryConfig } from '../../storage'
+import { getFleet, getTelemetryConfig, saveTelemetryConfig } from '../../lib/db'
 
 export default function TelematicsTab() {
-  const [cfg, setCfg]     = useState(() => getTelemetryConfig())
+  const [cfg, setCfg]     = useState(null)
   const [fleet, setFleet] = useState([])
   const [saved, setSaved] = useState(false)
 
-  useEffect(() => { setFleet(getFleet()) }, [])
+  useEffect(() => {
+    (async () => {
+      const telCfg = await getTelemetryConfig()
+      setCfg(telCfg)
+      const fleetData = await getFleet()
+      setFleet(fleetData)
+    })()
+  }, [])
 
-  const setProvider = (p) => setCfg(c => ({ ...c, provider: p }))
+  const setProvider = (p) => setCfg(c => c ? { ...c, provider: p } : { provider: p, mappings: [] })
 
   const setMapping = (idx, field, value) =>
     setCfg(c => {
+      if (!c) return null
       const mappings = [...(c.mappings || [])]
       mappings[idx] = { ...mappings[idx], [field]: value }
       return { ...c, mappings }
     })
 
   const addMapping = () =>
-    setCfg(c => ({ ...c, mappings: [...(c.mappings || []), { vehicleId: '', deviceId: '' }] }))
+    setCfg(c => {
+      if (!c) return { provider: 'mock', mappings: [{ vehicleId: '', deviceId: '' }] }
+      return { ...c, mappings: [...(c.mappings || []), { vehicleId: '', deviceId: '' }] }
+    })
 
   const removeMapping = (idx) =>
-    setCfg(c => ({ ...c, mappings: (c.mappings || []).filter((_, i) => i !== idx) }))
+    setCfg(c => {
+      if (!c) return null
+      return { ...c, mappings: (c.mappings || []).filter((_, i) => i !== idx) }
+    })
 
-  const save = () => {
-    saveTelemetryConfig(cfg)
+  const save = async () => {
+    await saveTelemetryConfig(cfg)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -65,23 +79,23 @@ export default function TelematicsTab() {
               style={{
                 padding: '7px 18px', borderRadius: 6, border: '1px solid var(--border)',
                 cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                background: cfg.provider === p ? 'var(--accent)' : 'transparent',
-                color: cfg.provider === p ? '#fff' : 'var(--text2)',
+                background: cfg?.provider === p ? 'var(--accent)' : 'transparent',
+                color: cfg?.provider === p ? '#fff' : 'var(--text2)',
               }}
             >{p.charAt(0).toUpperCase() + p.slice(1)}</button>
           ))}
         </div>
-        {cfg.provider === 'mock' && (
+        {cfg?.provider === 'mock' && (
           <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text3)', background: 'var(--bg-tertiary)', borderRadius: 6, padding: '8px 12px' }}>
             Mode démo — positions GPS simulées. Aucune clé API requise.
           </div>
         )}
-        {cfg.provider === 'traccar' && (
+        {cfg?.provider === 'traccar' && (
           <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text3)' }}>
             Configurez <b>TRACCAR_URL</b>, <b>TRACCAR_EMAIL</b> et <b>TRACCAR_PASSWORD</b> dans les variables Railway.
           </div>
         )}
-        {cfg.provider === 'flespi' && (
+        {cfg?.provider === 'flespi' && (
           <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text3)' }}>
             Configurez <b>FLESPI_TOKEN</b> dans les variables Railway.
           </div>
@@ -118,7 +132,7 @@ export default function TelematicsTab() {
           </div>
         )}
 
-        {(!cfg.mappings || cfg.mappings.length === 0) ? (
+        {(!cfg?.mappings || cfg.mappings.length === 0) ? (
           <p style={{ fontSize: 13, color: 'var(--text3)' }}>
             Aucune association manuelle. Utilisez le champ "ID boîtier" dans la fiche véhicule, ou ajoutez une entrée ici.
           </p>
@@ -129,7 +143,7 @@ export default function TelematicsTab() {
               <span style={s.label}>ID boîtier (deviceId)</span>
               <span />
             </div>
-            {cfg.mappings.map((m, i) => (
+            {cfg?.mappings?.map((m, i) => (
               <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 10, alignItems: 'center' }}>
                 <select
                   style={s.select}

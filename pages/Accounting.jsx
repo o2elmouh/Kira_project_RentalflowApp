@@ -21,8 +21,8 @@ function TabBilan() {
   const [to,   setTo]   = useState(today.toISOString().slice(0, 10))
   const [result, setResult] = useState(null)
 
-  const compute = useCallback(() => {
-    const r = computeAgencyPayout({ startDate: from, endDate: to })
+  const compute = useCallback(async () => {
+    const r = await computeAgencyPayout({ startDate: from, endDate: to })
     setResult(r)
   }, [from, to])
 

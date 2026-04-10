@@ -14,7 +14,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-import { getFleet, getContracts, getTelemetryConfig } from '../storage.js'
+import { getFleet, getContracts, getTelemetryConfig } from '../lib/db'
 import { api } from '../lib/api.js'
 import { normalize } from '../utils/telemetry.js'
 
@@ -98,14 +98,16 @@ export default function FleetMap({ height = 520 }) {
 
   // Load fleet + active contracts to determine status
   useEffect(() => {
-    const fleet     = getFleet()
-    const contracts = getContracts()
-    const activeIds = new Set(contracts.filter(c => c.status === 'active').map(c => c.vehicleId))
-    setVehicles(fleet.map(v => ({
-      ...v,
-      liveStatus: activeIds.has(v.id) ? 'rented' : v.status,
-      activeContract: contracts.find(c => c.vehicleId === v.id && c.status === 'active') || null,
-    })))
+    (async () => {
+      const fleet     = await getFleet()
+      const contracts = await getContracts()
+      const activeIds = new Set(contracts.filter(c => c.status === 'active').map(c => c.vehicleId))
+      setVehicles(fleet.map(v => ({
+        ...v,
+        liveStatus: activeIds.has(v.id) ? 'rented' : v.status,
+        activeContract: contracts.find(c => c.vehicleId === v.id && c.status === 'active') || null,
+      })))
+    })()
   }, [])
 
   // Only vehicles with a trackedDevice field are shown on the map
@@ -117,7 +119,7 @@ export default function FleetMap({ height = 520 }) {
     setLoading(true)
     setError(null)
     try {
-      const cfg       = getTelemetryConfig()
+      const cfg       = await getTelemetryConfig()
       const mappings  = cfg.mappings || []
       // Use trackedDevice IDs directly from vehicle objects
       const ids = trackedVehicles.map(v => v.trackedDevice).filter(Boolean)

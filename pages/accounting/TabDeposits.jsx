@@ -3,7 +3,7 @@ import { Plus, X } from 'lucide-react'
 import {
   getDeposits,
   getContracts,
-} from '../../storage.js'
+} from '../../lib/db'
 import { holdDeposit, releaseDeposit } from '../../utils/accounting.js'
 import Modal from './Modal'
 import {
@@ -28,21 +28,21 @@ export default function TabDeposits() {
 
   const [deductions, setDeductions] = useState([{ reason: '', amount: '', accountCode: '3020' }])
 
-  const load = useCallback(() => {
-    setDeposits(getDeposits())
-    setContracts(getContracts().filter(c => c.status === 'active'))
+  const load = useCallback(async () => {
+    setDeposits(await getDeposits())
+    setContracts((await getContracts()).filter(c => c.status === 'active'))
   }, [])
 
   useEffect(() => { load() }, [load])
 
-  const handleHold = () => {
+  const handleHold = async () => {
     setError('')
     if (!holdForm.clientName.trim() || !holdForm.amount || Number(holdForm.amount) <= 0) {
       setError('Nom du client et montant requis.')
       return
     }
     try {
-      holdDeposit({
+      await holdDeposit({
         contractId:  holdForm.contractId || null,
         clientName:  holdForm.clientName.trim(),
         vehicleName: holdForm.vehicleName.trim(),
@@ -57,7 +57,7 @@ export default function TabDeposits() {
     }
   }
 
-  const handleRelease = () => {
+  const handleRelease = async () => {
     setError('')
     const validDeds = deductions.filter(d => d.reason.trim() && Number(d.amount) > 0)
     const totalDed  = validDeds.reduce((s, d) => s + Number(d.amount), 0)
@@ -66,7 +66,7 @@ export default function TabDeposits() {
       return
     }
     try {
-      releaseDeposit({ depositId: showRelease.id, deductions: validDeds.map(d => ({ ...d, amount: Number(d.amount) })) })
+      await releaseDeposit({ depositId: showRelease.id, deductions: validDeds.map(d => ({ ...d, amount: Number(d.amount) })) })
       setShowRelease(null)
       setDeductions([{ reason: '', amount: '', accountCode: '3020' }])
       load()

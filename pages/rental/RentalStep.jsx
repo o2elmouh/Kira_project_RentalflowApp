@@ -6,18 +6,29 @@ import StepButtons from './StepButtons'
 
 export default function RentalStep({ client, onNext, onBack, onSaveAndQuit, onCancel, initialRental }) {
   const today = new Date().toISOString().split('T')[0]
-  const rentalOptions = getRentalOptions()
+  const [rentalOptions, setRentalOptions] = useState([])
   const [form, setForm] = useState(initialRental || {
     startDate: today, endDate: '', vehicleId: '',
     startTime: '09:00', endTime: '09:00', fuelLevel: 'Plein',
     paymentMethod: 'Carte bancaire', deposit: 2400,
     pickupLocation: '', returnLocation: '',
     mileageOut: '',
-    selectedOptions: Object.fromEntries(rentalOptions.map(o => [o.id, o.enabled])),
+    selectedOptions: {},
   })
   const [vehicles, setVehicles] = useState([])
   const [vehicle, setVehicle] = useState(null)
   const [vehiclesLoading, setVehiclesLoading] = useState(false)
+
+  useEffect(() => {
+    (async () => {
+      const options = await getRentalOptions()
+      setRentalOptions(options)
+      setForm(p => ({
+        ...p,
+        selectedOptions: Object.fromEntries(options.map(o => [o.id, o.enabled])),
+      }))
+    })()
+  }, [])
 
   useEffect(() => {
     if (!form.startDate || !form.endDate || form.endDate < form.startDate) return

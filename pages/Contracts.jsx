@@ -105,10 +105,10 @@ export default function Contracts({ onRestitution }) {
   const getClient = (id) => clients.find(c => c.id === id) || {}
   const getVehicle = (id) => fleet.find(v => v.id === id) || {}
 
-  const downloadPDF = (contract) => {
+  const downloadPDF = async (contract) => {
     const client = getClient(contract.clientId)
     const vehicle = getVehicle(contract.vehicleId)
-    generateContract(contract, client, vehicle, agency)
+    await generateContract(contract, client, vehicle, agency)
   }
 
   const sendContractWhatsApp = async (contract) => {

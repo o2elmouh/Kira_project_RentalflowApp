@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Radio } from 'lucide-react'
 import { FUEL_LEVELS, FUEL_OPTIONS } from '../../utils/restitutionUtils'
-import { getSnapshotsForContract } from '../../storage'
+import { getSnapshotsForContract } from '../../lib/db'
 
 export default function Step1Return({ contract, vehicle, data, onChange, onNext }) {
   const { t } = useTranslation('restitution')
@@ -16,9 +16,11 @@ export default function Step1Return({ contract, vehicle, data, onChange, onNext 
   // Check for a telemetry end-snapshot for pre-fill
   const [snapFill, setSnapFill] = useState(null)
   useEffect(() => {
-    const snaps   = getSnapshotsForContract(contract.id)
-    const endSnap = snaps.find(s => s.phase === 'end')
-    if (endSnap && vehicle?.trackedDevice) setSnapFill(endSnap)
+    (async () => {
+      const snaps   = await getSnapshotsForContract(contract.id)
+      const endSnap = snaps.find(s => s.phase === 'end')
+      if (endSnap && vehicle?.trackedDevice) setSnapFill(endSnap)
+    })()
   }, [contract.id, vehicle])
 
   const applySnapshot = () => {

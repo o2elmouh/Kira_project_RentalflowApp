@@ -38,7 +38,7 @@ export default function Step4Closure({ agency, contract, vehicle, returnDate, re
     setWaStatus(null)
     try {
       const { generateRestitutionPDFBuffer } = await import('../../utils/pdf')
-      const buffer = generateRestitutionPDFBuffer({
+      const buffer = await generateRestitutionPDFBuffer({
         agency, contract, returnDate, returnTime, returnMileage, returnFuelLevel,
         returnDamages, extraKmFee, fuelFee, damageFee: damageFee || 0,
         totalExtraFees, extraKm, fuelDiff,

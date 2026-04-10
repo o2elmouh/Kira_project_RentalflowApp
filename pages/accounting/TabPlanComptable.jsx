@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus } from 'lucide-react'
-import { getAccounts, saveAccount } from '../../storage.js'
+import { getAccounts, saveAccount } from '../../lib/db'
 import Modal from './Modal.jsx'
 import { card, tableStyle, th, td, inputStyle, selectStyle, btnPrimary, btnSecondary, badge } from './accountingStyles.js'
 
@@ -10,16 +10,16 @@ export default function TabPlanComptable() {
   const [form, setForm] = useState({ code: '', name: '', type: 'asset', category: 'Actifs', normalBalance: 'debit' })
   const [error, setError] = useState('')
 
-  const load = useCallback(() => setAccounts(getAccounts()), [])
+  const load = useCallback(async () => setAccounts(await getAccounts()), [])
   useEffect(() => { load() }, [load])
 
   const categories = [...new Set(accounts.map(a => a.category))]
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setError('')
     if (!form.code.trim() || !form.name.trim()) { setError('Code et nom requis.'); return }
     if (accounts.find(a => a.code === form.code.trim() && !a.id)) { setError('Code déjà utilisé.'); return }
-    saveAccount({ ...form, code: form.code.trim(), name: form.name.trim() })
+    await saveAccount({ ...form, code: form.code.trim(), name: form.name.trim() })
     setShowForm(false)
     setForm({ code: '', name: '', type: 'asset', category: 'Actifs', normalBalance: 'debit' })
     load()

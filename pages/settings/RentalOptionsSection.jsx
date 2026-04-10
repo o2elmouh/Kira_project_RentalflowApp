@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { DEFAULT_RENTAL_OPTIONS } from '../../utils/rentalOptions'
-import { getGeneralConfig, saveGeneralConfig } from '../../storage'
+import { getGeneralConfig, saveGeneralConfig } from '../../lib/db'
 
 export default function RentalOptionsSection() {
-  const loadOptions = () => {
-    const cfg = getGeneralConfig()
-    return cfg.rentalOptions && cfg.rentalOptions.length > 0 ? cfg.rentalOptions : DEFAULT_RENTAL_OPTIONS
-  }
-  const [options, setOptions] = useState(loadOptions)
+  const [options, setOptions] = useState(DEFAULT_RENTAL_OPTIONS)
+
+  useEffect(() => {
+    (async () => {
+      const cfg = await getGeneralConfig()
+      setOptions(cfg.rentalOptions && cfg.rentalOptions.length > 0 ? cfg.rentalOptions : DEFAULT_RENTAL_OPTIONS)
+    })()
+  }, [])
   const [saved, setSaved] = useState(false)
   const [editMode, setEditMode] = useState(false)
 
@@ -27,9 +30,9 @@ export default function RentalOptionsSection() {
     setOptions(prev => prev.filter(o => o.id !== id))
   }
 
-  const save = () => {
-    const cfg = getGeneralConfig()
-    saveGeneralConfig({ ...cfg, rentalOptions: options })
+  const save = async () => {
+    const cfg = await getGeneralConfig()
+    await saveGeneralConfig({ ...cfg, rentalOptions: options })
     setSaved(true)
     setEditMode(false)
     setTimeout(() => setSaved(false), 2000)
@@ -106,7 +109,7 @@ export default function RentalOptionsSection() {
             <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={save}>
               Enregistrer
             </button>
-            <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => { setOptions(loadOptions()); setEditMode(false) }}>
+            <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => { setOptions(DEFAULT_RENTAL_OPTIONS); setEditMode(false) }}>
               Annuler
             </button>
           </div>

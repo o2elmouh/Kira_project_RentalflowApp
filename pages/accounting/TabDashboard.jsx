@@ -4,7 +4,7 @@ import {
   getJournalEntries,
   getContracts,
   getFleet,
-} from '../../storage.js'
+} from '../../lib/db'
 import PnLView from './PnLView.jsx'
 import UtilizationView from './UtilizationView.jsx'
 import AgedReceivablesView from './AgedReceivablesView.jsx'
@@ -17,10 +17,13 @@ export default function TabDashboard() {
   const [accounts, setAccounts] = useState([])
 
   useEffect(() => {
-    setContracts(getContracts())
-    setFleet(getFleet())
-    setEntries(getJournalEntries())
-    setAccounts(getAccounts())
+    async function load() {
+      setContracts(await getContracts())
+      setFleet(await getFleet())
+      setEntries(await getJournalEntries())
+      setAccounts(await getAccounts())
+    }
+    load()
   }, [])
 
   const VIEWS = [

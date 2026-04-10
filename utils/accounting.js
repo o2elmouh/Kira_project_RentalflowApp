@@ -8,16 +8,17 @@ import {
   saveDeposit,
   getDepositByContract,
   getDeposits,
-} from '../storage.js'
+} from '../lib/db.js'
 
 // ── Find account by code ──────────────────────────────────
-export function getAccountByCode(code) {
-  return getAccounts().find(a => a.code === code) || null
+export async function getAccountByCode(code, accounts = null) {
+  const accts = accounts || await getAccounts()
+  return accts.find(a => a.code === code) || null
 }
 
 // ── Post a balanced double-entry transaction ──────────────
 // entries: [{ accountCode, debit, credit, description }]
-export function postTransaction({ date, description, type, contractId, invoiceId, entries }) {
+export async function postTransaction({ date, description, type, contractId, invoiceId, entries }) {
   const totalDebits  = entries.reduce((s, e) => s + (Number(e.debit)  || 0), 0)
   const totalCredits = entries.reduce((s, e) => s + (Number(e.credit) || 0), 0)
 
@@ -28,7 +29,7 @@ export function postTransaction({ date, description, type, contractId, invoiceId
     )
   }
 
-  const tx = saveTransaction({
+  const tx = await saveTransaction({
     date: date || new Date().toISOString().slice(0, 10),
     description,
     type: type || 'manual',
@@ -37,24 +38,25 @@ export function postTransaction({ date, description, type, contractId, invoiceId
     totalAmount: totalDebits,
   })
 
+  const accts = await getAccounts()
   const journalLines = entries.map(e => ({
     transactionId: tx.id,
     transactionRef: tx.reference,
     date: tx.date,
     accountCode: e.accountCode,
-    accountName: getAccountByCode(e.accountCode)?.name || e.accountCode,
+    accountName: accts.find(a => a.code === e.accountCode)?.name || e.accountCode,
     description: e.description || description,
     debit:  Number(e.debit)  || 0,
     credit: Number(e.credit) || 0,
   }))
 
-  saveJournalEntries(journalLines)
+  await saveJournalEntries(journalLines)
   return tx
 }
 
 // ── Generate rental invoice journal entries ───────────────
-export function generateRentalInvoice(contractId) {
-  const contract = getContract(contractId)
+export async function generateRentalInvoice(contractId) {
+  const contract = await getContract(contractId)
   if (!contract) throw new Error('Contrat introuvable')
 
   const totalHT  = Number(contract.totalHT)  || 0
@@ -103,9 +105,9 @@ export function generateRentalInvoice(contractId) {
 }
 
 // ── Hold a security deposit ───────────────────────────────
-export function holdDeposit({ contractId, clientName, vehicleName, amount, date }) {
+export async function holdDeposit({ contractId, clientName, vehicleName, amount, date }) {
   const amt = Number(amount)
-  const tx = postTransaction({
+  const tx = await postTransaction({
     date: date || new Date().toISOString().slice(0, 10),
     description: `Dépôt de garantie — ${clientName} — ${vehicleName}`,
     type: 'deposit_hold',
@@ -132,8 +134,8 @@ export function holdDeposit({ contractId, clientName, vehicleName, amount, date 
 
 // ── Release a security deposit (partial or full) ──────────
 // deductions: [{ reason: string, amount: number, accountCode: string }]
-export function releaseDeposit({ depositId, deductions = [] }) {
-  const deposits = getDeposits()
+export async function releaseDeposit({ depositId, deductions = [] }) {
+  const deposits = await getDeposits()
   const deposit = deposits.find(d => d.id === depositId)
   if (!deposit) throw new Error('Dépôt introuvable')
 
@@ -156,7 +158,7 @@ export function releaseDeposit({ depositId, deductions = [] }) {
     entries.push({ accountCode: code, debit: 0, credit: Number(ded.amount), description: ded.reason || 'Retenue sur dépôt' })
   })
 
-  const tx = postTransaction({
+  const tx = await postTransaction({
     date: new Date().toISOString().slice(0, 10),
     description: `Libération dépôt — ${deposit.clientName}`,
     type: 'deposit_release',
@@ -179,9 +181,9 @@ export function releaseDeposit({ depositId, deductions = [] }) {
 }
 
 // ── Agency payout computation ─────────────────────────────
-export function computeAgencyPayout({ startDate, endDate } = {}) {
-  const entries = getJournalEntries()
-  const accounts = getAccounts()
+export async function computeAgencyPayout({ startDate, endDate } = {}) {
+  const entries = await getJournalEntries()
+  const accounts = await getAccounts()
 
   const inRange = e => {
     if (!startDate && !endDate) return true
@@ -229,8 +231,8 @@ export function computeAgencyPayout({ startDate, endDate } = {}) {
 }
 
 // ── P&L summary ───────────────────────────────────────────
-export function computePL({ startDate, endDate } = {}) {
-  const { totalRevenue, totalExpenses } = computeAgencyPayout({ startDate, endDate })
+export async function computePL({ startDate, endDate } = {}) {
+  const { totalRevenue, totalExpenses } = await computeAgencyPayout({ startDate, endDate })
   return {
     revenue:  totalRevenue,
     expenses: totalExpenses,

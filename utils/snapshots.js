@@ -21,12 +21,12 @@ import {
   getVehicle, saveVehicle,
   saveSnapshot, getSnapshotsForContract,
   getDeviceForVehicle, updateContract,
-} from '../storage.js'
+} from '../lib/db.js'
 import { normalize, computeDeltas, hasCriticalDtc } from './telemetry.js'
 
 // ── Internal: fetch telemetry from backend and normalize ─────────────────────
 async function fetchAndNormalize(vehicleId) {
-  const deviceId = getDeviceForVehicle(vehicleId)
+  const deviceId = await getDeviceForVehicle(vehicleId)
 
   // Always call the backend — in 'mock' mode it returns synthetic data
   const result = await api.takeSnapshot({ deviceId: deviceId || vehicleId, vehicleId })
@@ -62,7 +62,7 @@ export async function snapshotOnStart(contract) {
 
     // If there are DTC codes at start, flag vehicle now
     if (hasCriticalDtc(data.dtcCodes)) {
-      _flagMaintenance(contract.vehicleId, data.dtcCodes)
+      await _flagMaintenance(contract.vehicleId, data.dtcCodes)
     }
 
     console.log(`[Snapshot] START — contract ${contract.contractNumber}, mileage: ${data.mileage} km, fuel: ${data.fuel}%`)
@@ -100,7 +100,7 @@ export async function snapshotOnEnd(contract) {
     })
 
     // Persist end-snapshot data onto the contract for reference
-    updateContract(contract.id, {
+    await updateContract(contract.id, {
       telemetryEnd: {
         mileage:  data.mileage,
         fuel:     data.fuel,
@@ -118,7 +118,7 @@ export async function snapshotOnEnd(contract) {
       charges = result.charges
 
       // Persist deltas onto contract
-      updateContract(contract.id, {
+      await updateContract(contract.id, {
         telemetryMileageDelta: result.mileageDelta,
         telemetryFuelDelta:    result.fuelDelta,
       })
@@ -126,7 +126,7 @@ export async function snapshotOnEnd(contract) {
 
     // DTC / engine light check
     if (hasCriticalDtc(data.dtcCodes)) {
-      _flagMaintenance(contract.vehicleId, data.dtcCodes)
+      await _flagMaintenance(contract.vehicleId, data.dtcCodes)
       console.warn(`[Snapshot] END — DTC codes detected: ${data.dtcCodes.join(', ')}. Vehicle flagged for maintenance.`)
     }
 
@@ -139,10 +139,10 @@ export async function snapshotOnEnd(contract) {
 }
 
 // ── Internal: flag vehicle for maintenance ───────────────────────────────────
-function _flagMaintenance(vehicleId, dtcCodes) {
-  const vehicle = getVehicle(vehicleId)
+async function _flagMaintenance(vehicleId, dtcCodes) {
+  const vehicle = await getVehicle(vehicleId)
   if (!vehicle) return
-  saveVehicle({
+  await saveVehicle({
     ...vehicle,
     status:        'maintenance',
     dtcCodes,

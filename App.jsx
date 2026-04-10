@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { supabase, isSupabaseEnabled } from './lib/supabase'
+import { supabase } from './lib/supabase'
 import { UserContext } from './lib/UserContext'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
@@ -14,7 +14,7 @@ import RestitutionPicker from './pages/RestitutionPicker'
 import AuthPage from './pages/Auth'
 import OnboardingPage from './pages/Onboarding'
 import SignContract from './pages/SignContract'
-import { seedDemoData, initDefaultAccounts } from './utils/storage'
+import { initDefaultAccounts } from './lib/db'
 import Accounting from './pages/Accounting'
 
 const USE_AUTH = import.meta.env.VITE_USE_AUTH === 'true'
@@ -32,8 +32,7 @@ export default function App() {
   const initializedRef                                = useRef(false)
 
   useEffect(() => {
-    if (!USE_AUTH || !isSupabaseEnabled()) {
-      seedDemoData()
+    if (!USE_AUTH) {
       initDefaultAccounts()
       setAuthState('ready')
       return

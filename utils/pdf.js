@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { getGeneralConfig } from '../storage'
+import { getGeneralConfig } from '../lib/db'
 
 const ACCENT = [199, 75, 31]
 const DARK   = [28, 26, 22]
@@ -256,8 +256,8 @@ function drawCarDiagram(doc, cx, cy) {
 
 // ── Contract ──────────────────────────────────────────────
 
-export function generateContract(contract, client, vehicle, agency) {
-  const { defaultSignature } = getGeneralConfig() || {}
+export async function generateContract(contract, client, vehicle, agency) {
+  const { defaultSignature } = (await getGeneralConfig()) || {}
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   let y = header(doc, agency, 'CONTRAT DE LOCATION DE VÉHICULE', contract.contractNumber)
 
@@ -459,8 +459,8 @@ export function generateContract(contract, client, vehicle, agency) {
 
 // ── Invoice ───────────────────────────────────────────────
 
-export function generateInvoice(invoice, contract, client, vehicle, agency) {
-  const { defaultSignature } = getGeneralConfig() || {}
+export async function generateInvoice(invoice, contract, client, vehicle, agency) {
+  const { defaultSignature } = (await getGeneralConfig()) || {}
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
   // ── Custom header for invoice (includes invoice number top-right prominently) ──
@@ -611,8 +611,8 @@ export function generateInvoice(invoice, contract, client, vehicle, agency) {
  * Same as generateContract but returns an ArrayBuffer instead of saving a file.
  * Used when we need to upload the PDF bytes to Supabase Storage.
  */
-export function generateContractBuffer(contract, client, vehicle, agency) {
-  const { defaultSignature } = getGeneralConfig() || {}
+export async function generateContractBuffer(contract, client, vehicle, agency) {
+  const { defaultSignature } = (await getGeneralConfig()) || {}
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   let y = header(doc, agency, 'CONTRAT DE LOCATION DE VÉHICULE', contract.contractNumber)
 
@@ -786,8 +786,8 @@ export function generateContractBuffer(contract, client, vehicle, agency) {
 /**
  * Same as generateInvoice but returns an ArrayBuffer instead of saving a file.
  */
-export function generateInvoiceBuffer(invoice, contract, client, vehicle, agency) {
-  const { defaultSignature } = getGeneralConfig() || {}
+export async function generateInvoiceBuffer(invoice, contract, client, vehicle, agency) {
+  const { defaultSignature } = (await getGeneralConfig()) || {}
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
   doc.setFillColor(...DARK)
@@ -911,7 +911,7 @@ export function generateInvoiceBuffer(invoice, contract, client, vehicle, agency
  * Same as generateRestitutionPDF (defined in Restitution.jsx) but returns an ArrayBuffer.
  * Used for WhatsApp sending without triggering a file download.
  */
-export function generateRestitutionPDFBuffer({ agency = {}, contract, returnDate, returnTime, returnMileage, returnFuelLevel,
+export async function generateRestitutionPDFBuffer({ agency = {}, contract, returnDate, returnTime, returnMileage, returnFuelLevel,
   returnDamages, extraKmFee, fuelFee, damageFee, totalExtraFees, extraKm, fuelDiff }) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
