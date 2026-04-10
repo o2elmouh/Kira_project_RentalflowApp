@@ -16,14 +16,16 @@ import OnboardingPage from './pages/Onboarding'
 import SignContract from './pages/SignContract'
 import { initDefaultAccounts } from './lib/db'
 import Accounting from './pages/Accounting'
+import MigrateData from './pages/MigrateData'
 
 const USE_AUTH = import.meta.env.VITE_USE_AUTH === 'true'
 const PREVIEW  = new URLSearchParams(window.location.search).get('preview')
+const PAGE_PARAM = new URLSearchParams(window.location.search).get('page')
 
 const signToken = new URLSearchParams(window.location.search).get('sign')
 
 export default function App() {
-  const [page, setPage]                               = useState('dashboard')
+  const [page, setPage]                               = useState(PAGE_PARAM || 'dashboard')
   const [restitutionContract, setRestitutionContract] = useState(null)
   const [authState, setAuthState]                     = useState('loading')
   const [user, setUser]                               = useState(null)
@@ -125,6 +127,7 @@ export default function App() {
       case 'fleet':      return <Fleet />
       case 'accounting': return <Accounting />
       case 'settings':   return <Settings />
+      case 'migrate':    return <MigrateData />
       case 'restitution-picker':
         return <RestitutionPicker onPick={handleRestitution} onCancel={() => setPage('contracts')} />
       case 'restitution':
