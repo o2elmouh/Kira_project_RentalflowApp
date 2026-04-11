@@ -1,142 +1,19 @@
 /**
- * POST /ocr/scan    — Google Cloud Document AI (image upload)
- * POST /ocr/refine  — Claude 3.5 Sonnet text refinement (raw OCR text → structured JSON)
+ * POST /ocr/scan-claude — Claude Vision document scanning
+ *
+ * Multipart: field "document" (image file) + optional field "hint" (cin|license|passport)
+ * Returns: IdentityDocument JSON  or  { error: 'INCOMPLETE', missing: string[] }
  *
  * Required env vars:
- *   GOOGLE_DOCUMENT_AI_PROJECT / LOCATION / PROCESSOR / GOOGLE_CREDENTIALS_JSON
- *   ANTHROPIC_API_KEY — for /refine endpoint
+ *   ANTHROPIC_API_KEY
  */
 import { Router } from 'express'
-import { DocumentProcessorServiceClient } from '@google-cloud/documentai'
 import Anthropic from '@anthropic-ai/sdk'
 import multer from 'multer'
-import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
 
-// ── Document type heuristic ───────────────────────────────
-const ENTITY_TYPE_TO_DOC_TYPE = {
-  passport: 'PASSPORT',
-  driving_license: 'DRIVING_LICENSE',
-  national_id: 'ID_CARD',
-  id_card: 'ID_CARD',
-}
-
-function inferDocumentType(entities) {
-  for (const e of entities) {
-    const mapped = ENTITY_TYPE_TO_DOC_TYPE[e.type?.toLowerCase()]
-    if (mapped) return mapped
-  }
-  return 'ID_CARD'
-}
-
-function entityValue(entities, ...types) {
-  for (const type of types) {
-    const found = entities.find(e => e.type === type)
-    if (found?.mentionText) return found.mentionText.trim()
-  }
-  return ''
-}
-
-function entityConfidence(entities, ...types) {
-  for (const type of types) {
-    const found = entities.find(e => e.type === type)
-    if (found) return found.confidence ?? 0
-  }
-  return null
-}
-
-// ── Route ─────────────────────────────────────────────────
-router.post('/scan', requireAuth, upload.single('document'), async (req, res, next) => {
-  if (!req.file) return res.status(400).json({ error: 'No document file uploaded (field: "document")' })
-
-  const {
-    GOOGLE_DOCUMENT_AI_PROJECT: project,
-    GOOGLE_DOCUMENT_AI_LOCATION: location = 'eu',
-    GOOGLE_DOCUMENT_AI_PROCESSOR: processorId,
-    GOOGLE_CREDENTIALS_JSON,
-  } = process.env
-
-  if (!project || !processorId) {
-    return res.status(503).json({ error: 'OCR service not configured (missing env vars)' })
-  }
-
-  // Support inline JSON credentials for Railway (no file system needed)
-  let clientOptions = {}
-  if (GOOGLE_CREDENTIALS_JSON) {
-    try {
-      clientOptions = { credentials: JSON.parse(GOOGLE_CREDENTIALS_JSON) }
-    } catch {
-      return res.status(500).json({ error: 'GOOGLE_CREDENTIALS_JSON is not valid JSON' })
-    }
-  }
-
-  const client = new DocumentProcessorServiceClient(clientOptions)
-  const name = `projects/${project}/locations/${location}/processors/${processorId}`
-
-  const request = {
-    name,
-    rawDocument: {
-      content: req.file.buffer.toString('base64'),
-      mimeType: req.file.mimetype || 'image/jpeg',
-    },
-  }
-
-  let document
-  try {
-    const [result] = await client.processDocument(request)
-    document = result.document
-  } catch (err) {
-    console.error('[OCR] Document AI error:', err.message)
-    return next(Object.assign(new Error('Document AI processing failed'), { status: 502 }))
-  }
-
-  const entities = document?.entities ?? []
-
-  // ── Map Google entities → our schema ──────────────────
-  const firstName = entityValue(entities, 'given_name', 'first_name')
-  const lastName = entityValue(entities, 'family_name', 'last_name', 'surname')
-  const documentNumber = entityValue(entities, 'document_id', 'passport_number', 'id_number', 'license_number', 'document_number')
-  const expiryDate = entityValue(entities, 'expiration_date', 'expiry_date', 'date_of_expiry')
-  const dateOfBirth = entityValue(entities, 'date_of_birth', 'birth_date')
-  const issuingCountry = entityValue(entities, 'issuing_country', 'country_code', 'nationality') || 'MAR'
-  const documentType = inferDocumentType(entities)
-
-  // Average confidence across key fields
-  const scores = [
-    entityConfidence(entities, 'given_name', 'first_name'),
-    entityConfidence(entities, 'family_name', 'last_name', 'surname'),
-    entityConfidence(entities, 'document_id', 'passport_number', 'id_number', 'license_number'),
-    entityConfidence(entities, 'expiration_date', 'expiry_date', 'date_of_expiry'),
-  ].filter(s => s !== null)
-  const confidenceScore = scores.length
-    ? scores.reduce((a, b) => a + b, 0) / scores.length
-    : 0.5
-
-  if (!firstName || !lastName || !documentNumber || !expiryDate) {
-    return res.status(422).json({
-      error: 'Could not extract required fields from document. Please try a clearer image.',
-    })
-  }
-
-  return res.json({
-    firstName,
-    lastName,
-    documentNumber,
-    expiryDate: expiryDate || null,
-    dateOfBirth: dateOfBirth || null,
-    issuingCountry: issuingCountry.padEnd(3, 'X').slice(0, 3).toUpperCase(),
-    documentType,
-    confidenceScore: Math.round(confidenceScore * 100) / 100,
-  })
-})
-
-// ── POST /ocr/scan-claude ─────────────────────────────────────────────────────
-//
-// Multipart: field "document" (image file)  +  optional field "hint" (cin|license|passport)
-// Returns: IdentityDocument JSON  or  { error: 'INCOMPLETE', missing: string[] }
-//
 const CLAUDE_SYSTEM_PROMPT = `You are a precise document parser specialised in Moroccan identity documents.
 Moroccan documents are bilingual (French + Arabic).
 
