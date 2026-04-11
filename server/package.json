@@ -9,6 +9,7 @@
     "dev": "node --watch index.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
     "@google-cloud/documentai": "^9.6.0",
     "@supabase/supabase-js": "^2.100.1",
     "cors": "^2.8.5",
