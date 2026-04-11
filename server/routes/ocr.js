@@ -165,7 +165,7 @@ If a mandatory field (firstName, lastName, documentNumber, expiryDate) cannot be
 
 Do not guess or hallucinate values. If uncertain, include the field in "missing".`
 
-router.post('/scan-claude', requireAuth, upload.single('document'), async (req, res, next) => {
+router.post('/scan-claude', upload.single('document'), async (req, res, next) => {
   if (!req.file) return res.status(400).json({ error: 'No document file uploaded (field: "document")' })
 
   if (!process.env.ANTHROPIC_API_KEY) {
