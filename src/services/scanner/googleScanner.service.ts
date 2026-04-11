@@ -34,11 +34,11 @@ export class GoogleCloudDocumentAIScannerService implements IScannerService {
   async scan(file: File | Blob | Buffer): Promise<IdentityDocument> {
     const formData = new FormData()
 
-    if (Buffer.isBuffer(file)) {
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(file)) {
       // Node.js Buffer (e.g. tests) — wrap in a Blob
       formData.append('document', new Blob([file as BlobPart], { type: 'image/jpeg' }), 'document.jpg')
     } else {
-      formData.append('document', file, (file as File).name ?? 'document.jpg')
+      formData.append('document', file as Blob, (file as File).name ?? 'document.jpg')
     }
 
     let response: Response
