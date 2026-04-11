@@ -72,6 +72,54 @@ export interface UseScannerFlowReturn {
 
 const MAX_ATTEMPTS = 5
 
+// ── ISO 3166-1 alpha-3 → nationality label ────────────────────────────────────
+
+const NATIONALITY_MAP: Record<string, string> = {
+  MAR: 'Marocain',
+  FRA: 'Français',
+  ESP: 'Espagnol',
+  ITA: 'Italien',
+  DEU: 'Allemand',
+  GBR: 'Britannique',
+  BEL: 'Belge',
+  CHE: 'Suisse',
+  NLD: 'Néerlandais',
+  PRT: 'Portugais',
+  USA: 'Américain',
+  CAN: 'Canadien',
+  DZA: 'Algérien',
+  TUN: 'Tunisien',
+  LBY: 'Libyen',
+  EGY: 'Égyptien',
+  MRT: 'Mauritanien',
+  SEN: 'Sénégalais',
+  MLI: 'Malien',
+  NER: 'Nigérien',
+  GIN: 'Guinéen',
+  CIV: 'Ivoirien',
+  CMR: 'Camerounais',
+  SAU: 'Saoudien',
+  ARE: 'Émirati',
+  QAT: 'Qatarien',
+  KWT: 'Koweïtien',
+  JOR: 'Jordanien',
+  LBN: 'Libanais',
+  SYR: 'Syrien',
+  IRQ: 'Irakien',
+  IRN: 'Iranien',
+  TUR: 'Turc',
+  PAK: 'Pakistanais',
+  IND: 'Indien',
+  CHN: 'Chinois',
+  RUS: 'Russe',
+  BRA: 'Brésilien',
+  MEX: 'Mexicain',
+}
+
+function resolveNationality(code: string): string {
+  return NATIONALITY_MAP[code?.toUpperCase()] ?? code
+}
+
 // ── Identity → flat client mapping ───────────────────────────────────────────
 
 function mapToClientFields(
@@ -91,7 +139,7 @@ function mapToClientFields(
       cinNumber: identity.documentNumber,
       cinExpiry: isoDate(identity.expiryDate),
       dateOfBirth: isoDate(identity.dateOfBirth),
-      nationality: identity.issuingCountry === 'MAR' ? 'Marocain' : identity.issuingCountry,
+      nationality: resolveNationality(identity.issuingCountry),
       docType: identity.documentType === 'PASSPORT' ? 'passport' : 'cin',
     }
   }
