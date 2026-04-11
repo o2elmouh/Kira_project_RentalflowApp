@@ -18,13 +18,17 @@ export async function requireAuth(req, res, next) {
   }
 
   // Attach profile (role + agency_id) for downstream middleware
-  const { data: profile } = await supabaseAdmin
-    .from('profiles')
-    .select('role, agency_id')
-    .eq('id', user.id)
-    .maybeSingle()
+  let profile = null
+  if (supabaseAdmin) {
+    const { data } = await supabaseAdmin
+      .from('profiles')
+      .select('role, agency_id')
+      .eq('id', user.id)
+      .maybeSingle()
+    profile = data
+  }
 
-  req.user = { ...user, role: profile?.role, agency_id: profile?.agency_id }
+  req.user = { ...user, role: profile?.role ?? 'agent', agency_id: profile?.agency_id }
   next()
 }
 

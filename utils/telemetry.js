@@ -27,21 +27,21 @@
 function normalizeTraccar(position, device = {}) {
   const attrs = position.attributes || {}
   return {
-    deviceId:   String(position.deviceId || device.id || ''),
-    vehicleId:  device.uniqueId || null,          // store plate / rf vehicleId as uniqueId
-    lat:        Number(position.latitude  ?? 0),
-    lng:        Number(position.longitude ?? 0),
-    speed:      Number(position.speed     ?? 0),
-    mileage:    Number(attrs.totalDistance != null
-                  ? Math.round(attrs.totalDistance / 1000)  // Traccar gives metres
-                  : (attrs.odometer ?? 0)),
-    fuel:       Number(attrs.fuel         ?? attrs.fuelLevel ?? -1),
-    engineOn:   Boolean(attrs.ignition    ?? false),
-    ignition:   Boolean(attrs.ignition    ?? false),
-    dtcCodes:   parseDtc(attrs.dtcs || attrs.obdDtcs || ''),
+    deviceId: String(position.deviceId || device.id || ''),
+    vehicleId: device.uniqueId || null,          // store plate / rf vehicleId as uniqueId
+    lat: Number(position.latitude ?? 0),
+    lng: Number(position.longitude ?? 0),
+    speed: Number(position.speed ?? 0),
+    mileage: Number(attrs.totalDistance != null
+      ? Math.round(attrs.totalDistance / 1000)  // Traccar gives metres
+      : (attrs.odometer ?? 0)),
+    fuel: Number(attrs.fuel ?? attrs.fuelLevel ?? -1),
+    engineOn: Boolean(attrs.ignition ?? false),
+    ignition: Boolean(attrs.ignition ?? false),
+    dtcCodes: parseDtc(attrs.dtcs || attrs.obdDtcs || ''),
     lastUpdate: position.fixTime || position.deviceTime || new Date().toISOString(),
-    provider:   'traccar',
-    raw:        { position, device },
+    provider: 'traccar',
+    raw: { position, device },
   }
 }
 
@@ -50,7 +50,7 @@ function normalizeTraccar(position, device = {}) {
 // Most recent message = messages[messages.length - 1]
 
 function normalizeFlespi(message, deviceId = '') {
-  const pos = message['position.latitude']  !== undefined ? {
+  const pos = message['position.latitude'] !== undefined ? {
     lat: message['position.latitude'],
     lng: message['position.longitude'],
   } : { lat: 0, lng: 0 }
@@ -71,21 +71,21 @@ function normalizeFlespi(message, deviceId = '') {
     ?? ''
 
   return {
-    deviceId:   String(deviceId),
-    vehicleId:  message['ident'] || null,
-    lat:        Number(pos.lat),
-    lng:        Number(pos.lng),
-    speed:      Number(message['position.speed'] ?? 0),
-    mileage:    Number(mileageRaw),
-    fuel:       Number(fuelRaw),
-    engineOn:   Boolean(message['engine.ignition.status'] ?? message['can.engine.ignition'] ?? false),
-    ignition:   Boolean(message['engine.ignition.status'] ?? false),
-    dtcCodes:   parseDtc(dtcRaw),
+    deviceId: String(deviceId),
+    vehicleId: message['ident'] || null,
+    lat: Number(pos.lat),
+    lng: Number(pos.lng),
+    speed: Number(message['position.speed'] ?? 0),
+    mileage: Number(mileageRaw),
+    fuel: Number(fuelRaw),
+    engineOn: Boolean(message['engine.ignition.status'] ?? message['can.engine.ignition'] ?? false),
+    ignition: Boolean(message['engine.ignition.status'] ?? false),
+    dtcCodes: parseDtc(dtcRaw),
     lastUpdate: message['timestamp']
       ? new Date(message['timestamp'] * 1000).toISOString()
       : new Date().toISOString(),
-    provider:   'flespi',
-    raw:        message,
+    provider: 'flespi',
+    raw: message,
   }
 }
 
@@ -93,20 +93,20 @@ function normalizeFlespi(message, deviceId = '') {
 export function mockVehicleData(vehicleId, overrides = {}) {
   // Seed random but deterministic values from vehicleId
   const seed = vehicleId.split('').reduce((n, c) => n + c.charCodeAt(0), 0)
-  const rand  = (min, max) => min + ((seed * 9301 + 49297) % 233280) / 233280 * (max - min)
+  const rand = (min, max) => min + ((seed * 9301 + 49297) % 233280) / 233280 * (max - min)
   return {
-    deviceId:   `mock-${vehicleId}`,
+    deviceId: `mock-${vehicleId}`,
     vehicleId,
-    lat:        31.63 + (rand(-1, 1) * 0.8),   // Morocco bounding box
-    lng:        -7.98 + (rand(-1, 1) * 2.0),
-    speed:      Math.round(rand(0, 120)),
-    mileage:    Math.round(rand(5000, 120000)),
-    fuel:       Math.round(rand(10, 100)),
-    engineOn:   rand(0, 1) > 0.4,
-    ignition:   rand(0, 1) > 0.4,
-    dtcCodes:   rand(0, 1) > 0.85 ? ['P0300'] : [],
+    lat: 31.63 + (rand(-1, 1) * 0.8),   // Morocco bounding box
+    lng: -7.98 + (rand(-1, 1) * 2.0),
+    speed: Math.round(rand(0, 120)),
+    mileage: Math.round(rand(5000, 120000)),
+    fuel: Math.round(rand(10, 100)),
+    engineOn: rand(0, 1) > 0.4,
+    ignition: rand(0, 1) > 0.4,
+    dtcCodes: rand(0, 1) > 0.85 ? ['P0300'] : [],
     lastUpdate: new Date().toISOString(),
-    provider:   'mock',
+    provider: 'mock',
     ...overrides,
   }
 }
@@ -122,9 +122,9 @@ export function mockVehicleData(vehicleId, overrides = {}) {
 export function normalize(provider, rawData, meta = {}) {
   switch (provider) {
     case 'traccar': return normalizeTraccar(rawData, meta.device || {})
-    case 'flespi':  return normalizeFlespi(rawData,  meta.deviceId || '')
-    case 'mock':    return mockVehicleData(meta.vehicleId || 'unknown', rawData)
-    default:        throw new Error(`Unknown telematics provider: "${provider}"`)
+    case 'flespi': return normalizeFlespi(rawData, meta.deviceId || '')
+    case 'mock': return mockVehicleData(meta.vehicleId || 'unknown', rawData)
+    default: throw new Error(`Unknown telematics provider: "${provider}"`)
   }
 }
 
@@ -163,20 +163,20 @@ export function hasCriticalDtc(dtcCodes = []) {
  */
 export function computeDeltas(startSnapshot, endSnapshot, contract = {}) {
   const mileageDelta = Math.max(0, (endSnapshot.mileage ?? 0) - (startSnapshot.mileage ?? 0))
-  const fuelDelta    = (startSnapshot.fuel ?? 0) - (endSnapshot.fuel ?? 0)  // positive = consumed
+  const fuelDelta = (startSnapshot.fuel ?? 0) - (endSnapshot.fuel ?? 0)  // positive = consumed
 
   const charges = []
 
   // Excess mileage
   if (contract.maxKmEnabled) {
-    const allowedKm   = contract.allowedKm ?? (contract.days ?? 1) * 300
-    const excessKm    = Math.max(0, mileageDelta - allowedKm)
-    const ratePerKm   = contract.extraKmRate ?? 1.5  // MAD/km default
+    const allowedKm = contract.allowedKm ?? (contract.days ?? 1) * 300
+    const excessKm = Math.max(0, mileageDelta - allowedKm)
+    const ratePerKm = contract.extraKmRate ?? 1.5  // MAD/km default
     if (excessKm > 0) {
       charges.push({
         reason: `Kilométrage excessif (+${excessKm} km)`,
         amount: Math.round(excessKm * ratePerKm),
-        type:   'excess_mileage',
+        type: 'excess_mileage',
         detail: { mileageDelta, allowedKm, excessKm, ratePerKm },
       })
     }
@@ -184,14 +184,14 @@ export function computeDeltas(startSnapshot, endSnapshot, contract = {}) {
 
   // Fuel refill charge (if fuel dropped more than 5% — tolerance for sensor noise)
   if (fuelDelta > 5) {
-    const tankLitres   = contract.tankLitres ?? 50  // default tank size
+    const tankLitres = contract.tankLitres ?? 50  // default tank size
     const pricePerLitre = contract.fuelPrice ?? 14   // MAD/L Morocco
     const litresNeeded = Math.round((fuelDelta / 100) * tankLitres)
-    const refillCost   = Math.round(litresNeeded * pricePerLitre)
+    const refillCost = Math.round(litresNeeded * pricePerLitre)
     charges.push({
       reason: `Carburant manquant (${fuelDelta.toFixed(1)}% → ~${litresNeeded}L)`,
       amount: refillCost,
-      type:   'refueling',
+      type: 'refueling',
       detail: { fuelDelta, litresNeeded, pricePerLitre },
     })
   }

@@ -5,16 +5,17 @@ import rateLimit from 'express-rate-limit'
 import { join } from 'path'
 import { mkdirSync } from 'fs'
 
-import healthRouter    from './routes/health.js'
-import agencyRouter    from './routes/agency.js'
+import healthRouter from './routes/health.js'
+import agencyRouter from './routes/agency.js'
 import contractsRouter from './routes/contracts.js'
-import emailRouter     from './routes/email.js'
-import teamRouter      from './routes/team.js'
-import whatsappRouter  from './routes/whatsapp.js'
-import aiRouter        from './routes/ai.js'
+import emailRouter from './routes/email.js'
+import teamRouter from './routes/team.js'
+import whatsappRouter from './routes/whatsapp.js'
+import aiRouter from './routes/ai.js'
 import telemetryRouter from './routes/telemetry.js'
+import ocrRouter from './routes/ocr.js'
 
-const app  = express()
+const app = express()
 const PORT = process.env.PORT || 3001
 
 // ── CORS ──────────────────────────────────────────────────
@@ -47,18 +48,19 @@ app.use(rateLimit({
 
 // ── Temp PDF static hosting (for WhatsApp MediaUrl) ───────
 const TEMP_DIR = join(process.cwd(), 'tmp_pdfs')
-try { mkdirSync(TEMP_DIR, { recursive: true }) } catch {}
+try { mkdirSync(TEMP_DIR, { recursive: true }) } catch { }
 app.use('/tmp_pdfs', express.static(TEMP_DIR))
 
 // ── Routes ────────────────────────────────────────────────
-app.use('/health',    healthRouter)
-app.use('/agency',    agencyRouter)
+app.use('/health', healthRouter)
+app.use('/agency', agencyRouter)
 app.use('/contracts', contractsRouter)
-app.use('/email',     emailRouter)
-app.use('/team',      teamRouter)
-app.use('/whatsapp',  whatsappRouter)
-app.use('/ai',        aiRouter)
+app.use('/email', emailRouter)
+app.use('/team', teamRouter)
+app.use('/whatsapp', whatsappRouter)
+app.use('/ai', aiRouter)
 app.use('/telemetry', telemetryRouter)
+app.use('/ocr', ocrRouter)
 
 // ── 404 ───────────────────────────────────────────────────
 app.use((req, res) => {

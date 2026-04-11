@@ -12,7 +12,7 @@ function Field({ label, children }) {
   )
 }
 
-function LoginForm({ onSwitch }) {
+function LoginForm({ onSwitch, onForgot }) {
   const { t } = useTranslation('auth')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
@@ -44,6 +44,13 @@ function LoginForm({ onSwitch }) {
           value={password} onChange={e => setPassword(e.target.value)} required />
       </Field>
 
+      <div style={{ textAlign: 'right', marginTop: -8, marginBottom: 8 }}>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onForgot}
+          style={{ fontSize: 12, color: 'var(--accent)' }}>
+          {t('login.forgotPassword')}
+        </button>
+      </div>
+
       <div className="auth-actions">
         <button className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
           {loading ? t('login.submitting') : t('login.submit')}
@@ -54,6 +61,63 @@ function LoginForm({ onSwitch }) {
             {t('login.signUp')}
           </button>
         </p>
+      </div>
+    </form>
+  )
+}
+
+function ForgotPasswordForm({ onBack }) {
+  const { t } = useTranslation('auth')
+  const [email,   setEmail]   = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error,   setError]   = useState(null)
+  const [sent,    setSent]    = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: window.location.origin + '/reset-password',
+    })
+    setLoading(false)
+    if (error) { setError(error.message); return }
+    setSent(true)
+  }
+
+  if (sent) return (
+    <div className="auth-form" style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
+      <h2>{t('forgotPassword.sentTitle')}</h2>
+      <p className="auth-subtitle" style={{ marginTop: 8 }}
+        dangerouslySetInnerHTML={{ __html: t('forgotPassword.sentHint', { email: `<strong>${email}</strong>` }) }}
+      />
+      <button className="btn btn-ghost btn-sm" style={{ marginTop: 16 }} onClick={onBack}>
+        {t('forgotPassword.backToLogin')}
+      </button>
+    </div>
+  )
+
+  return (
+    <form onSubmit={handleSubmit} className="auth-form">
+      <button type="button" className="btn btn-ghost btn-sm" onClick={onBack}
+        style={{ marginBottom: 16, color: 'var(--accent)' }}>
+        ← {t('forgotPassword.backToLogin')}
+      </button>
+      <h2>{t('forgotPassword.title')}</h2>
+      <p className="auth-subtitle">{t('forgotPassword.subtitle')}</p>
+
+      {error && <div className="auth-error">{error}</div>}
+
+      <Field label={t('login.email')}>
+        <input className="form-input" type="email" placeholder={t('login.emailPlaceholder')}
+          value={email} onChange={e => setEmail(e.target.value)} required autoFocus />
+      </Field>
+
+      <div className="auth-actions">
+        <button className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
+          {loading ? t('forgotPassword.submitting') : t('forgotPassword.submit')}
+        </button>
       </div>
     </form>
   )
@@ -142,10 +206,9 @@ export default function AuthPage() {
       <div style={{ marginBottom: 16, width: '100%', maxWidth: 300 }}>
         <LanguageSelector />
       </div>
-      {mode === 'login'
-        ? <LoginForm  onSwitch={() => setMode('signup')} />
-        : <SignupForm onSwitch={() => setMode('login')}  />
-      }
+      {mode === 'login'  && <LoginForm          onSwitch={() => setMode('signup')} onForgot={() => setMode('forgot')} />}
+      {mode === 'signup' && <SignupForm         onSwitch={() => setMode('login')} />}
+      {mode === 'forgot' && <ForgotPasswordForm onBack={() => setMode('login')} />}
       <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text3)', marginTop: 20 }}>
         {t('footer', { year: new Date().getFullYear() })}
       </p>
