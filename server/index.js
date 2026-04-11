@@ -14,6 +14,8 @@ import whatsappRouter from './routes/whatsapp.js'
 import aiRouter from './routes/ai.js'
 import telemetryRouter from './routes/telemetry.js'
 import ocrRouter from './routes/ocr.js'
+import leadsRouter from './routes/leads.js'
+import gmailRouter, { startGmailPoller } from './routes/gmail.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -21,25 +23,17 @@ const PORT = process.env.PORT || 3001
 // ── CORS ──────────────────────────────────────────────────
 const ALLOWED_ORIGINS = [
   process.env.FRONTEND_URL,
-  'https://kira-project-rentalflow-app.vercel.app',
   'http://localhost:5173',
   'http://localhost:5174',
 ].filter(Boolean)
 
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.) or if origin is in allowed list
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
-      callback(null, true)
-    } else {
-      callback(new Error(`CORS not allowed: ${origin}`), false)
-    }
-  },
+  origin: true,   // reflect request origin — allows all origins including Vercel previews
   credentials: true,
 }))
 
 // ── Body parsing ──────────────────────────────────────────
-app.use(express.json({ limit: '20mb' }))
+app.use(express.json({ limit: '50mb' }))
 
 // ── Global rate limit ─────────────────────────────────────
 app.use(rateLimit({
@@ -65,6 +59,8 @@ app.use('/whatsapp', whatsappRouter)
 app.use('/ai', aiRouter)
 app.use('/telemetry', telemetryRouter)
 app.use('/ocr', ocrRouter)
+app.use('/leads', leadsRouter)
+app.use('/gmail', gmailRouter)
 
 // ── 404 ───────────────────────────────────────────────────
 app.use((req, res) => {
@@ -76,6 +72,8 @@ app.use((err, req, res, _next) => {
   console.error('[API Error]', err.message)
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' })
 })
+
+startGmailPoller()
 
 app.listen(PORT, () => {
   console.log(`✅ RentaFlow API running on port ${PORT}`)

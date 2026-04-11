@@ -17,21 +17,23 @@ import SignContract from './pages/SignContract'
 import { initDefaultAccounts } from './lib/db'
 import Accounting from './pages/Accounting'
 import MigrateData from './pages/MigrateData'
+import Basket from './pages/Basket'
 
 const USE_AUTH = import.meta.env.VITE_USE_AUTH === 'true'
-const PREVIEW  = new URLSearchParams(window.location.search).get('preview')
+const PREVIEW = new URLSearchParams(window.location.search).get('preview')
 const PAGE_PARAM = new URLSearchParams(window.location.search).get('page')
 
 const signToken = new URLSearchParams(window.location.search).get('sign')
 
 export default function App() {
-  const [page, setPage]                               = useState(PAGE_PARAM || 'dashboard')
+  const [page, setPage] = useState(PAGE_PARAM || 'dashboard')
   const [restitutionContract, setRestitutionContract] = useState(null)
-  const [authState, setAuthState]                     = useState('loading')
-  const [user, setUser]                               = useState(null)
-  const [profile, setProfile]                         = useState(null)
-  const resolvingRef                                  = useRef(false)
-  const initializedRef                                = useRef(false)
+  const [prefilledLead, setPrefilledLead] = useState(null)
+  const [authState, setAuthState] = useState('loading')
+  const [user, setUser] = useState(null)
+  const [profile, setProfile] = useState(null)
+  const resolvingRef = useRef(false)
+  const initializedRef = useRef(false)
 
   useEffect(() => {
     if (!USE_AUTH) {
@@ -117,17 +119,26 @@ export default function App() {
     setPage('restitution')
   }
 
+  const handleNav = (target, state = {}) => {
+    if (state.prefilledLead !== undefined) setPrefilledLead(state.prefilledLead)
+    setPage(target)
+  }
+
   const renderPage = () => {
     switch (page) {
-      case 'dashboard':  return <Dashboard onNav={setPage} />
-      case 'new-rental': return <NewRental onDone={() => setPage('dashboard')} />
-      case 'contracts':  return <Contracts onRestitution={handleRestitution} />
-      case 'invoices':   return <Invoices />
-      case 'clients':    return <Clients />
-      case 'fleet':      return <Fleet />
+      case 'dashboard': return <Dashboard onNav={setPage} />
+      case 'new-rental': return <NewRental
+        onDone={() => { setPrefilledLead(null); setPage('dashboard') }}
+        prefilledLead={prefilledLead}
+      />
+      case 'contracts': return <Contracts onRestitution={handleRestitution} />
+      case 'invoices': return <Invoices />
+      case 'clients': return <Clients />
+      case 'fleet': return <Fleet />
       case 'accounting': return <Accounting />
-      case 'settings':   return <Settings />
-      case 'migrate':    return <MigrateData />
+      case 'settings': return <Settings />
+      case 'migrate': return <MigrateData />
+      case 'basket': return <Basket onNavigate={handleNav} />
       case 'restitution-picker':
         return <RestitutionPicker onPick={handleRestitution} onCancel={() => setPage('contracts')} />
       case 'restitution':
@@ -146,9 +157,9 @@ export default function App() {
     return <OnboardingPage user={{ id: 'preview', email: 'preview@rentaflow.ma' }} />
 
   if (authState === 'loading') return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', flexDirection:'column', gap:12 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: 12 }}>
       <div className="auth-logo">RF</div>
-      <p style={{ color:'var(--text3)', fontSize:13 }}>Chargement…</p>
+      <p style={{ color: 'var(--text3)', fontSize: 13 }}>Chargement…</p>
     </div>
   )
 

@@ -45,6 +45,7 @@
     "contracts": "Contracts",
     "invoices": "Invoices",
     "accounting": "Accounting",
+    "basket": "Basket",
     "settings": "Settings"
   }
 }

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, PlusCircle, Car, Users, FileText, Receipt, Settings, LogOut, RotateCcw, Calculator } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Car, Users, FileText, Receipt, Settings, LogOut, RotateCcw, Calculator, Inbox } from 'lucide-react'
 import LanguageSelector from './LanguageSelector'
 
 const NAV_IDS = [
@@ -11,6 +11,7 @@ const NAV_IDS = [
   { id: 'contracts',         key: 'contracts',    icon: FileText },
   { id: 'invoices',          key: 'invoices',     icon: Receipt },
   { id: 'accounting',        key: 'accounting',   icon: Calculator },
+  { id: 'basket',            key: 'basket',       icon: Inbox, premium: true },
   { id: 'settings',          key: 'settings',     icon: Settings },
 ]
 
@@ -26,7 +27,7 @@ export default function Sidebar({ active, onNav, user, profile, onSignOut }) {
         <span className="logo-text">RentaFlow</span>
       </div>
       <nav className="sidebar-nav">
-        {NAV_IDS.map(({ id, key, icon: Icon }) => {
+        {NAV_IDS.map(({ id, key, icon: Icon, premium }) => {
           const isRestitution = id === 'restitution-quick'
           const navTarget = isRestitution ? 'restitution-picker' : id
           return (
@@ -42,6 +43,11 @@ export default function Sidebar({ active, onNav, user, profile, onSignOut }) {
             >
               <Icon size={16} />
               <span>{t(`nav.${key}`)}</span>
+              {premium && (
+                <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, background: 'var(--accent)', color: '#fff', borderRadius: 3, padding: '1px 4px', lineHeight: 1.4, letterSpacing: 0.5 }}>
+                  PRO
+                </span>
+              )}
             </button>
           )
         })}

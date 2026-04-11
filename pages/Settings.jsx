@@ -5,6 +5,7 @@ import GeneralConfigTab from './settings/GeneralConfigTab'
 import FleetConfigTab from './settings/FleetConfigTab'
 import TeamTab from './settings/TeamTab'
 import TelematicsTab from './settings/TelematicsTab'
+import IntegrationsTab from './settings/IntegrationsTab'
 
 // ─────────────────────────────────────────────────────────
 // Constants
@@ -15,7 +16,8 @@ const SETTINGS_TABS_KEYS = [
   { id: 'parc',        key: 'tabs.fleetConfig' },
   { id: 'general',     key: 'tabs.general' },
   { id: 'equipe',      key: 'tabs.team' },
-  { id: 'telematique', key: 'tabs.telematique' },
+  { id: 'telematique',   key: 'tabs.telematique' },
+  { id: 'integrations',  key: 'tabs.integrations' },
 ]
 
 // ─────────────────────────────────────────────────────────
@@ -54,7 +56,8 @@ export default function Settings() {
         {activeTab === 'parc'        && <FleetConfigTab />}
         {activeTab === 'general'     && <GeneralConfigTab />}
         {activeTab === 'equipe'      && <TeamTab />}
-        {activeTab === 'telematique' && <TelematicsTab />}
+        {activeTab === 'telematique'  && <TelematicsTab />}
+        {activeTab === 'integrations' && <IntegrationsTab />}
       </div>
     </div>
   )

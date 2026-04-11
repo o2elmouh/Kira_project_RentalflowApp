@@ -5,7 +5,9 @@
     "agency": "الوكالة",
     "fleetConfig": "إعدادات الأسطول",
     "general": "الإعدادات العامة",
-    "team": "الفريق"
+    "team": "الفريق",
+    "telematique": "التتبع",
+    "integrations": "التكاملات"
   },
   "agency": {
     "generalInfo": "المعلومات العامة",

@@ -6,7 +6,8 @@
     "fleetConfig": "Fleet config",
     "general": "General",
     "team": "Team",
-    "telematique": "Telematics"
+    "telematique": "Telematics",
+    "integrations": "Integrations"
   },
   "agency": {
     "generalInfo": "General information",
