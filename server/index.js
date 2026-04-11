@@ -21,12 +21,20 @@ const PORT = process.env.PORT || 3001
 // ── CORS ──────────────────────────────────────────────────
 const ALLOWED_ORIGINS = [
   process.env.FRONTEND_URL,
+  'https://kira-project-rentalflow-app.vercel.app',
   'http://localhost:5173',
   'http://localhost:5174',
 ].filter(Boolean)
 
 app.use(cors({
-  origin: true,   // reflect request origin — allows all origins including Vercel previews
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.) or if origin is in allowed list
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error(`CORS not allowed: ${origin}`), false)
+    }
+  },
   credentials: true,
 }))
 
