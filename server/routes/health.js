@@ -11,8 +11,7 @@ router.get('/', async (req, res) => {
     dbOk = !error
   } catch {}
 
-  const status = dbOk ? 200 : 503
-  res.status(status).json({
+  res.status(200).json({
     status: dbOk ? 'ok' : 'degraded',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
