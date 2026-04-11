@@ -26,12 +26,7 @@ const ALLOWED_ORIGINS = [
 ].filter(Boolean)
 
 app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true)  // curl / Postman
-    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true)
-    if (origin.endsWith('.vercel.app')) return cb(null, true)  // all Vercel previews
-    cb(new Error(`CORS: origin ${origin} not allowed`))
-  },
+  origin: true,   // reflect request origin — allows all origins including Vercel previews
   credentials: true,
 }))
 
