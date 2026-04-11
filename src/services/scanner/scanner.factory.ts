@@ -14,9 +14,9 @@ let instance: IScannerService | null = null
 export function getScannerService(): IScannerService {
   if (!instance) {
     const engine = import.meta.env.VITE_OCR_ENGINE as string | undefined
-    if (engine === 'claude' || engine === 'claude-hybrid') {
+    if (!engine || engine === 'claude' || engine === 'claude-hybrid') {
       instance = new ClaudeScannerService()
-    } else if (import.meta.env.PROD) {
+    } else if (engine === 'google') {
       instance = new GoogleCloudDocumentAIScannerService()
     } else {
       instance = new MockScannerService()
