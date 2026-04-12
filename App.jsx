@@ -22,7 +22,6 @@ import Basket from './pages/Basket'
 const USE_AUTH = import.meta.env.VITE_USE_AUTH === 'true'
 const PREVIEW = new URLSearchParams(window.location.search).get('preview')
 const PAGE_PARAM = new URLSearchParams(window.location.search).get('page')
-
 const signToken = new URLSearchParams(window.location.search).get('sign')
 
 export default function App() {
@@ -33,7 +32,7 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const resolvingRef = useRef(false)
-  const initializedRef = useRef(false)
+  const initialSessionHandled = useRef(false)
 
   useEffect(() => {
     if (!USE_AUTH) {
@@ -45,15 +44,32 @@ export default function App() {
     let subscription = null
 
     const init = async () => {
-      // Safety timeout — if everything fails, go to login
       const timeout = setTimeout(() => {
         console.warn('[Auth] timeout — forcing unauthenticated')
         setAuthState('unauthenticated')
       }, 5000)
 
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        console.log('[Auth] getSession:', session ? 'session found' : 'no session', error?.message)
+      // 1. Subscribe first so we never miss an event
+      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('[Auth] event:', event)
+
+        if (event === 'PASSWORD_RECOVERY') {
+          clearTimeout(timeout)
+          setAuthState('password-recovery')
+          return
+        }
+
+        if (event === 'SIGNED_OUT') {
+          setUser(null)
+          setProfile(null)
+          setAuthState('unauthenticated')
+          return
+        }
+
+        // Skip INITIAL_SESSION — handled below via getSession()
+        if (event === 'INITIAL_SESSION') {
+          return
+        }
 
         if (session?.user) {
           clearTimeout(timeout)
@@ -62,27 +78,26 @@ export default function App() {
           clearTimeout(timeout)
           setAuthState('unauthenticated')
         }
+      })
+      subscription = data.subscription
+
+      // 2. Check existing session once
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        console.log('[Auth] getSession:', session ? 'session found' : 'no session')
+        clearTimeout(timeout)
+        if (session?.user) {
+          await resolveUser(session.user)
+        } else {
+          setAuthState('unauthenticated')
+        }
       } catch (err) {
         console.error('[Auth] getSession error:', err)
         clearTimeout(timeout)
         setAuthState('unauthenticated')
+      } finally {
+        initialSessionHandled.current = true
       }
-
-      // Listen for subsequent auth changes (login, logout, password recovery)
-      const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
-        if (!initializedRef.current) return // ignore INITIAL_SESSION already handled above
-        if (_event === 'PASSWORD_RECOVERY') {
-          setAuthState('password-recovery')
-          return
-        }
-        if (!session) {
-          setUser(null); setProfile(null); setAuthState('unauthenticated')
-        } else {
-          await resolveUser(session.user)
-        }
-      })
-      subscription = data.subscription
-      initializedRef.current = true
     }
 
     init()
@@ -94,14 +109,11 @@ export default function App() {
     resolvingRef.current = true
     setUser(u)
     try {
-      console.log('[Auth] resolveUser — querying profile for', u.id)
-      const { data: prof, error } = await supabase
+      const { data: prof } = await supabase
         .from('profiles')
         .select('*, agencies(*)')
         .eq('id', u.id)
         .maybeSingle()
-
-      console.log('[Auth] profile result:', prof ? 'found' : 'not found', error?.message)
 
       if (prof) {
         setProfile(prof)

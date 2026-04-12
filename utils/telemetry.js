@@ -33,8 +33,8 @@ function normalizeTraccar(position, device = {}) {
     lng: Number(position.longitude ?? 0),
     speed: Number(position.speed ?? 0),
     mileage: Number(attrs.totalDistance != null
-      ? Math.round(attrs.totalDistance / 1000)  // Traccar gives metres
-      : (attrs.odometer ?? 0)),
+      ? Math.round(attrs.totalDistance / 1000)
+      : (attrs.odometer ? Math.round(attrs.odometer / 1000) : 0)),
     fuel: Number(attrs.fuel ?? attrs.fuelLevel ?? -1),
     engineOn: Boolean(attrs.ignition ?? false),
     ignition: Boolean(attrs.ignition ?? false),

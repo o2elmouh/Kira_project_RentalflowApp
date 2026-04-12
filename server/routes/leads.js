@@ -112,9 +112,11 @@ async function extractWithClaude(imageBase64, mediaType, textHint = '') {
 
   const userContent = [
     { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } },
-    { type: 'text', text: textHint
+    {
+      type: 'text', text: textHint
         ? `Additional context from the sender: "${textHint}"\n\nExtract all identity fields and rental intent.`
-        : 'Extract all identity fields and rental intent from this document image.' },
+        : 'Extract all identity fields and rental intent from this document image.'
+    },
   ]
 
   const message = await anthropic.messages.create({
@@ -168,13 +170,13 @@ async function findMatchingDemand(agencyId, senderIdOrName, extractedData) {
 router.post('/webhook/whatsapp', async (req, res) => {
   // Validate Twilio signature in production
   if (process.env.NODE_ENV === 'production' && process.env.TWILIO_AUTH_TOKEN) {
-    const twilioSig  = req.headers['x-twilio-signature']
-    const url        = `${process.env.RAILWAY_PUBLIC_DOMAIN
+    const twilioSig = req.headers['x-twilio-signature']
+    const url = `${process.env.RAILWAY_PUBLIC_DOMAIN
       ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
       : 'http://localhost:3001'}/leads/webhook/whatsapp`
-    const params     = req.body
-    const sortedStr  = Object.keys(params).sort().reduce((s, k) => s + k + params[k], url)
-    const expected   = createHmac('sha1', process.env.TWILIO_AUTH_TOKEN)
+    const params = req.body
+    const sortedStr = Object.keys(params).sort().reduce((s, k) => s + k + params[k], url)
+    const expected = createHmac('sha1', process.env.TWILIO_AUTH_TOKEN)
       .update(sortedStr).digest('base64')
     if (twilioSig !== expected) {
       console.warn('[leads/whatsapp] Invalid Twilio signature')
@@ -182,9 +184,9 @@ router.post('/webhook/whatsapp', async (req, res) => {
     }
   }
 
-  const senderRaw  = req.body?.From || ''
-  const bodyText   = req.body?.Body || ''
-  const numMedia   = parseInt(req.body?.NumMedia || '0', 10)
+  const senderRaw = req.body?.From || ''
+  const bodyText = req.body?.Body || ''
+  const numMedia = parseInt(req.body?.NumMedia || '0', 10)
 
   // Collect media URLs from Twilio payload
   const mediaUrls = []
@@ -209,13 +211,13 @@ router.post('/webhook/whatsapp', async (req, res) => {
   let extractedData = null
   if (mediaUrls.length > 0 && process.env.ANTHROPIC_API_KEY) {
     try {
-      const imgRes   = await fetch(mediaUrls[0], {
+      const imgRes = await fetch(mediaUrls[0], {
         headers: { Authorization: `Basic ${Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64')}` },
       })
-      const imgBuf   = await imgRes.arrayBuffer()
-      const imgB64   = Buffer.from(imgBuf).toString('base64')
+      const imgBuf = await imgRes.arrayBuffer()
+      const imgB64 = Buffer.from(imgBuf).toString('base64')
       const mimeType = imgRes.headers.get('content-type') || 'image/jpeg'
-      extractedData  = await extractWithClaude(imgB64, mimeType, bodyText)
+      extractedData = await extractWithClaude(imgB64, mimeType, bodyText)
     } catch (err) {
       console.error('[leads/whatsapp] Claude extraction error:', err.message)
     }
@@ -227,18 +229,18 @@ router.post('/webhook/whatsapp', async (req, res) => {
   if (match && match.type !== 'potential') {
     // Merge: update existing demand with new media + extracted data
     const existing = match.demand
-    const merged   = {
+    const merged = {
       ...(existing.extracted_data || {}),
       ...(extractedData || {}),
     }
     await supabaseAdmin
       .from('pending_demands')
       .update({
-        extracted_data:    merged,
-        media_urls:        [...(existing.media_urls || []), ...mediaUrls],
+        extracted_data: merged,
+        media_urls: [...(existing.media_urls || []), ...mediaUrls],
         confidence_scores: extractedData?.confidenceScores || null,
-        match_score:       match.score,
-        raw_payload:       { ...existing.raw_payload, latestBody: bodyText },
+        match_score: match.score,
+        raw_payload: { ...existing.raw_payload, latestBody: bodyText },
       })
       .eq('id', existing.id)
 
@@ -246,15 +248,15 @@ router.post('/webhook/whatsapp', async (req, res) => {
   } else {
     // New demand
     const row = {
-      agency_id:         agency.id,
-      source:            'whatsapp',
-      sender_id:         senderRaw,
-      raw_payload:       { body: bodyText, numMedia, from: senderRaw },
-      extracted_data:    extractedData,
+      agency_id: agency.id,
+      source: 'whatsapp',
+      sender_id: senderRaw,
+      raw_payload: { body: bodyText, numMedia, from: senderRaw },
+      extracted_data: extractedData,
       confidence_scores: extractedData?.confidenceScores || null,
-      media_urls:        mediaUrls,
-      match_score:       match?.score || null,
-      merged_with_id:    match?.type === 'potential' ? match.demand.id : null,
+      media_urls: mediaUrls,
+      match_score: match?.score || null,
+      merged_with_id: match?.type === 'potential' ? match.demand.id : null,
     }
     const { error } = await supabaseAdmin.from('pending_demands').insert(row)
     if (error) console.error('[leads/whatsapp] insert error:', error.message)
@@ -298,23 +300,23 @@ router.post('/webhook/gmail', async (req, res) => {
     await supabaseAdmin
       .from('pending_demands')
       .update({
-        extracted_data:    { ...(existing.extracted_data || {}), ...(extractedData || {}) },
-        media_urls:        [...(existing.media_urls || []), ...mediaUrls],
+        extracted_data: { ...(existing.extracted_data || {}), ...(extractedData || {}) },
+        media_urls: [...(existing.media_urls || []), ...mediaUrls],
         confidence_scores: extractedData?.confidenceScores || null,
-        match_score:       match.score,
+        match_score: match.score,
       })
       .eq('id', existing.id)
   } else {
     await supabaseAdmin.from('pending_demands').insert({
-      agency_id:         agencyId,
-      source:            'gmail',
-      sender_id:         senderEmail,
-      raw_payload:       { subject, bodyText: (bodyText || '').slice(0, 2000) },
-      extracted_data:    extractedData,
+      agency_id: agencyId,
+      source: 'gmail',
+      sender_id: senderEmail,
+      raw_payload: { subject, bodyText: (bodyText || '').slice(0, 2000) },
+      extracted_data: extractedData,
       confidence_scores: extractedData?.confidenceScores || null,
-      media_urls:        mediaUrls,
-      match_score:       match?.score || null,
-      merged_with_id:    match?.type === 'potential' ? match.demand.id : null,
+      media_urls: mediaUrls,
+      match_score: match?.score || null,
+      merged_with_id: match?.type === 'potential' ? match.demand.id : null,
     })
   }
 
