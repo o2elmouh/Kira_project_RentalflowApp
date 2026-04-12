@@ -44,7 +44,7 @@ export async function requireAuth(req, res, next) {
     profile = data
   }
 
-  req.user = { ...user, role: profile?.role ?? 'agent', agency_id: profile?.agency_id }
+  req.user = { ...user, role: profile?.role ?? 'staff', agency_id: profile?.agency_id }
   next()
 }
 
@@ -53,4 +53,14 @@ export function requireAdmin(req, res, next) {
     return res.status(403).json({ error: 'Admin access required' })
   }
   next()
+}
+
+/** Factory: allow any of the listed roles. Usage: requireRole(['admin', 'staff']) */
+export function requireRole(allowedRoles) {
+  return (req, res, next) => {
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ error: `Access requires one of: ${allowedRoles.join(', ')}` })
+    }
+    next()
+  }
 }

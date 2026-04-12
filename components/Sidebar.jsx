@@ -15,10 +15,15 @@ const NAV_IDS = [
   { id: 'settings',          key: 'settings',     icon: Settings },
 ]
 
-export default function Sidebar({ active, onNav, user, profile, onSignOut }) {
+// Pages restricted to admin role only
+const ADMIN_ONLY_PAGES = ['settings', 'accounting']
+
+export default function Sidebar({ active, onNav, user, profile, isAdmin = true, onSignOut }) {
   const { t } = useTranslation('common')
   const displayName = profile?.full_name || user?.email || ''
   const agencyName  = profile?.agencies?.name || ''
+
+  const visibleNav = NAV_IDS.filter(({ id }) => isAdmin || !ADMIN_ONLY_PAGES.includes(id))
 
   return (
     <aside className="sidebar">
@@ -27,7 +32,7 @@ export default function Sidebar({ active, onNav, user, profile, onSignOut }) {
         <span className="logo-text">RentaFlow</span>
       </div>
       <nav className="sidebar-nav">
-        {NAV_IDS.map(({ id, key, icon: Icon, premium }) => {
+        {visibleNav.map(({ id, key, icon: Icon, premium }) => {
           const isRestitution = id === 'restitution-quick'
           const navTarget = isRestitution ? 'restitution-picker' : id
           return (

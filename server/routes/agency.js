@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { requireAuth } from '../middleware/auth.js'
+import { requireAuth, requireAdmin } from '../middleware/auth.js'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 
 const router = Router()
@@ -32,17 +32,15 @@ router.get('/', async (req, res, next) => {
 })
 
 // PATCH /agency — update agency settings (admin only)
-router.patch('/', async (req, res, next) => {
+router.patch('/', requireAdmin, async (req, res, next) => {
   try {
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('agency_id, role')
+      .select('agency_id')
       .eq('id', req.user.id)
       .single()
 
-    if (!profile || profile.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin role required' })
-    }
+    if (!profile) return res.status(404).json({ error: 'Profile not found' })
 
     const allowed = ['name', 'phone', 'city', 'address', 'email', 'ice', 'rc', 'if_number', 'patente', 'insurance_policy']
     const patch = Object.fromEntries(

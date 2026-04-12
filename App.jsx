@@ -11,7 +11,7 @@ import Invoices from './pages/Invoices'
 import Settings from './pages/Settings'
 import Restitution from './pages/Restitution'
 import RestitutionPicker from './pages/RestitutionPicker'
-import AuthPage from './pages/Auth'
+import AuthPage, { PasswordResetForm } from './pages/Auth'
 import OnboardingPage from './pages/Onboarding'
 import SignContract from './pages/SignContract'
 import { initDefaultAccounts } from './lib/db'
@@ -45,14 +45,13 @@ export default function App() {
     let subscription = null
 
     const init = async () => {
-      // Timeout de sécurité — si tout échoue, on va sur login
+      // Safety timeout — if everything fails, go to login
       const timeout = setTimeout(() => {
         console.warn('[Auth] timeout — forcing unauthenticated')
         setAuthState('unauthenticated')
       }, 5000)
 
       try {
-        // 1. Vérifier la session existante immédiatement
         const { data: { session }, error } = await supabase.auth.getSession()
         console.log('[Auth] getSession:', session ? 'session found' : 'no session', error?.message)
 
@@ -69,9 +68,13 @@ export default function App() {
         setAuthState('unauthenticated')
       }
 
-      // 2. Écouter les changements suivants (login, logout)
+      // Listen for subsequent auth changes (login, logout, password recovery)
       const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
-        if (!initializedRef.current) return // ignorer INITIAL_SESSION déjà géré ci-dessus
+        if (!initializedRef.current) return // ignore INITIAL_SESSION already handled above
+        if (_event === 'PASSWORD_RECOVERY') {
+          setAuthState('password-recovery')
+          return
+        }
         if (!session) {
           setUser(null); setProfile(null); setAuthState('unauthenticated')
         } else {
@@ -124,6 +127,10 @@ export default function App() {
     setPage(target)
   }
 
+  const role = profile?.role ?? 'admin'
+  const isAdmin = role === 'admin'
+  const isPremium = profile?.agencies?.plan === 'premium'
+
   const renderPage = () => {
     switch (page) {
       case 'dashboard': return <Dashboard onNav={setPage} />
@@ -135,8 +142,12 @@ export default function App() {
       case 'invoices': return <Invoices />
       case 'clients': return <Clients />
       case 'fleet': return <Fleet />
-      case 'accounting': return <Accounting />
-      case 'settings': return <Settings />
+      case 'accounting':
+        if (!isAdmin) { setTimeout(() => setPage('dashboard'), 0); return null }
+        return <Accounting />
+      case 'settings':
+        if (!isAdmin) { setTimeout(() => setPage('dashboard'), 0); return null }
+        return <Settings />
       case 'migrate': return <MigrateData />
       case 'basket': return <Basket onNavigate={handleNav} />
       case 'restitution-picker':
@@ -165,17 +176,19 @@ export default function App() {
 
   if (authState === 'unauthenticated') return <AuthPage />
   if (authState === 'onboarding') return <OnboardingPage user={user} />
-
-  const role = profile?.role ?? 'admin' // default admin for localStorage mode
+  if (authState === 'password-recovery') return (
+    <PasswordResetForm onSuccess={() => setAuthState('ready')} />
+  )
 
   return (
-    <UserContext.Provider value={{ user, profile, role }}>
+    <UserContext.Provider value={{ user, profile, role, isAdmin, isPremium }}>
       <div className="app-shell">
         <Sidebar
           active={page}
           onNav={setPage}
           user={user}
           profile={profile}
+          isAdmin={isAdmin}
           onSignOut={USE_AUTH ? () => supabase.auth.signOut() : null}
         />
         <main className="main">{renderPage()}</main>

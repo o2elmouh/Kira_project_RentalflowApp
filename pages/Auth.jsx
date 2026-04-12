@@ -78,7 +78,7 @@ function ForgotPasswordForm({ onBack }) {
     setError(null)
     setLoading(true)
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: window.location.origin + '/reset-password',
+      redirectTo: window.location.origin,
     })
     setLoading(false)
     if (error) { setError(error.message); return }
@@ -191,6 +191,57 @@ function SignupForm({ onSwitch }) {
         </p>
       </div>
     </form>
+  )
+}
+
+export function PasswordResetForm({ onSuccess }) {
+  const { t } = useTranslation('auth')
+  const [password, setPassword]   = useState('')
+  const [confirm, setConfirm]     = useState('')
+  const [error, setError]         = useState(null)
+  const [loading, setLoading]     = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError(null)
+    if (password !== confirm) { setError(t('errors.passwordMismatch')); return }
+    if (password.length < 6)  { setError(t('errors.passwordTooShort')); return }
+    setLoading(true)
+    const { error } = await supabase.auth.updateUser({ password })
+    setLoading(false)
+    if (error) { setError(error.message); return }
+    onSuccess()
+  }
+
+  return (
+    <div className="auth-shell">
+      <div className="auth-brand">
+        <div className="auth-logo">RF</div>
+        <span>RentaFlow</span>
+      </div>
+      <form onSubmit={handleSubmit} className="auth-form">
+        <h2>{t('resetPassword.title')}</h2>
+        <p className="auth-subtitle">{t('resetPassword.subtitle')}</p>
+
+        {error && <div className="auth-error">{error}</div>}
+
+        <Field label={t('resetPassword.newPassword')}>
+          <input className="form-input" type="password" placeholder={t('signup.passwordPlaceholder')}
+            value={password} onChange={e => setPassword(e.target.value)} required autoFocus />
+        </Field>
+
+        <Field label={t('signup.confirmPassword')}>
+          <input className="form-input" type="password" placeholder={t('signup.passwordPlaceholder')}
+            value={confirm} onChange={e => setConfirm(e.target.value)} required />
+        </Field>
+
+        <div className="auth-actions">
+          <button className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
+            {loading ? t('resetPassword.submitting') : t('resetPassword.submit')}
+          </button>
+        </div>
+      </form>
+    </div>
   )
 }
 

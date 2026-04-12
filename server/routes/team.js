@@ -1,12 +1,12 @@
 import { Router } from 'express'
-import { requireAuth, requireAdmin } from '../middleware/auth.js'
+import { requireAuth, requireAdmin, requireRole } from '../middleware/auth.js'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 
 const router = Router()
 router.use(requireAuth)
 
-// GET /team — list all members of the caller's agency
-router.get('/', async (req, res) => {
+// GET /team — list all members of the caller's agency (admin only)
+router.get('/', requireAdmin, async (req, res) => {
   const { data, error } = await supabaseAdmin
     .from('profiles')
     .select('id, full_name, email, role, created_at')
@@ -19,9 +19,9 @@ router.get('/', async (req, res) => {
 
 // POST /team/invite — admin sends invitation email
 router.post('/invite', requireAdmin, async (req, res) => {
-  const { email, role = 'agent' } = req.body
+  const { email, role = 'staff' } = req.body
   if (!email) return res.status(400).json({ error: 'email is required' })
-  if (!['admin', 'agent'].includes(role)) return res.status(400).json({ error: 'role must be admin or agent' })
+  if (!['admin', 'staff'].includes(role)) return res.status(400).json({ error: 'role must be admin or agent' })
 
   // Invite via Supabase Auth — user receives a magic-link email
   const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
@@ -39,7 +39,7 @@ router.post('/invite', requireAdmin, async (req, res) => {
 // PATCH /team/:id/role — admin changes a member's role
 router.patch('/:id/role', requireAdmin, async (req, res) => {
   const { role } = req.body
-  if (!['admin', 'agent'].includes(role)) return res.status(400).json({ error: 'Invalid role' })
+  if (!['admin', 'staff'].includes(role)) return res.status(400).json({ error: 'Invalid role' })
 
   const { error } = await supabaseAdmin
     .from('profiles')
