@@ -120,7 +120,7 @@ async function extractWithClaude(imageBase64, mediaType, textHint = '') {
   ]
 
   const message = await anthropic.messages.create({
-    model: 'claude-opus-4-5',
+    model: 'claude-3-5-sonnet-20241022',
     max_tokens: 512,
     system: GLOBAL_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userContent }],
