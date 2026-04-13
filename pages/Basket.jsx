@@ -4,8 +4,9 @@
  * Opens a comparison modal: image(s) left, AI-extracted fields right.
  * "Convert to Rental" pre-fills the NewRental wizard.
  */
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useContext } from 'react'
 import { api } from '../lib/api.js'
+import { UserContext } from '../lib/UserContext.js'
 
 const STATUS_LABELS = { pending: 'En attente', processed: 'Traité', ignored: 'Ignoré' }
 const SOURCE_LABELS  = { whatsapp: 'WhatsApp', gmail: 'Gmail' }
@@ -257,7 +258,7 @@ export default function Basket({ onNavigate }) {
   const [leads, setLeads]           = useState([])
   const [loading, setLoading]       = useState(true)
   const [error, setError]           = useState(null)
-  const [isPremium, setIsPremium]   = useState(true)
+  const { isPremium } = useContext(UserContext)
   const [statusFilter, setStatusFilter] = useState('pending')
   const [selectedLead, setSelectedLead] = useState(null)
 
