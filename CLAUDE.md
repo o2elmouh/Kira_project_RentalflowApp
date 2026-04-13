@@ -8,6 +8,7 @@
 - **Token Efficiency:** Skip re-summarising the stack, file structure, or completed work — it's already documented below.
 - **Ledger Update:** At the end of each session, or when asked, produce a `Context Update` block — a concise summary of new features, bug fixes, and environment changes. Format it as a code block so it can be copied back into this file.
 - **Verify Before Responding:** Before submitting any answer — code, SQL, instructions, or explanations — re-read it and confirm it is correct, complete, and consistent with the current codebase. Do not send a response that you are not confident in.
+- **ALWAYS CHECK AND CROSS-CHECK CODE:** Before writing any SQL function or code change — read the existing definition first. For SQL functions, always check the current signature before using `CREATE OR REPLACE`. When the signature changes (parameters added/removed/reordered), always `DROP FUNCTION ... IF EXISTS` before recreating. Never assume — verify against actual source.
 - **Verification Before Completion:** Before declaring any task done, confirm: (1) no broken imports, (2) all edited files are saved, (3) the dev server still starts, (4) the change does what was asked.
 - **Git Workflow:** Never commit directly to `main`. Always work on a feature branch. Use `/commit` skill for structured commit messages (`feat:`, `fix:`, `chore:`). Use `/code-reviewer` before merging.
 - **GitHub MCP:** Available for PR creation and issue viewing. Token must be set via `GITHUB_TOKEN` env var.

@@ -4,6 +4,10 @@
 -- makes profile upsert idempotent for email and phone too.
 -- ─────────────────────────────────────────────────────────────
 
+-- Drop the old signature first — CREATE OR REPLACE fails when parameter
+-- defaults differ from the existing overload in pg_proc.
+DROP FUNCTION IF EXISTS onboard_new_agency(uuid, text, text, text, text, text, text, text);
+
 CREATE OR REPLACE FUNCTION onboard_new_agency(
   p_user_id     uuid,
   p_agency_name text,
