@@ -12,7 +12,7 @@ function Field({ label, children }) {
   )
 }
 
-export default function OnboardingPage({ user }) {
+export default function OnboardingPage({ user, onDone }) {
   const { t } = useTranslation('onboarding')
   const [step, setStep]             = useState(1)
   const [agencyName, setAgencyName] = useState('')
@@ -44,7 +44,7 @@ export default function OnboardingPage({ user }) {
         p_rc:          rc.trim() || null,
       })
       if (error) throw error
-      window.location.reload()
+      if (typeof onDone === 'function') onDone(); else window.location.reload()
     } catch (err) {
       console.error('[Onboarding]', err)
       setError(err.message || t('step2.errors.generic'))

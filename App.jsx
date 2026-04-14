@@ -13,6 +13,7 @@ import Restitution from './pages/Restitution'
 import RestitutionPicker from './pages/RestitutionPicker'
 import AuthPage, { PasswordResetForm } from './pages/Auth'
 import OnboardingPage from './pages/Onboarding'
+import WelcomeScreen from './pages/WelcomeScreen'
 import SignContract from './pages/SignContract'
 import { initDefaultAccounts } from './lib/db'
 import Accounting from './pages/Accounting'
@@ -187,7 +188,8 @@ export default function App() {
   )
 
   if (authState === 'unauthenticated') return <AuthPage />
-  if (authState === 'onboarding') return <OnboardingPage user={user} />
+  if (authState === 'onboarding') return <OnboardingPage user={user} onDone={() => setAuthState('welcome')} />
+  if (authState === 'welcome') return <WelcomeScreen onDone={() => setAuthState('ready')} />
   if (authState === 'password-recovery') return (
     <PasswordResetForm onSuccess={() => setAuthState('ready')} />
   )
