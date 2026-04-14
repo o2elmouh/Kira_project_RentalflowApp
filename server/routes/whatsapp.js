@@ -1,224 +1,239 @@
+/**
+ * WhatsApp integration via @whiskeysockets/baileys (multi-tenant).
+ *
+ * Session state is persisted to /app/wa_sessions/<agencyId>/
+ * (mount a Railway Volume at /app/wa_sessions).
+ *
+ * Routes:
+ *   GET  /whatsapp/status/:agencyId   — QR code (PNG base64) or connection status
+ *   POST /whatsapp/connect/:agencyId  — Initialise / reconnect a session
+ *   POST /whatsapp/disconnect/:agencyId
+ *   POST /whatsapp/contract
+ *   POST /whatsapp/invoice
+ *   POST /whatsapp/payment
+ *   POST /whatsapp/restitution
+ */
+
 import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
-import { writeFileSync, unlinkSync, mkdirSync } from 'fs'
+import { mkdirSync } from 'fs'
 import { join } from 'path'
-import { randomUUID } from 'crypto'
+import makeWASocket, {
+  useMultiFileAuthState,
+  DisconnectReason,
+  fetchLatestBaileysVersion,
+} from '@whiskeysockets/baileys'
+import { Boom } from '@hapi/boom'
+import QRCode from 'qrcode'
+import { handleInboundWhatsApp } from './leads.js'
 
 const router = Router()
+const SESSIONS_DIR = process.env.WA_SESSIONS_DIR || '/app/wa_sessions'
+
+// agencyId → { sock, qr, status: 'qr'|'open'|'connecting'|'closed' }
+const sessions = new Map()
 
 // ── Rate limits ──────────────────────────────────────────
-// 20 WhatsApp messages per hour per user (global for this router)
-const whatsappLimit = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 20,
-  keyGenerator: (req) => req.ip,
-  message: { error: 'WhatsApp message limit reached. Try again in 1 hour.' },
-})
-
-// Extra tight limit for payment links — 5 per hour per user
-const paymentLimit = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 5,
-  keyGenerator: (req) => req.ip,
-  message: { error: 'Payment link limit reached (5/hour). Try again later.' },
-})
-
+const whatsappLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 20, keyGenerator: r => r.ip })
+const paymentLimit  = rateLimit({ windowMs: 60 * 60 * 1000, max: 5,  keyGenerator: r => r.ip })
 router.use(whatsappLimit)
+
+// ── Session management ────────────────────────────────────
+
+async function getSession(agencyId) {
+  if (sessions.has(agencyId)) return sessions.get(agencyId)
+  return startSession(agencyId)
+}
+
+async function startSession(agencyId) {
+  const stateDir = join(SESSIONS_DIR, agencyId)
+  mkdirSync(stateDir, { recursive: true })
+
+  const { state, saveCreds } = await useMultiFileAuthState(stateDir)
+  const { version } = await fetchLatestBaileysVersion()
+
+  const entry = { sock: null, qr: null, status: 'connecting' }
+  sessions.set(agencyId, entry)
+
+  const sock = makeWASocket({
+    version,
+    auth: state,
+    printQRInTerminal: false,
+    browser: ['RentaFlow', 'Chrome', '1.0'],
+  })
+  entry.sock = sock
+
+  sock.ev.on('creds.update', saveCreds)
+
+  sock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
+    if (qr) {
+      entry.qr = await QRCode.toDataURL(qr)
+      entry.status = 'qr'
+      console.log(`[WA:${agencyId}] QR ready`)
+    }
+    if (connection === 'open') {
+      entry.qr = null
+      entry.status = 'open'
+      console.log(`[WA:${agencyId}] Connected`)
+    }
+    if (connection === 'close') {
+      const code = new Boom(lastDisconnect?.error)?.output?.statusCode
+      const shouldReconnect = code !== DisconnectReason.loggedOut
+      console.log(`[WA:${agencyId}] Closed (code ${code}), reconnect=${shouldReconnect}`)
+      entry.status = 'closed'
+      sessions.delete(agencyId)
+      if (shouldReconnect) setTimeout(() => startSession(agencyId), 5000)
+    }
+  })
+
+  // ── Inbound message → leads pipeline ─────────────────
+  sock.ev.on('messages.upsert', async ({ messages, type }) => {
+    if (type !== 'notify') return
+    for (const msg of messages) {
+      if (msg.key.fromMe) continue
+      const senderJid = msg.key.remoteJid
+      const bodyText  = msg.message?.conversation
+        || msg.message?.extendedTextMessage?.text
+        || ''
+
+      // Image message
+      const imgMsg = msg.message?.imageMessage
+      if (imgMsg) {
+        try {
+          const buf = await sock.downloadMediaMessage(msg, 'buffer')
+          const b64 = buf.toString('base64')
+          const mime = imgMsg.mimetype || 'image/jpeg'
+          await handleInboundWhatsApp(agencyId, senderJid, b64, mime, bodyText)
+        } catch (err) {
+          console.error(`[WA:${agencyId}] inbound image error:`, err.message)
+        }
+      }
+    }
+  })
+
+  return entry
+}
 
 // ── Helpers ───────────────────────────────────────────────
 
 /**
- * Normalise a phone number to WhatsApp format: whatsapp:+212XXXXXXXXX
+ * Normalise to JID format: 212XXXXXXXXX@s.whatsapp.net
  * Accepts: 06XXXXXXXX, +212XXXXXXXXX, 00212XXXXXXXXX, whatsapp:+212...
  */
-function normalisePhone(raw) {
+function normaliseJid(raw) {
   if (!raw) return null
-  let num = String(raw).trim().replace(/\s+/g, '')
-
-  // Already formatted
-  if (num.startsWith('whatsapp:')) return num
-
-  // Strip leading zeros used in international prefix
+  let num = String(raw).trim().replace(/\s+/g, '').replace(/^whatsapp:/, '')
   if (num.startsWith('00')) num = '+' + num.slice(2)
-
-  // Moroccan local format: 06/07 → +2126/+2127
-  if (/^0[5-9]\d{8}$/.test(num)) {
-    num = '+212' + num.slice(1)
-  }
-
-  // Ensure + prefix
+  if (/^0[5-9]\d{8}$/.test(num)) num = '+212' + num.slice(1)
   if (!num.startsWith('+')) num = '+' + num
-
-  return `whatsapp:${num}`
+  const digits = num.replace(/\D/g, '')
+  return `${digits}@s.whatsapp.net`
 }
 
-/**
- * Send a WhatsApp message via Twilio REST API (no SDK).
- */
-async function sendWhatsAppMessage({ to, body, mediaUrl }) {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID
-  const authToken  = process.env.TWILIO_AUTH_TOKEN
-  const from       = process.env.TWILIO_WHATSAPP_FROM || 'whatsapp:+14155238886'
+async function sendWhatsAppMessage({ agencyId, to, body, mediaBuffer, mimetype, pdfBase64 }) {
+  const entry = await getSession(agencyId)
+  if (entry.status !== 'open') throw new Error(`WhatsApp session not connected (status: ${entry.status})`)
 
-  if (!accountSid || !authToken) {
-    throw new Error('Twilio credentials not configured (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN)')
+  const jid = normaliseJid(to)
+  if (!jid) throw new Error('Invalid phone number')
+
+  if (pdfBase64) {
+    const buf = Buffer.from(pdfBase64, 'base64')
+    await entry.sock.sendMessage(jid, { document: buf, mimetype: 'application/pdf', fileName: 'document.pdf', caption: body })
+  } else if (mediaBuffer) {
+    await entry.sock.sendMessage(jid, { image: mediaBuffer, mimetype, caption: body })
+  } else {
+    await entry.sock.sendMessage(jid, { text: body })
   }
+}
 
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
+// ── Session routes ────────────────────────────────────────
 
-  const params = new URLSearchParams({ From: from, To: to, Body: body })
-  if (mediaUrl) params.append('MediaUrl', mediaUrl)
-
-  const credentials = Buffer.from(`${accountSid}:${authToken}`).toString('base64')
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${credentials}`,
-    },
-    body: params.toString(),
-  })
-
-  const result = await response.json()
-
-  if (!response.ok) {
-    throw new Error(`Twilio error ${result.code || response.status}: ${result.message || 'Unknown error'}`)
+router.get('/status/:agencyId', async (req, res) => {
+  try {
+    const entry = await getSession(req.params.agencyId)
+    res.json({ status: entry.status, qr: entry.qr || null })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
   }
+})
 
-  return result
-}
+router.post('/connect/:agencyId', async (req, res) => {
+  try {
+    sessions.delete(req.params.agencyId) // force restart
+    const entry = await startSession(req.params.agencyId)
+    res.json({ status: entry.status })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
 
-// ── PDF temp-file hosting ─────────────────────────────────
-// Writes base64 PDF to a temp file, returns a public URL, auto-deletes after 10 min.
-const TEMP_DIR = join(process.cwd(), 'tmp_pdfs')
-try { mkdirSync(TEMP_DIR, { recursive: true }) } catch {}
+router.post('/disconnect/:agencyId', (req, res) => {
+  const entry = sessions.get(req.params.agencyId)
+  if (entry?.sock) {
+    entry.sock.logout().catch(() => {})
+    sessions.delete(req.params.agencyId)
+  }
+  res.json({ ok: true })
+})
 
-function hostPdfTemp(pdfBase64) {
-  const filename = `${randomUUID()}.pdf`
-  const filepath = join(TEMP_DIR, filename)
-  const buffer = Buffer.from(pdfBase64, 'base64')
-  writeFileSync(filepath, buffer)
-  // Auto-delete after 10 minutes
-  setTimeout(() => { try { unlinkSync(filepath) } catch {} }, 10 * 60 * 1000)
-  const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN
-    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-    : (process.env.API_URL || 'http://localhost:3001')
-  return `${baseUrl}/tmp_pdfs/${filename}`
-}
+// ── Messaging routes ──────────────────────────────────────
+// All require agencyId in body so multi-tenant routing works.
 
-// ── POST /whatsapp/contract ───────────────────────────────
 router.post('/contract', async (req, res) => {
-  const { to, clientName, contractNumber, vehicleName, startDate, endDate } = req.body
-
-  if (!to || !clientName || !contractNumber || !vehicleName || !startDate || !endDate) {
-    return res.status(400).json({
-      error: 'Missing required fields: to, clientName, contractNumber, vehicleName, startDate, endDate',
-    })
-  }
-
-  const whatsappTo = normalisePhone(to)
-  if (!whatsappTo) {
-    return res.status(400).json({ error: 'Invalid phone number' })
-  }
-
+  const { agencyId, to, clientName, contractNumber, vehicleName, startDate, endDate } = req.body
+  if (!agencyId || !to || !clientName || !contractNumber || !vehicleName || !startDate || !endDate)
+    return res.status(400).json({ error: 'Missing required fields' })
   try {
     const body = `Bonjour ${clientName}, votre contrat de location *${contractNumber}* pour le véhicule *${vehicleName}* du ${startDate} au ${endDate} a bien été enregistré.`
-
-    const result = await sendWhatsAppMessage({ to: whatsappTo, body })
-
-    console.log(`[WhatsApp] Contract ${contractNumber} sent to ${whatsappTo} — SID: ${result.sid}`)
-    res.json({ sent: true, sid: result.sid, to: whatsappTo, contractNumber })
+    await sendWhatsAppMessage({ agencyId, to, body })
+    res.json({ sent: true })
   } catch (err) {
-    console.error('[WhatsApp/contract]', err.message)
+    console.error('[WA/contract]', err.message)
     res.status(502).json({ error: err.message })
   }
 })
 
-// ── POST /whatsapp/invoice ────────────────────────────────
 router.post('/invoice', async (req, res) => {
-  const { to, clientName, invoiceNumber, totalTTC } = req.body
-
-  if (!to || !clientName || !invoiceNumber || totalTTC == null) {
-    return res.status(400).json({
-      error: 'Missing required fields: to, clientName, invoiceNumber, totalTTC',
-    })
-  }
-
-  const whatsappTo = normalisePhone(to)
-  if (!whatsappTo) {
-    return res.status(400).json({ error: 'Invalid phone number' })
-  }
-
+  const { agencyId, to, clientName, invoiceNumber, totalTTC } = req.body
+  if (!agencyId || !to || !clientName || !invoiceNumber || totalTTC == null)
+    return res.status(400).json({ error: 'Missing required fields' })
   try {
     const body = `Bonjour ${clientName}, votre facture *${invoiceNumber}* d'un montant de *${totalTTC} MAD* a bien été générée.`
-
-    const result = await sendWhatsAppMessage({ to: whatsappTo, body })
-
-    console.log(`[WhatsApp] Invoice ${invoiceNumber} sent to ${whatsappTo} — SID: ${result.sid}`)
-    res.json({ sent: true, sid: result.sid, to: whatsappTo, invoiceNumber })
+    await sendWhatsAppMessage({ agencyId, to, body })
+    res.json({ sent: true })
   } catch (err) {
-    console.error('[WhatsApp/invoice]', err.message)
+    console.error('[WA/invoice]', err.message)
     res.status(502).json({ error: err.message })
   }
 })
 
-// ── POST /whatsapp/payment ────────────────────────────────
 router.post('/payment', paymentLimit, async (req, res) => {
-  const { to, clientName, contractNumber, amount, paymentLink } = req.body
-
-  if (!to || !clientName || !contractNumber || amount == null || !paymentLink) {
-    return res.status(400).json({
-      error: 'Missing required fields: to, clientName, contractNumber, amount, paymentLink',
-    })
-  }
-
-  const whatsappTo = normalisePhone(to)
-  if (!whatsappTo) {
-    return res.status(400).json({ error: 'Invalid phone number' })
-  }
-
+  const { agencyId, to, clientName, contractNumber, amount, paymentLink } = req.body
+  if (!agencyId || !to || !clientName || !contractNumber || amount == null || !paymentLink)
+    return res.status(400).json({ error: 'Missing required fields' })
   try {
     const body = `Bonjour ${clientName}, pour régler votre location ${contractNumber} (${amount} MAD), cliquez sur ce lien de paiement sécurisé CMI : ${paymentLink}`
-
-    const result = await sendWhatsAppMessage({ to: whatsappTo, body })
-
-    console.log(`[WhatsApp] Payment link for ${contractNumber} sent to ${whatsappTo} — SID: ${result.sid}`)
-    res.json({ sent: true, sid: result.sid, to: whatsappTo, contractNumber })
+    await sendWhatsAppMessage({ agencyId, to, body })
+    res.json({ sent: true })
   } catch (err) {
-    console.error('[WhatsApp/payment]', err.message)
+    console.error('[WA/payment]', err.message)
     res.status(502).json({ error: err.message })
   }
 })
 
-// ── POST /whatsapp/restitution ────────────────────────────
 router.post('/restitution', async (req, res) => {
-  const { to, clientName, contractNumber, pdfBase64, totalExtraFees } = req.body
-
-  if (!to || !clientName || !contractNumber || !pdfBase64 || totalExtraFees == null) {
-    return res.status(400).json({
-      error: 'Missing required fields: to, clientName, contractNumber, pdfBase64, totalExtraFees',
-    })
-  }
-
-  const whatsappTo = normalisePhone(to)
-  if (!whatsappTo) {
-    return res.status(400).json({ error: 'Invalid phone number' })
-  }
-
+  const { agencyId, to, clientName, contractNumber, pdfBase64, totalExtraFees } = req.body
+  if (!agencyId || !to || !clientName || !contractNumber || !pdfBase64 || totalExtraFees == null)
+    return res.status(400).json({ error: 'Missing required fields' })
   try {
-    const pdfUrl = hostPdfTemp(pdfBase64)
-
     const body = totalExtraFees > 0
-      ? `Bonjour ${clientName}, votre procès-verbal de restitution pour le contrat ${contractNumber} est disponible en pièce jointe. Frais supplémentaires : ${totalExtraFees} MAD.`
-      : `Bonjour ${clientName}, votre procès-verbal de restitution pour le contrat ${contractNumber} est disponible en pièce jointe. Aucun frais supplémentaire.`
-
-    const result = await sendWhatsAppMessage({ to: whatsappTo, body, mediaUrl: pdfUrl })
-
-    console.log(`[WhatsApp] Restitution PV ${contractNumber} sent to ${whatsappTo} — SID: ${result.sid}`)
-    res.json({ sent: true, sid: result.sid, to: whatsappTo, contractNumber })
+      ? `Bonjour ${clientName}, votre PV de restitution pour le contrat ${contractNumber} est en pièce jointe. Frais supplémentaires : ${totalExtraFees} MAD.`
+      : `Bonjour ${clientName}, votre PV de restitution pour le contrat ${contractNumber} est en pièce jointe. Aucun frais supplémentaire.`
+    await sendWhatsAppMessage({ agencyId, to, body, pdfBase64 })
+    res.json({ sent: true })
   } catch (err) {
-    console.error('[WhatsApp/restitution]', err.message)
+    console.error('[WA/restitution]', err.message)
     res.status(502).json({ error: err.message })
   }
 })
