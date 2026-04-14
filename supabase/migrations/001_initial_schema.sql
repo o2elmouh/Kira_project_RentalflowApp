@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   full_name    text,
   email        text,
   phone        text,
-  role         text        DEFAULT 'admin' CHECK (role IN ('admin', 'agent')),
+  role         text        DEFAULT 'admin' CHECK (role IN ('admin', 'staff')),
   agency_id    uuid        REFERENCES agencies(id),
   created_at   timestamptz DEFAULT now()
 );

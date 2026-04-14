@@ -182,7 +182,8 @@ export default function App() {
     setPage(target)
   }
 
-  const role = profile?.role ?? 'admin'
+  // When auth is enabled and profile hasn't loaded, default to least-privileged role
+  const role = profile?.role ?? (USE_AUTH ? 'staff' : 'admin')
   const isAdmin = role === 'admin'
   const isPremium = profile?.agencies?.plan === 'premium'
 
@@ -204,7 +205,9 @@ export default function App() {
         if (!isAdmin) { setTimeout(() => setPage('dashboard'), 0); return null }
         return <Settings />
       case 'migrate': return <MigrateData />
-      case 'basket': return <Basket onNavigate={handleNav} />
+      case 'basket':
+        if (!isPremium) { setTimeout(() => setPage('dashboard'), 0); return null }
+        return <Basket onNavigate={handleNav} />
       case 'restitution-picker':
         return <RestitutionPicker onPick={handleRestitution} onCancel={() => setPage('contracts')} />
       case 'restitution':

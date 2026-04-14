@@ -21,7 +21,7 @@ router.get('/', requireAdmin, async (req, res) => {
 router.post('/invite', requireAdmin, async (req, res) => {
   const { email, role = 'staff' } = req.body
   if (!email) return res.status(400).json({ error: 'email is required' })
-  if (!['admin', 'staff'].includes(role)) return res.status(400).json({ error: 'role must be admin or agent' })
+  if (!['admin', 'staff'].includes(role)) return res.status(400).json({ error: 'role must be admin or staff' })
 
   // Invite via Supabase Auth — user receives a magic-link email
   const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
