@@ -16,9 +16,6 @@
  *   // charges → array of { reason, amount, type } to add to invoice
  */
 
-// ── Telemetry disabled for v2 — will be re-enabled in v3 ─────────────────────
-const TELEMETRY_ENABLED = false
-
 import { api } from '../lib/api.js'
 import {
   getVehicle, saveVehicle,
@@ -26,6 +23,9 @@ import {
   getDeviceForVehicle, updateContract,
 } from '../lib/db.js'
 import { normalize, computeDeltas, hasCriticalDtc } from './telemetry.js'
+
+// ── Telemetry disabled for v2 — will be re-enabled in v3 ─────────────────────
+const TELEMETRY_ENABLED = false
 
 // ── Internal: fetch telemetry from backend and normalize ─────────────────────
 async function fetchAndNormalize(vehicleId) {
