@@ -191,7 +191,15 @@ export default function App() {
   if (authState === 'onboarding') return <OnboardingPage user={user} onDone={() => setAuthState('welcome')} />
   if (authState === 'welcome') return <WelcomeScreen onDone={() => setAuthState('ready')} />
   if (authState === 'password-recovery') return (
-    <PasswordResetForm onSuccess={() => setAuthState('ready')} />
+    <PasswordResetForm onSuccess={async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) await resolveUser(session.user)
+        else setAuthState('ready')
+      } catch {
+        setAuthState('ready')
+      }
+    }} />
   )
 
   return (
