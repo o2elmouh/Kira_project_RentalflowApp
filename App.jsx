@@ -164,7 +164,9 @@ export default function App() {
       }
     } catch (err) {
       console.error('[RF] resolveUser threw:', err)
-      setAuthState('onboarding')
+      // On query error/timeout, go to ready with null profile (admin fallback)
+      // rather than sending an existing user back through onboarding
+      setAuthState('ready')
     } finally {
       resolvingRef.current = false
     }
