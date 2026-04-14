@@ -25,6 +25,12 @@ const PREVIEW = new URLSearchParams(window.location.search).get('preview')
 const PAGE_PARAM = new URLSearchParams(window.location.search).get('page')
 const signToken = new URLSearchParams(window.location.search).get('sign')
 
+// ── Startup diagnostics (remove after confirming fix) ─────────────────────────
+console.log('[RF] BUILD OK — App module loaded')
+console.log('[RF] USE_AUTH:', USE_AUTH, '| VITE_USE_AUTH raw:', import.meta.env.VITE_USE_AUTH)
+console.log('[RF] VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL ? '✓ set' : '✗ MISSING')
+console.log('[RF] VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY ? '✓ set' : '✗ MISSING')
+
 export default function App() {
   const [page, setPage] = useState(PAGE_PARAM || 'dashboard')
   const [restitutionContract, setRestitutionContract] = useState(null)
@@ -36,7 +42,9 @@ export default function App() {
   const initialSessionHandled = useRef(false)
 
   useEffect(() => {
+    console.log('[RF] useEffect — USE_AUTH:', USE_AUTH)
     if (!USE_AUTH) {
+      console.log('[RF] Auth disabled — going straight to ready')
       initDefaultAccounts()
       setAuthState('ready')
       return
@@ -45,14 +53,16 @@ export default function App() {
     let subscription = null
 
     const init = async () => {
+      console.log('[RF] init() started')
       const timeout = setTimeout(() => {
-        console.warn('[Auth] timeout — forcing unauthenticated')
+        console.warn('[RF] Auth timeout (5s) — forcing unauthenticated')
         setAuthState('unauthenticated')
       }, 5000)
 
       // 1. Subscribe first so we never miss an event
+      console.log('[RF] Subscribing to onAuthStateChange...')
       const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('[Auth] event:', event)
+        console.log('[RF] onAuthStateChange event:', event, '| session:', session ? 'present' : 'null')
 
         if (event === 'PASSWORD_RECOVERY') {
           clearTimeout(timeout)
@@ -84,8 +94,9 @@ export default function App() {
 
       // 2. Check existing session once
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        console.log('[Auth] getSession:', session ? 'session found' : 'no session')
+        console.log('[RF] Calling getSession()...')
+        const { data: { session }, error: sessionErr } = await supabase.auth.getSession()
+        console.log('[RF] getSession result:', session ? `user=${session.user?.email}` : 'no session', sessionErr ? `err=${sessionErr.message}` : '')
         clearTimeout(timeout)
         if (session?.user) {
           await resolveUser(session.user)
@@ -93,11 +104,12 @@ export default function App() {
           setAuthState('unauthenticated')
         }
       } catch (err) {
-        console.error('[Auth] getSession error:', err)
+        console.error('[RF] getSession threw:', err)
         clearTimeout(timeout)
         setAuthState('unauthenticated')
       } finally {
         initialSessionHandled.current = true
+        console.log('[RF] init() complete — authState will update')
       }
     }
 
@@ -106,24 +118,29 @@ export default function App() {
   }, [])
 
   async function resolveUser(u) {
-    if (resolvingRef.current) return
+    console.log('[RF] resolveUser called — id:', u?.id, 'email:', u?.email)
+    if (resolvingRef.current) { console.warn('[RF] resolveUser already in progress, skipping'); return }
     resolvingRef.current = true
     setUser(u)
     try {
-      const { data: prof } = await supabase
+      console.log('[RF] Fetching profile from Supabase...')
+      const { data: prof, error: profErr } = await supabase
         .from('profiles')
         .select('*, agencies(*)')
         .eq('id', u.id)
         .maybeSingle()
 
+      console.log('[RF] Profile result:', prof ? `role=${prof.role} agency=${prof.agency_id}` : 'null', profErr ? `err=${profErr.message}` : '')
       if (prof) {
         setProfile(prof)
         setAuthState('ready')
+        console.log('[RF] → ready')
       } else {
         setAuthState('onboarding')
+        console.log('[RF] → onboarding (no profile)')
       }
     } catch (err) {
-      console.error('[Auth] resolveUser error:', err)
+      console.error('[RF] resolveUser threw:', err)
       setAuthState('onboarding')
     } finally {
       resolvingRef.current = false
