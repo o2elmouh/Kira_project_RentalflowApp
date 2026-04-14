@@ -40,6 +40,7 @@ export default function App() {
   const [profile, setProfile] = useState(null)
   const resolvingRef = useRef(false)
   const initialSessionHandled = useRef(false)
+  const passwordRecoveryRef = useRef(false)
 
   useEffect(() => {
     console.log('[RF] useEffect — USE_AUTH:', USE_AUTH)
@@ -66,6 +67,7 @@ export default function App() {
 
         if (event === 'PASSWORD_RECOVERY') {
           clearTimeout(timeout)
+          passwordRecoveryRef.current = true
           setAuthState('password-recovery')
           return
         }
@@ -84,10 +86,10 @@ export default function App() {
 
         if (session?.user) {
           clearTimeout(timeout)
-          await resolveUser(session.user)
+          if (!passwordRecoveryRef.current) await resolveUser(session.user)
         } else {
           clearTimeout(timeout)
-          setAuthState('unauthenticated')
+          if (!passwordRecoveryRef.current) setAuthState('unauthenticated')
         }
       })
       subscription = data.subscription
@@ -98,7 +100,9 @@ export default function App() {
         const { data: { session }, error: sessionErr } = await supabase.auth.getSession()
         console.log('[RF] getSession result:', session ? `user=${session.user?.email}` : 'no session', sessionErr ? `err=${sessionErr.message}` : '')
         clearTimeout(timeout)
-        if (session?.user) {
+        if (passwordRecoveryRef.current) {
+          // PASSWORD_RECOVERY event already handled — don't override with resolveUser
+        } else if (session?.user) {
           await resolveUser(session.user)
         } else {
           setAuthState('unauthenticated')
@@ -228,6 +232,7 @@ export default function App() {
   if (authState === 'welcome') return <WelcomeScreen onDone={() => setAuthState('ready')} />
   if (authState === 'password-recovery') return (
     <PasswordResetForm onSuccess={async () => {
+      passwordRecoveryRef.current = false
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) await resolveUser(session.user)
