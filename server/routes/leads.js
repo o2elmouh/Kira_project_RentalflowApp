@@ -412,22 +412,22 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBase64, mi
   if (match && match.type !== 'potential') {
     const existing = match.demand
     await supabaseAdmin.from('pending_demands').update({
-      extracted_data:   { ...(existing.extracted_data || {}), ...(extractedData || {}) },
+      extracted_data: { ...(existing.extracted_data || {}), ...(extractedData || {}) },
       confidence_scores: extractedData?.confidenceScores || null,
-      match_score:      match.score,
-      raw_payload:      { ...existing.raw_payload, latestBody: bodyText },
+      match_score: match.score,
+      raw_payload: { ...existing.raw_payload, latestBody: bodyText },
     }).eq('id', existing.id)
   } else {
     const { error } = await supabaseAdmin.from('pending_demands').insert({
-      agency_id:        agencyId,
-      source:           'whatsapp',
-      sender_id:        senderJid,
-      raw_payload:      { body: bodyText, from: senderJid },
-      extracted_data:   extractedData,
+      agency_id: agencyId,
+      source: 'whatsapp',
+      sender_id: senderJid,
+      raw_payload: { body: bodyText, from: senderJid },
+      extracted_data: extractedData,
       confidence_scores: extractedData?.confidenceScores || null,
-      media_urls:       [],
-      match_score:      match?.score || null,
-      merged_with_id:   match?.type === 'potential' ? match.demand.id : null,
+      media_urls: [],
+      match_score: match?.score || null,
+      merged_with_id: match?.type === 'potential' ? match.demand.id : null,
     })
     if (error) console.error('[leads/inbound-wa] insert error:', error.message)
   }

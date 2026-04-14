@@ -16,6 +16,9 @@
  *   // charges → array of { reason, amount, type } to add to invoice
  */
 
+// ── Telemetry disabled for v2 — will be re-enabled in v3 ─────────────────────
+const TELEMETRY_ENABLED = false
+
 import { api } from '../lib/api.js'
 import {
   getVehicle, saveVehicle,
@@ -44,6 +47,7 @@ async function fetchAndNormalize(vehicleId) {
  * @returns {object} saved snapshot
  */
 export async function snapshotOnStart(contract) {
+  if (!TELEMETRY_ENABLED) return null
   try {
     const data = await fetchAndNormalize(contract.vehicleId)
 
@@ -83,6 +87,7 @@ export async function snapshotOnStart(contract) {
  * @returns {{ snapshot, charges: Array<{reason,amount,type}>, dtcCodes }}
  */
 export async function snapshotOnEnd(contract) {
+  if (!TELEMETRY_ENABLED) return { charges: [] }
   try {
     const data = await fetchAndNormalize(contract.vehicleId)
 

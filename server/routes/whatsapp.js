@@ -26,6 +26,7 @@ import makeWASocket, {
 import { Boom } from '@hapi/boom'
 import QRCode from 'qrcode'
 import { handleInboundWhatsApp } from './leads.js'
+import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
 const SESSIONS_DIR = process.env.WA_SESSIONS_DIR || '/app/wa_sessions'
@@ -36,6 +37,7 @@ const sessions = new Map()
 // ── Rate limits ──────────────────────────────────────────
 const whatsappLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 20, keyGenerator: r => r.ip })
 const paymentLimit  = rateLimit({ windowMs: 60 * 60 * 1000, max: 5,  keyGenerator: r => r.ip })
+router.use(requireAuth)
 router.use(whatsappLimit)
 
 // ── Session management ────────────────────────────────────
@@ -149,30 +151,35 @@ async function sendWhatsAppMessage({ agencyId, to, body, mediaBuffer, mimetype, 
 
 // ── Session routes ────────────────────────────────────────
 
-router.get('/status/:agencyId', async (req, res) => {
+router.get('/status', async (req, res) => {
+  const agencyId = req.user.agency_id
+  if (!agencyId) return res.status(400).json({ error: 'No agency_id on profile' })
   try {
-    const entry = await getSession(req.params.agencyId)
+    const entry = await getSession(agencyId)
     res.json({ status: entry.status, qr: entry.qr || null })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
 })
 
-router.post('/connect/:agencyId', async (req, res) => {
+router.post('/connect', async (req, res) => {
+  const agencyId = req.user.agency_id
+  if (!agencyId) return res.status(400).json({ error: 'No agency_id on profile' })
   try {
-    sessions.delete(req.params.agencyId) // force restart
-    const entry = await startSession(req.params.agencyId)
+    sessions.delete(agencyId)
+    const entry = await startSession(agencyId)
     res.json({ status: entry.status })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
 })
 
-router.post('/disconnect/:agencyId', (req, res) => {
-  const entry = sessions.get(req.params.agencyId)
+router.post('/disconnect', (req, res) => {
+  const agencyId = req.user.agency_id
+  const entry = sessions.get(agencyId)
   if (entry?.sock) {
     entry.sock.logout().catch(() => {})
-    sessions.delete(req.params.agencyId)
+    sessions.delete(agencyId)
   }
   res.json({ ok: true })
 })
@@ -181,7 +188,8 @@ router.post('/disconnect/:agencyId', (req, res) => {
 // All require agencyId in body so multi-tenant routing works.
 
 router.post('/contract', async (req, res) => {
-  const { agencyId, to, clientName, contractNumber, vehicleName, startDate, endDate } = req.body
+  const agencyId = req.user.agency_id
+  const { to, clientName, contractNumber, vehicleName, startDate, endDate } = req.body
   if (!agencyId || !to || !clientName || !contractNumber || !vehicleName || !startDate || !endDate)
     return res.status(400).json({ error: 'Missing required fields' })
   try {
@@ -195,7 +203,8 @@ router.post('/contract', async (req, res) => {
 })
 
 router.post('/invoice', async (req, res) => {
-  const { agencyId, to, clientName, invoiceNumber, totalTTC } = req.body
+  const agencyId = req.user.agency_id
+  const { to, clientName, invoiceNumber, totalTTC } = req.body
   if (!agencyId || !to || !clientName || !invoiceNumber || totalTTC == null)
     return res.status(400).json({ error: 'Missing required fields' })
   try {
@@ -209,7 +218,8 @@ router.post('/invoice', async (req, res) => {
 })
 
 router.post('/payment', paymentLimit, async (req, res) => {
-  const { agencyId, to, clientName, contractNumber, amount, paymentLink } = req.body
+  const agencyId = req.user.agency_id
+  const { to, clientName, contractNumber, amount, paymentLink } = req.body
   if (!agencyId || !to || !clientName || !contractNumber || amount == null || !paymentLink)
     return res.status(400).json({ error: 'Missing required fields' })
   try {
@@ -223,7 +233,8 @@ router.post('/payment', paymentLimit, async (req, res) => {
 })
 
 router.post('/restitution', async (req, res) => {
-  const { agencyId, to, clientName, contractNumber, pdfBase64, totalExtraFees } = req.body
+  const agencyId = req.user.agency_id
+  const { to, clientName, contractNumber, pdfBase64, totalExtraFees } = req.body
   if (!agencyId || !to || !clientName || !contractNumber || !pdfBase64 || totalExtraFees == null)
     return res.status(400).json({ error: 'Missing required fields' })
   try {

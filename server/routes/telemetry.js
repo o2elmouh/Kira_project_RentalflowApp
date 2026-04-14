@@ -22,6 +22,9 @@ import { Router } from 'express'
 
 const router = Router()
 
+// Telemetry is disabled for v2 — will be re-enabled in v3
+router.use((_req, res) => res.status(503).json({ error: 'Telemetry disabled in v2' }))
+
 const PROVIDER  = process.env.TELEMETRY_PROVIDER || 'mock'
 const TRACCAR   = {
   url:      process.env.TRACCAR_URL      || '',

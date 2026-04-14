@@ -2,21 +2,69 @@
  * Integrations tab — WhatsApp number + Gmail App Password
  * (visible only on premium plan)
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../../lib/api.js'
 
 export default function IntegrationsTab() {
   // Gmail state
-  const [gmailStatus, setGmailStatus]   = useState(null)
+  const [gmailStatus, setGmailStatus] = useState(null)
   const [gmailAddress, setGmailAddress] = useState('')
-  const [appPassword, setAppPassword]   = useState('')
-  const [gmailSaving, setGmailSaving]   = useState(false)
-  const [gmailMsg, setGmailMsg]         = useState(null)
+  const [appPassword, setAppPassword] = useState('')
+  const [gmailSaving, setGmailSaving] = useState(false)
+  const [gmailMsg, setGmailMsg] = useState(null)
 
-  // WhatsApp — informational only (number configured in Twilio dashboard)
-  const [whatsappNumber, setWhatsappNumber] = useState('')
-  const [waSaving, setWaSaving]             = useState(false)
-  const [waMsg, setWaMsg]                   = useState(null)
+  // WhatsApp — Baileys QR connection
+  const [waStatus, setWaStatus] = useState(null)   // null | 'connecting' | 'qr' | 'open' | 'closed'
+  const [waQr, setWaQr] = useState(null)
+  const [waLoading, setWaLoading] = useState(false)
+  const pollRef = useRef(null)
+
+  function stopPoll() { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } }
+
+  async function fetchWaStatus() {
+    try {
+      const res = await api.getWhatsAppStatus()
+      setWaStatus(res.status)
+      setWaQr(res.qr || null)
+      if (res.status === 'open' || res.status === 'closed') stopPoll()
+    } catch { /* ignore */ }
+  }
+
+  useEffect(() => {
+    fetchWaStatus()
+    return stopPoll
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function startPoll() {
+    stopPoll()
+    pollRef.current = setInterval(fetchWaStatus, 3000)
+  }
+
+  async function connectWa() {
+    setWaLoading(true)
+    try {
+      await api.connectWhatsApp()
+      setWaStatus('connecting')
+      startPoll()
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setWaLoading(false)
+    }
+  }
+
+  async function disconnectWa() {
+    if (!window.confirm('Déconnecter WhatsApp ?')) return
+    try {
+      await api.disconnectWhatsApp()
+      setWaStatus('closed')
+      setWaQr(null)
+      stopPoll()
+    } catch (err) {
+      alert(err.message)
+    }
+  }
 
   useEffect(() => {
     api.getGmailStatus()
@@ -24,11 +72,7 @@ export default function IntegrationsTab() {
         setGmailStatus(s)
         if (s.gmail_address) setGmailAddress(s.gmail_address)
       })
-      .catch(() => {})
-
-    api.getAgency()
-      .then(a => { if (a.whatsapp_number) setWhatsappNumber(a.whatsapp_number) })
-      .catch(() => {})
+      .catch(() => { })
   }, [])
 
   async function saveGmail(e) {
@@ -68,19 +112,6 @@ export default function IntegrationsTab() {
     }
   }
 
-  async function saveWhatsApp(e) {
-    e.preventDefault()
-    setWaSaving(true)
-    setWaMsg(null)
-    try {
-      await api.updateAgency({ whatsapp_number: whatsappNumber })
-      setWaMsg({ ok: true, text: 'Numéro WhatsApp enregistré.' })
-    } catch (err) {
-      setWaMsg({ ok: false, text: err.message })
-    } finally {
-      setWaSaving(false)
-    }
-  }
 
   const fieldStyle = {
     width: '100%',
@@ -126,30 +157,46 @@ export default function IntegrationsTab() {
       <div style={sectionStyle}>
         <h3 style={{ margin: '0 0 4px', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 20 }}>📱</span> WhatsApp
+          {waStatus === 'open' && (
+            <span style={{ fontSize: 11, background: 'rgba(34,197,94,0.15)', color: '#22c55e', borderRadius: 4, padding: '2px 7px', fontWeight: 600 }}>
+              Connecté
+            </span>
+          )}
+          {(waStatus === 'connecting' || waStatus === 'qr') && (
+            <span style={{ fontSize: 11, background: 'rgba(234,179,8,0.15)', color: '#eab308', borderRadius: 4, padding: '2px 7px', fontWeight: 600 }}>
+              {waStatus === 'qr' ? 'Scannez le QR' : 'Connexion…'}
+            </span>
+          )}
         </h3>
         <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4, marginBottom: 16 }}>
-          Numéro associé au compte Twilio qui reçoit les messages WhatsApp.
+          Connectez votre numéro WhatsApp en scannant le QR code avec l'application WhatsApp.
         </p>
-        <form onSubmit={saveWhatsApp}>
-          <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>Numéro WhatsApp (format Twilio, ex: whatsapp:+212600000000)</label>
-            <input
-              type="text"
-              value={whatsappNumber}
-              onChange={e => setWhatsappNumber(e.target.value)}
-              placeholder="whatsapp:+212600000000"
-              style={fieldStyle}
-            />
+
+        {waStatus === 'qr' && waQr && (
+          <div style={{ marginBottom: 16, textAlign: 'center' }}>
+            <img src={waQr} alt="WhatsApp QR Code" style={{ width: 220, height: 220, borderRadius: 8, border: '1px solid var(--border)' }} />
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>
+              Ouvrez WhatsApp → Appareils connectés → Connecter un appareil
+            </p>
           </div>
+        )}
+
+        {waStatus === 'open' ? (
           <button
-            type="submit"
-            disabled={waSaving}
+            onClick={disconnectWa}
+            style={{ padding: '8px 20px', borderRadius: 8, background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
+          >
+            Déconnecter
+          </button>
+        ) : (
+          <button
+            onClick={connectWa}
+            disabled={waLoading || waStatus === 'connecting' || waStatus === 'qr'}
             style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--accent)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
           >
-            {waSaving ? 'Enregistrement…' : 'Enregistrer'}
+            {waLoading || waStatus === 'connecting' ? 'Connexion en cours…' : waStatus === 'qr' ? 'En attente du scan…' : 'Connecter WhatsApp'}
           </button>
-          {waMsg && <div style={msgStyle(waMsg.ok)}>{waMsg.text}</div>}
-        </form>
+        )}
       </div>
 
       {/* Gmail section */}
