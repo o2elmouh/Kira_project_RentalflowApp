@@ -124,13 +124,32 @@ export default function App() {
     setUser(u)
     try {
       console.log('[RF] Fetching profile from Supabase...')
-      const { data: prof, error: profErr } = await supabase
+      // Race the query against a 6-second timeout to prevent infinite hang
+      const profilePromise = supabase
         .from('profiles')
-        .select('*, agencies(*)')
+        .select('id, full_name, email, phone, role, agency_id')
         .eq('id', u.id)
         .maybeSingle()
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Profile query timed out after 6s')), 6000)
+      )
+      const { data: prof, error: profErr } = await Promise.race([profilePromise, timeoutPromise])
 
       console.log('[RF] Profile result:', prof ? `role=${prof.role} agency=${prof.agency_id}` : 'null', profErr ? `err=${profErr.message}` : '')
+
+      // Fetch agency separately to avoid join hanging on RLS
+      if (prof?.agency_id) {
+        try {
+          const { data: agency } = await Promise.race([
+            supabase.from('agencies').select('*').eq('id', prof.agency_id).maybeSingle(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Agency query timed out')), 4000)),
+          ])
+          if (agency) prof.agencies = agency
+          console.log('[RF] Agency result:', agency ? `plan=${agency.plan}` : 'null')
+        } catch (agErr) {
+          console.warn('[RF] Agency fetch failed (non-fatal):', agErr.message)
+        }
+      }
       if (prof) {
         setProfile(prof)
         setAuthState('ready')
