@@ -6,6 +6,7 @@ import { getFleet, getClients, getContracts, getInvoices } from '../lib/db'
 function inMonth(dateStr, year, month) {
   if (!dateStr) return false
   const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return false
   return d.getFullYear() === year && d.getMonth() === month
 }
 

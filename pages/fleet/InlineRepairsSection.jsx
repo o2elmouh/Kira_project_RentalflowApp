@@ -201,7 +201,7 @@ export default function InlineRepairsSection({ vehicleId }) {
                   </div>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
-                  {new Date(r.date).toLocaleDateString('fr-MA')}
+                  {(d => d && !isNaN(d.getTime()) ? d.toLocaleDateString('fr-MA') : '—')(new Date(r.date))}
                   {r.garage ? ` · ${r.garage}` : ''}
                   {r.mileage ? ` · ${Number(r.mileage).toLocaleString()} km` : ''}
                   {r.sinistreId ? ` · Réf: ${r.sinistreId}` : ''}

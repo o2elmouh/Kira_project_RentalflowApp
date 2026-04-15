@@ -407,6 +407,7 @@ export default function Contracts({ onRestitution }) {
                       type="date"
                       min={(() => {
                         const d = new Date(panelContract.endDate)
+                        if (isNaN(d.getTime())) return ''
                         d.setDate(d.getDate() + 1)
                         return d.toISOString().slice(0, 10)
                       })()}

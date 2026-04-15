@@ -37,7 +37,7 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
   const residual = Number(vehicle.residualValue) || 0
   const boughtDate = vehicle.purchaseDate || (vehicle.year ? `${vehicle.year}-01-01` : null)
   const bought = boughtDate ? new Date(boughtDate) : null
-  const yearsElapsed = bought ? (Date.now() - bought.getTime()) / (365.25 * 24 * 3600 * 1000) : 0
+  const yearsElapsed = (bought && !isNaN(bought.getTime())) ? (Date.now() - bought.getTime()) / (365.25 * 24 * 3600 * 1000) : 0
   const depreciable = Math.max(0, price - residual)
   const bookValue = price > 0 ? Math.max(residual, price - (depreciable / lifespan) * yearsElapsed) : 0
   const amortPct = price > 0 ? Math.min(100, (yearsElapsed / lifespan) * 100) : 0
@@ -133,7 +133,12 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
                 <span>Dernière</span>
                 <span style={{ fontWeight: 600, textAlign: 'right' }}>
                   {lastRepair.type}<br />
-                  <span style={{ fontWeight: 400, fontSize: 11 }}>{new Date(lastRepair.date).toLocaleDateString('fr-MA')}</span>
+                  <span style={{ fontWeight: 400, fontSize: 11 }}>
+                    {(() => {
+                      const d = new Date(lastRepair.date)
+                      return !isNaN(d.getTime()) ? d.toLocaleDateString('fr-MA') : '—'
+                    })()}
+                  </span>
                 </span>
               </div>
             ) : (

@@ -43,7 +43,8 @@ export default function DeadlinesTab({ vehicle, onSave }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {deadlines.map(({ label, dateKey, mileageKey, icon, configHint }) => {
           const date = form[dateKey]
-          const days = date ? Math.ceil((new Date(date) - new Date()) / 86400000) : null
+          const dt = date ? new Date(date) : null
+          const days = dt && !isNaN(dt.getTime()) ? Math.ceil((dt - new Date()) / 86400000) : null
           const urgent = days !== null && days <= 30
           const overdue = days !== null && days < 0
           const isComputed = !vehicle[dateKey] && !!form[dateKey]

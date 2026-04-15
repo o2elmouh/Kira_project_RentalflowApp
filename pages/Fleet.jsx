@@ -1,20 +1,19 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
-import { PlusCircle, Trash2, Edit2, AlertTriangle, Map, Radio } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { PlusCircle, Trash2, Edit2, AlertTriangle } from 'lucide-react'
 import { getFleet, saveVehicle, deleteVehicle, getFleetConfigForMake } from '../lib/db'
 
 import { CAR_CATALOGUE, displayPlate } from './fleet/constants'
 import VehicleDetail from './fleet/VehicleDetail'
 import VehicleEditForm from './fleet/VehicleEditForm'
 
-// Lazy-load FleetMap — keeps leaflet out of main bundle
-const FleetMap = lazy(() => import('./FleetMap.jsx'))
+// FleetMap disabled for v2
 
 const EMPTY = {
   make: '', model: '', year: new Date().getFullYear(),
   plate: '', category: 'Economy', dailyRate: 300,
   status: 'available', mileage: 0, color: '', fuelType: 'Essence',
   purchasePrice: '', purchaseDate: '', residualValue: '', lifespan: 5,
-  trackedDevice: null,   // null = no GPS; string deviceId = tracked
+  // trackedDevice removed — telemetry disabled for v2
 }
 
 // ── Auto-fill maintenance from Fleet_Config ───────────────
@@ -37,14 +36,18 @@ function autoFillMaintenance(form) {
 
   if (!form.warrantyEnd && purchaseDate && config.warrantyYears) {
     const d = new Date(purchaseDate)
-    d.setFullYear(d.getFullYear() + config.warrantyYears)
-    patch.warrantyEnd = d.toISOString().split('T')[0]
+    if (!isNaN(d.getTime())) {
+      d.setFullYear(d.getFullYear() + config.warrantyYears)
+      patch.warrantyEnd = d.toISOString().split('T')[0]
+    }
   }
 
   if (!form.nextControleTech && purchaseDate && config.controlTechYears) {
     const d = new Date(purchaseDate)
-    d.setFullYear(d.getFullYear() + config.controlTechYears)
-    patch.nextControleTech = d.toISOString().split('T')[0]
+    if (!isNaN(d.getTime())) {
+      d.setFullYear(d.getFullYear() + config.controlTechYears)
+      patch.nextControleTech = d.toISOString().split('T')[0]
+    }
   }
 
   return { ...form, ...patch }
@@ -59,7 +62,7 @@ export default function Fleet() {
   const [form,         setForm]        = useState(EMPTY)
   const [configBanner, setConfigBanner] = useState(null)
   const [editingHadPurchaseDate, setEditingHadPurchaseDate] = useState(false)
-  const [fleetView,    setFleetView]   = useState('grid')  // 'grid' | 'map'
+  const [fleetView,    setFleetView]   = useState('grid')  // 'grid' only for v2
 
   const refresh = async (currentDetail) => {
     try {
@@ -122,32 +125,11 @@ export default function Fleet() {
 
   if (loading) return <div className="page-body"><p style={{ color: 'var(--text3)' }}>Chargement…</p></div>
 
-  // DTC alerts from vehicles flagged automatically by telematics
-  const dtcAlerts = fleet.filter(v => v.dtcCodes?.length > 0 && v.status === 'maintenance')
-
   return (
     <div>
       <div className="page-header">
         <div><h2>Parc automobile</h2><p>Gérez votre flotte de véhicules</p></div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {/* View switcher */}
-          {!detail && !editing && (
-            <div style={{ display: 'flex', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 7, padding: 3, gap: 2 }}>
-              <button
-                onClick={() => setFleetView('grid')}
-                style={{ padding: '5px 12px', borderRadius: 5, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                  background: fleetView === 'grid' ? 'var(--accent)' : 'transparent',
-                  color: fleetView === 'grid' ? '#fff' : 'var(--text3)' }}
-              >Grille</button>
-              <button
-                onClick={() => setFleetView('map')}
-                style={{ padding: '5px 12px', borderRadius: 5, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                  display: 'flex', alignItems: 'center', gap: 4,
-                  background: fleetView === 'map' ? 'var(--accent)' : 'transparent',
-                  color: fleetView === 'map' ? '#fff' : 'var(--text3)' }}
-              ><Map size={12} />Carte GPS</button>
-            </div>
-          )}
           {!detail && !editing && (
             <button className="btn btn-primary" onClick={openAdd}><PlusCircle size={15} /> Ajouter</button>
           )}
@@ -155,30 +137,6 @@ export default function Fleet() {
       </div>
 
       <div className="page-body">
-
-        {/* DTC / Engine-light alerts banner */}
-        {dtcAlerts.length > 0 && !detail && !editing && (
-          <div style={{ background: '#3b1215', border: '1px solid #7f1d1d', borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: '#f87171', fontSize: 13 }}>
-              <Radio size={14} />
-              Alertes moteur détectées par télématique ({dtcAlerts.length} véhicule{dtcAlerts.length > 1 ? 's' : ''})
-            </div>
-            {dtcAlerts.map(v => (
-              <div key={v.id} style={{ fontSize: 12, color: '#fca5a5', display: 'flex', gap: 8 }}>
-                <span style={{ fontWeight: 600 }}>{v.make} {v.model} — {v.plate}</span>
-                <span>Codes DTC: <b>{v.dtcCodes.join(', ')}</b></span>
-                {v.dtcDetectedAt && <span style={{ color: '#9ca3af' }}>{new Date(v.dtcDetectedAt).toLocaleDateString('fr-MA')}</span>}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* GPS Map view */}
-        {fleetView === 'map' && !editing && !detail && (
-          <Suspense fallback={<p style={{ color: 'var(--text3)', fontSize: 13 }}>Chargement de la carte…</p>}>
-            <FleetMap height={560} />
-          </Suspense>
-        )}
 
         {/* Add / Edit form */}
         {fleetView === 'grid' && editing && (
@@ -211,7 +169,11 @@ export default function Fleet() {
           <div className="fleet-grid">
             {fleet.map(v => {
               const urgentCount = [v.nextOilChange, v.nextTimingBelt, v.nextControleTech, v.nextRepair, v.warrantyEnd]
-                .filter(d => d && Math.ceil((new Date(d) - new Date()) / 86400000) <= 30).length
+                .filter(d => {
+                  if (!d) return false
+                  const dt = new Date(d)
+                  return !isNaN(dt.getTime()) && Math.ceil((dt - new Date()) / 86400000) <= 30
+                }).length
 
               const vConfig = getFleetConfigForMake(v.make)
               const currentKm = v.mileage || 0

@@ -75,6 +75,7 @@ export function computeDeadlinesFromConfig(vehicle) {
   const addYears = (dateStr, n) => {
     if (!dateStr) return ''
     const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return ''
     d.setFullYear(d.getFullYear() + n)
     return d.toISOString().split('T')[0]
   }

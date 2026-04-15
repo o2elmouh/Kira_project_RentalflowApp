@@ -12,7 +12,7 @@ export default function AmortissementTab({ vehicle, contracts, repairs: repairsP
     : vehicle.year ? `${vehicle.year}-01-01` : null
   const bought = boughtDate ? new Date(boughtDate) : null
 
-  const yearsElapsed = bought ? (Date.now() - bought.getTime()) / (365.25 * 24 * 3600 * 1000) : 0
+  const yearsElapsed = (bought && !isNaN(bought.getTime())) ? (Date.now() - bought.getTime()) / (365.25 * 24 * 3600 * 1000) : 0
   const depreciable  = Math.max(0, price - residual)
   const residualWarning = residual > price
   const bookValue    = Math.max(residual, price - (depreciable / lifespan) * yearsElapsed)
