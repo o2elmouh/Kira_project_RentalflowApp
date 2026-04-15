@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ChevronLeft, Edit2, Trash2 } from 'lucide-react'
-import { getContracts, getRepairs } from '../../lib/db'
+import { getContracts, getRepairs, addRepair } from '../../lib/db'
 import { getDefaultConfigForMake as getFleetConfigForMake } from '../../lib/fleetConfigDefaults'
 import DeadlineBadge from './DeadlineBadge'
 import { displayPlate, computeDeadlinesFromConfig } from './constants'
@@ -11,6 +11,8 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
   const [deadlineSaved, setDeadlineSaved] = useState(false)
   const [contracts, setContracts] = useState([])
   const [repairs, setRepairs] = useState([])
+  const [showRepairModal, setShowRepairModal] = useState(false)
+  const [repairDraft, setRepairDraft] = useState({ label: '', date: new Date().toISOString().split('T')[0], cost: '' })
 
   useEffect(() => {
     let cancelled = false
@@ -36,7 +38,7 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
   const price    = Number(vehicle.purchasePrice) || 0
   const lifespan = Number(vehicle.lifespan) || 5
   const residual = Number(vehicle.residualValue) || 0
-  const boughtDate = vehicle.purchaseDate || (vehicle.year ? `${vehicle.year}-01-01` : null)
+  const boughtDate = (vehicle.purchaseDate && vehicle.purchaseDate !== '') ? vehicle.purchaseDate : (vehicle.year ? `${vehicle.year}-01-01` : null)
   const bought = boughtDate ? new Date(boughtDate) : null
   const yearsElapsed = (bought && !isNaN(bought.getTime())) ? (Date.now() - bought.getTime()) / (365.25 * 24 * 3600 * 1000) : 0
   const depreciable = Math.max(0, price - residual)
@@ -59,10 +61,9 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
 
   const config = getFleetConfigForMake(vehicle.make)
   const deadlineFields = [
-    { label: 'Prochaine vidange',     dateKey: 'nextOilChange',    mileageKey: 'nextOilChangeMileage',  configHint: config ? `Config : tous les ${config.vidangeKm.toLocaleString()} km` : null },
-    { label: 'Changement courroie',   dateKey: 'nextTimingBelt',   mileageKey: 'nextTimingBeltMileage', configHint: config ? `Config : à ${config.courroieKm.toLocaleString()} km` : null },
+    { label: 'Prochaine vidange',     mileageKey: 'nextOilChangeMileage',  configHint: config ? `Config : tous les ${config.vidangeKm.toLocaleString()} km` : null },
+    { label: 'Changement courroie',   mileageKey: 'nextTimingBeltMileage', configHint: config ? `Config : à ${config.courroieKm.toLocaleString()} km` : null },
     { label: 'Contrôle technique',    dateKey: 'nextControleTech', configHint: config ? `Config : tous les ${config.controlTechYears} ans` : null },
-    { label: 'Prochaine réparation',  dateKey: 'nextRepair',       configHint: null },
     { label: 'Fin de garantie',       dateKey: 'warrantyEnd',      configHint: config ? `Config : ${config.warrantyGeneral}` : null },
     { label: 'Date de revente prévue',dateKey: 'plannedSaleDate',  configHint: null },
   ]
@@ -126,6 +127,7 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
           <div className="dashboard-tile-label" style={{ color: '#dc2626' }}>
             RÉPARATIONS
             <span style={{ background: '#fef2f2', color: '#dc2626', borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700 }}>{repairs.length}</span>
+            <button className="btn btn-ghost btn-sm" style={{ fontSize: 10, padding: '1px 6px', marginLeft: 4 }} onClick={() => setShowRepairModal(true)}>+ Ajouter</button>
           </div>
           <div className="dashboard-tile-value">{repairTotal.toLocaleString()}<span>MAD total</span></div>
           <div className="dashboard-tile-meta">
@@ -197,7 +199,14 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
             </span>
           </div>
           <div className="dashboard-tile-value">
-            {nextOilKm ? <>{Number(nextOilKm).toLocaleString()}<span>km vidange</span></> : <span style={{ fontSize: 14, fontWeight: 500 }}>—</span>}
+            {nextOilKm ? (
+              <>
+                {Number(nextOilKm).toLocaleString()}<span>km vidange</span>
+                {vehicle.mileage && (Number(nextOilKm) - Number(vehicle.mileage)) >= 0 && (Number(nextOilKm) - Number(vehicle.mileage)) <= 200 && (
+                  <span style={{ marginLeft: 6, fontSize: 11, background: '#fff7ed', color: '#c2410c', borderRadius: 4, padding: '1px 5px', fontWeight: 600 }}>⚠️ &lt;200 km</span>
+                )}
+              </>
+            ) : <span style={{ fontSize: 14, fontWeight: 500 }}>—</span>}
           </div>
           <div className="dashboard-tile-meta">
             <div className="dashboard-tile-meta-row">
@@ -222,6 +231,46 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
 
       </div>
 
+      {/* Repair add modal */}
+      {showRepairModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setShowRepairModal(false)}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 24, width: 360, maxWidth: '92vw' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700 }}>Ajouter une réparation</h3>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowRepairModal(false)}>✕</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="form-group">
+                <label className="form-label">Libellé</label>
+                <input className="form-input" value={repairDraft.label} placeholder="Ex: Vidange, Freins…"
+                  onChange={e => setRepairDraft(p => ({ ...p, label: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Date</label>
+                <input className="form-input" type="date" value={repairDraft.date}
+                  onChange={e => setRepairDraft(p => ({ ...p, date: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Montant (MAD)</label>
+                <input className="form-input text-mono" type="number" value={repairDraft.cost} placeholder="0"
+                  onChange={e => setRepairDraft(p => ({ ...p, cost: e.target.value }))} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+              <button className="btn btn-primary" disabled={!repairDraft.label} onClick={async () => {
+                await addRepair(vehicle.id, repairDraft)
+                setRepairs(await getRepairs(vehicle.id).catch(() => repairs))
+                setRepairDraft({ label: '', date: new Date().toISOString().split('T')[0], cost: '' })
+                setShowRepairModal(false)
+              }}>Enregistrer</button>
+              <button className="btn btn-ghost" onClick={() => setShowRepairModal(false)}>Annuler</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Échéances modal */}
       {showDeadlineEdit && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -234,15 +283,17 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {deadlineFields.map(({ label, dateKey, mileageKey, configHint }) => (
-                <div key={dateKey} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div key={dateKey || mileageKey} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>
                     {label}
                     {configHint && <span style={{ fontSize: 11, color: '#a5b4fc', marginLeft: 4 }}>({configHint})</span>}
                   </label>
-                  <input className="form-input" type="date" value={deadlineForm[dateKey] || ''}
-                    onChange={e => setDeadlineForm(p => ({ ...p, [dateKey]: e.target.value }))} />
+                  {dateKey && (
+                    <input className="form-input" type="date" value={deadlineForm[dateKey] || ''}
+                      onChange={e => setDeadlineForm(p => ({ ...p, [dateKey]: e.target.value }))} />
+                  )}
                   {mileageKey && (
-                    <input className="form-input text-mono" type="number" placeholder="Kilométrage"
+                    <input className="form-input text-mono" type="number" placeholder="Kilométrage cible"
                       value={deadlineForm[mileageKey] || ''}
                       onChange={e => setDeadlineForm(p => ({ ...p, [mileageKey]: e.target.value }))} />
                   )}

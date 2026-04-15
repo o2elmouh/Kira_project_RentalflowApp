@@ -1,9 +1,17 @@
 import { useState, useRef } from 'react'
 import { Camera, CheckCircle, ArrowLeft, X, ArrowRight } from 'lucide-react'
 import { compressImage } from '../../utils/imageUtils'
-import CarPhotoGuide from '../../components/CarPhotoGuide'
 import StepButtons from './StepButtons'
 import CarDiagram from './CarDiagram'
+
+const SLOT_IMAGES = {
+  front:    '/photos/Car front.png',
+  rear:     '/photos/Car back.png',
+  left:     '/photos/Car left.png',
+  right:    '/photos/Car right.png',
+  interior: '/photos/Car inside.png',
+  damage:   '/photos/détail_dommage.png',
+}
 
 const PHOTO_SLOTS = [
   { id: 'front',    label: 'Avant' },
@@ -47,9 +55,6 @@ export default function PhotoStep({ onNext, onBack, onSaveAndQuit, onCancel, ini
 
         {/* Car diagram */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Guide visuel
-          </div>
           <CarDiagram activeSlot={activeSlot} takenSlots={photos} />
           <div style={{
             minHeight: 20, fontSize: 12, fontWeight: 600,
@@ -93,9 +98,7 @@ export default function PhotoStep({ onNext, onBack, onSaveAndQuit, onCancel, ini
                 ) : loading[id] ? (
                   <div style={{ fontSize: 24, opacity: 0.5 }}>⏳</div>
                 ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <CarPhotoGuide slotId={id} />
-                  </div>
+                  <img src={SLOT_IMAGES[id]} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6, opacity: 0.6 }} />
                 )}
                 {photos[id] && (
                   <div style={{

@@ -25,7 +25,7 @@ export function fmtDate(d) {
   try { return new Date(d).toLocaleDateString('fr-MA') } catch { return d }
 }
 
-export function computeExtraFees({ vehicle, returnMileage, returnFuelLevel, contract, damageFee = 0 }) {
+export function computeExtraFees({ vehicle, returnMileage, returnFuelLevel, contract, damageFee = 0, fuelPriceOverride }) {
   const startMileage = contract.startMileage || contract.mileageOut || 0
   const startDate = contract.startDate
   const endDate = contract.endDate || today()
@@ -43,7 +43,7 @@ export function computeExtraFees({ vehicle, returnMileage, returnFuelLevel, cont
   }
 
   const fuelDiff = Math.max(0, (FUEL_LEVELS[departureLevel] || 0) - (FUEL_LEVELS[returnFuelLevel] || 0))
-  const fuelFee = fuelDiff * 100
+  const fuelFee = fuelPriceOverride !== undefined ? Number(fuelPriceOverride) : fuelDiff * 100
   const totalExtraFees = extraKmFee + fuelFee + (Number(damageFee) || 0)
 
   return { extraKm, extraKmFee, kmAllowed, kmDriven, fuelDiff, fuelFee, totalExtraFees, contractDays }

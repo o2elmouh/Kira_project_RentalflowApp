@@ -8,7 +8,7 @@ import { snapshotOnEnd } from '../../utils/snapshots'
 import { api } from '../../lib/api'
 
 export default function Step4Closure({ agency, contract, vehicle, returnDate, returnTime, returnMileage, returnFuelLevel,
-  returnPhotos, damages, damageFee, onBack, onDone }) {
+  returnPhotos, damages, damageFee, fuelPriceOverride, onBack, onDone }) {
 
   const { t } = useTranslation('restitution')
   const [closing, setClosing] = useState(false)
@@ -18,7 +18,7 @@ export default function Step4Closure({ agency, contract, vehicle, returnDate, re
   const startDate = contract.startDate
   const realDays = daysBetween(startDate, returnDate || today())
   const { extraKm, extraKmFee, kmDriven, fuelDiff, fuelFee, totalExtraFees } =
-    computeExtraFees({ vehicle, returnMileage, returnFuelLevel, contract, damageFee })
+    computeExtraFees({ vehicle, returnMileage, returnFuelLevel, contract, damageFee, fuelPriceOverride })
   const finalTotal = (contract.totalTTC || 0) + totalExtraFees
 
   const returnDamages = damages.filter(d => d.checked)

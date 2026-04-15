@@ -48,7 +48,10 @@ export default function VehicleEditForm({ form, set, isNew, configBanner, editin
         <div className="form-row cols-3">
           <div className="form-group">
             <label className="form-label">Couleur</label>
-            <input className="form-input" value={form.color} onChange={e => set('color', e.target.value)} />
+            <select className="form-select" value={form.color} onChange={e => set('color', e.target.value)}>
+              <option value="">— Choisir —</option>
+              {['Blanc', 'Noir', 'Gris', 'Argent', 'Rouge', 'Bleu', 'Vert', 'Beige', 'Marron', 'Orange', 'Jaune', 'Violet', 'Autre'].map(c => <option key={c}>{c}</option>)}
+            </select>
           </div>
           <div className="form-group">
             <label className="form-label">Kilométrage</label>

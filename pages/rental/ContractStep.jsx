@@ -156,6 +156,7 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
 
             <div style={{ marginTop: 24, display:'flex', justifyContent:'space-between' }}>
               <div style={{ textAlign:'center' }}>
+                <div style={{ fontSize:13, fontWeight:600, marginBottom:4, minHeight:20 }}>{agency.signature || agency.name || ''}</div>
                 <div style={{ borderTop:'1px solid #999', width:160, marginBottom:4 }} />
                 <div style={{ fontSize:11, color:'#666' }}>Signature du loueur</div>
               </div>

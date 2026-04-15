@@ -2,10 +2,10 @@ import { useTranslation } from 'react-i18next'
 import { ZONES, computeExtraFees } from '../../utils/restitutionUtils'
 import AiDamagePanel from './AiDamagePanel'
 
-export default function Step3Damages({ contract, vehicle, agency, returnMileage, returnFuelLevel, returnPhotos, beforePhotos, damages, onChange, damageFee, onDamageFee, onNext, onBack }) {
+export default function Step3Damages({ contract, vehicle, agency, returnMileage, returnFuelLevel, returnPhotos, beforePhotos, damages, onChange, damageFee, onDamageFee, fuelPriceOverride, onFuelPriceOverride, onNext, onBack }) {
   const { t } = useTranslation('restitution')
   const { extraKm, extraKmFee, kmAllowed, kmDriven, fuelDiff, fuelFee, totalExtraFees } =
-    computeExtraFees({ vehicle, returnMileage, returnFuelLevel, contract, damageFee })
+    computeExtraFees({ vehicle, returnMileage, returnFuelLevel, contract, damageFee, fuelPriceOverride })
 
   const toggleZone = (zone) => {
     const existing = damages.find(d => d.zone === zone)
@@ -92,13 +92,20 @@ export default function Step3Damages({ contract, vehicle, agency, returnMileage,
           </div>
 
           {/* Fuel fee */}
-          {fuelFee > 0 ? (
-            <div style={{ marginBottom: 8, fontSize: 13, color: '#c2410c' }}>
-              {t('step3.fuelShortage', { diff: fuelDiff, fee: fuelFee })}
-            </div>
-          ) : (
-            <div style={{ marginBottom: 8, fontSize: 13, color: 'var(--text3)' }}>{t('step3.noFuelFee')}</div>
-          )}
+          <div className="form-group" style={{ marginBottom: 8 }}>
+            <label className="form-label" style={{ fontSize: 12 }}>
+              Frais carburant (MAD)
+              {fuelDiff > 0 && <span style={{ color: 'var(--text3)', fontWeight: 400, marginLeft: 6 }}>calculé : {fuelDiff} niveau{fuelDiff > 1 ? 'x' : ''} × 100</span>}
+            </label>
+            <input
+              type="number"
+              className="form-input"
+              min={0}
+              value={fuelPriceOverride !== undefined ? fuelPriceOverride : fuelDiff * 100}
+              onChange={e => onFuelPriceOverride(Number(e.target.value) || 0)}
+              style={{ maxWidth: 180 }}
+            />
+          </div>
 
           {/* Damage fee */}
           <div className="form-group" style={{ marginBottom: 8 }}>

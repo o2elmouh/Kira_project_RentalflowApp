@@ -71,6 +71,7 @@ export default function Restitution({ contract, onDone }) {
     ZONES.map(zone => ({ zone, checked: false, description: '' }))
   )
   const [damageFee, setDamageFee] = useState(0)
+  const [fuelPriceOverride, setFuelPriceOverride] = useState(undefined)
 
   if (!contract) {
     return (
@@ -136,6 +137,8 @@ export default function Restitution({ contract, onDone }) {
               onChange={setDamages}
               damageFee={damageFee}
               onDamageFee={setDamageFee}
+              fuelPriceOverride={fuelPriceOverride}
+              onFuelPriceOverride={setFuelPriceOverride}
               onNext={() => setStep(3)}
               onBack={() => setStep(1)}
             />
@@ -153,6 +156,7 @@ export default function Restitution({ contract, onDone }) {
               returnPhotos={returnPhotos}
               damages={damages}
               damageFee={damageFee}
+              fuelPriceOverride={fuelPriceOverride}
               onBack={() => setStep(2)}
               onDone={onDone}
             />

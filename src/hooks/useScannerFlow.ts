@@ -214,7 +214,11 @@ export function useScannerFlow(
         const cleared: Partial<ScanSlotResult> = {}
         for (const k of slotKeys) cleared[k] = undefined   // clear stale slot data first
 
-        return { ...prev, ...cleared, ...fields }
+        const merged = { ...prev, ...cleared, ...fields }
+        // Preserve pre-existing dateOfBirth — a license scan should not overwrite
+        // a date already captured from the CIN/passport scan.
+        if (type === 'license' && prev.dateOfBirth) merged.dateOfBirth = prev.dateOfBirth
+        return merged
       })
 
       setProgress(100)
