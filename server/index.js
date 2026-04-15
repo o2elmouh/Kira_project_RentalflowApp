@@ -12,7 +12,7 @@ import emailRouter from './routes/email.js'
 import teamRouter from './routes/team.js'
 import whatsappRouter from './routes/whatsapp.js'
 import aiRouter from './routes/ai.js'
-import telemetryRouter from './routes/telemetry.js'
+// import telemetryRouter from './routes/telemetry.js' // disabled for v2
 import ocrRouter from './routes/ocr.js'
 import leadsRouter from './routes/leads.js'
 import gmailRouter, { startGmailPoller } from './routes/gmail.js'
@@ -58,7 +58,7 @@ app.use('/email', emailRouter)
 app.use('/team', teamRouter)
 app.use('/whatsapp', whatsappRouter)
 app.use('/ai', aiRouter)
-app.use('/telemetry', telemetryRouter)
+// app.use('/telemetry', telemetryRouter) // disabled for v2
 app.use('/ocr', ocrRouter)
 app.use('/leads', leadsRouter)
 app.use('/gmail', gmailRouter)

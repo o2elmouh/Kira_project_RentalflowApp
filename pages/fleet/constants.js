@@ -1,4 +1,4 @@
-import { getFleetConfigForMake } from '../../lib/db'
+import { getDefaultConfigForMake as getFleetConfigForMake } from '../../lib/fleetConfigDefaults'
 
 // ── Car catalogue ─────────────────────────────────────────
 export const CAR_CATALOGUE = {

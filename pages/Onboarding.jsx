@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
+import { seedFleetConfig } from '../lib/db'
 import LanguageSelector from '../components/LanguageSelector'
 
 function Field({ label, children }) {
@@ -44,6 +45,9 @@ export default function OnboardingPage({ user, onDone }) {
         p_rc:          rc.trim() || null,
       })
       if (error) throw error
+      // Seed default fleet config for the new agency (36 brands from Fleet_Config.csv)
+      const { data: profile } = await supabase.from('profiles').select('agency_id').eq('id', user.id).single()
+      if (profile?.agency_id) await seedFleetConfig(profile.agency_id)
       if (typeof onDone === 'function') onDone(); else window.location.reload()
     } catch (err) {
       console.error('[Onboarding]', err)

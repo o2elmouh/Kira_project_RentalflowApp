@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getFleetConfigForMake } from '../../lib/db'
+import { getDefaultConfigForMake as getFleetConfigForMake } from '../../lib/fleetConfigDefaults'
 import DeadlineBadge from './DeadlineBadge'
 import { computeDeadlinesFromConfig } from './constants'
 

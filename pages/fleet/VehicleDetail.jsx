@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ChevronLeft, Edit2, Trash2 } from 'lucide-react'
-import { getContracts, getRepairs, getFleetConfigForMake } from '../../lib/db'
+import { getContracts, getRepairs } from '../../lib/db'
+import { getDefaultConfigForMake as getFleetConfigForMake } from '../../lib/fleetConfigDefaults'
 import DeadlineBadge from './DeadlineBadge'
 import { displayPlate, computeDeadlinesFromConfig } from './constants'
 

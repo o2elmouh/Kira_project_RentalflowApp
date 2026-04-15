@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { PlusCircle, Trash2, Edit2, AlertTriangle } from 'lucide-react'
-import { getFleet, saveVehicle, deleteVehicle, getFleetConfigForMake } from '../lib/db'
+import { getFleet, saveVehicle, deleteVehicle } from '../lib/db'
+import { getDefaultConfigForMake as getFleetConfigForMake } from '../lib/fleetConfigDefaults'
 
 import { CAR_CATALOGUE, displayPlate } from './fleet/constants'
 import VehicleDetail from './fleet/VehicleDetail'
