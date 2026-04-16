@@ -84,4 +84,4 @@ See [CHANGELOG.md](CHANGELOG.md) for completed work history.
 ## GitHub
 Repo: `https://github.com/o2elmouh/Kira_project_RentalflowApp`
 Main branch: `main`
-Latest commit: `8f68f3f` — CLAUDE.md added, i18n complete across all pages
+Latest commit: `ae06e4c` — Remove all localStorage logic, Supabase-only data layer
