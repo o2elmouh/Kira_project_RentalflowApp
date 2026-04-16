@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ChevronLeft, Edit2, Trash2 } from 'lucide-react'
+import { ChevronLeft, Edit2, Trash2, PlusCircle } from 'lucide-react'
 import { getContracts, getRepairs, addRepair } from '../../lib/db'
 import { getDefaultConfigForMake as getFleetConfigForMake } from '../../lib/fleetConfigDefaults'
 import DeadlineBadge from './DeadlineBadge'
@@ -41,9 +41,8 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
   const boughtDate = (vehicle.purchaseDate && vehicle.purchaseDate !== '') ? vehicle.purchaseDate : (vehicle.year ? `${vehicle.year}-01-01` : null)
   const bought = boughtDate ? new Date(boughtDate) : null
   const yearsElapsed = (bought && !isNaN(bought.getTime())) ? (Date.now() - bought.getTime()) / (365.25 * 24 * 3600 * 1000) : 0
-  const depreciable = Math.max(0, price - residual)
-  const bookValue = price > 0 ? Math.max(residual, price - (depreciable / lifespan) * yearsElapsed) : 0
-  const amortPct = price > 0 ? Math.min(100, (yearsElapsed / lifespan) * 100) : 0
+  const bookValue = price > 0 ? Math.max(residual, price - totalRevenue) : 0
+  const amortPct = price > 0 ? Math.min(100, (totalRevenue / price) * 100) : 0
 
   // Deadlines metrics
   const nextOilKm   = vehicle.nextOilChangeMileage || ''
@@ -125,10 +124,14 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
 
         {/* Haut droit — RÉPARATIONS */}
         <div className="dashboard-tile" style={{ borderLeftColor: '#dc2626' }}>
-          <div className="dashboard-tile-label" style={{ color: '#dc2626' }}>
-            RÉPARATIONS
-            <span style={{ background: '#fef2f2', color: '#dc2626', borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700 }}>{repairs.length}</span>
-            <button className="btn btn-ghost btn-sm" style={{ fontSize: 10, padding: '1px 6px', marginLeft: 4 }} onClick={() => setShowRepairModal(true)}>+ Ajouter</button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <div className="dashboard-tile-label" style={{ color: '#dc2626', marginBottom: 0 }}>
+              RÉPARATIONS
+              <span style={{ background: '#fef2f2', color: '#dc2626', borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700 }}>{repairs.length}</span>
+            </div>
+            <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, padding: '3px 8px' }} onClick={() => setShowRepairModal(true)}>
+              <PlusCircle size={13} /> Ajouter
+            </button>
           </div>
           <div className="dashboard-tile-value">{repairTotal.toLocaleString()}<span>MAD total</span></div>
           <div className="dashboard-tile-meta">
@@ -232,7 +235,7 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
                 style={{ fontSize: 11, padding: '3px 8px' }}
                 onClick={() => setShowDeadlineEdit(true)}
               >
-                Modifier
+                <Edit2 size={13} /> Modifier
               </button>
             </div>
           </div>
