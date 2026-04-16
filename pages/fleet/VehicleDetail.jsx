@@ -124,14 +124,9 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
 
         {/* Haut droit — RÉPARATIONS */}
         <div className="dashboard-tile" style={{ borderLeftColor: '#dc2626' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-            <div className="dashboard-tile-label" style={{ color: '#dc2626', marginBottom: 0 }}>
-              RÉPARATIONS
-              <span style={{ background: '#fef2f2', color: '#dc2626', borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700 }}>{repairs.length}</span>
-            </div>
-            <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, padding: '3px 8px' }} onClick={() => setShowRepairModal(true)}>
-              <PlusCircle size={13} /> Ajouter
-            </button>
+          <div className="dashboard-tile-label" style={{ color: '#dc2626' }}>
+            RÉPARATIONS
+            <span style={{ background: '#fef2f2', color: '#dc2626', borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700 }}>{repairs.length}</span>
           </div>
           <div className="dashboard-tile-value">{repairTotal.toLocaleString()}<span>MAD total</span></div>
           <div className="dashboard-tile-meta">
@@ -162,6 +157,15 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
                 <span>—</span>
               </div>
             )}
+            <div style={{ marginTop: 6 }}>
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ fontSize: 11, padding: '3px 8px' }}
+                onClick={() => setShowRepairModal(true)}
+              >
+                <PlusCircle size={13} /> Ajouter
+              </button>
+            </div>
           </div>
         </div>
 
