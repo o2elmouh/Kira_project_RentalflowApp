@@ -84,4 +84,4 @@ See [CHANGELOG.md](CHANGELOG.md) for completed work history.
 ## GitHub
 Repo: `https://github.com/o2elmouh/Kira_project_RentalflowApp`
 Main branch: `main`
-Latest commit: `ae06e4c` — Remove all localStorage logic, Supabase-only data layer
+Latest commit: `a00ba58` — fix(fleet): addRepair now throws on DB error instead of silently swallowing it
