@@ -15,21 +15,12 @@ import AuthPage, { PasswordResetForm } from './pages/Auth'
 import OnboardingPage from './pages/Onboarding'
 import WelcomeScreen from './pages/WelcomeScreen'
 import SignContract from './pages/SignContract'
-import { initDefaultAccounts } from './lib/db'
 import Accounting from './pages/Accounting'
-import MigrateData from './pages/MigrateData'
 import Basket from './pages/Basket'
 
-const USE_AUTH = import.meta.env.VITE_USE_AUTH === 'true'
 const PREVIEW = new URLSearchParams(window.location.search).get('preview')
 const PAGE_PARAM = new URLSearchParams(window.location.search).get('page')
 const signToken = new URLSearchParams(window.location.search).get('sign')
-
-// ── Startup diagnostics (remove after confirming fix) ─────────────────────────
-console.log('[RF] BUILD OK — App module loaded')
-console.log('[RF] USE_AUTH:', USE_AUTH, '| VITE_USE_AUTH raw:', import.meta.env.VITE_USE_AUTH)
-console.log('[RF] VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL ? '✓ set' : '✗ MISSING')
-console.log('[RF] VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY ? '✓ set' : '✗ MISSING')
 
 export default function App() {
   const [page, setPage] = useState(PAGE_PARAM || 'dashboard')
@@ -43,28 +34,14 @@ export default function App() {
   const passwordRecoveryRef = useRef(false)
 
   useEffect(() => {
-    console.log('[RF] useEffect — USE_AUTH:', USE_AUTH)
-    if (!USE_AUTH) {
-      console.log('[RF] Auth disabled — going straight to ready')
-      initDefaultAccounts()
-      setAuthState('ready')
-      return
-    }
-
     let subscription = null
 
     const init = async () => {
-      console.log('[RF] init() started')
       const timeout = setTimeout(() => {
-        console.warn('[RF] Auth timeout (5s) — forcing unauthenticated')
         setAuthState('unauthenticated')
       }, 5000)
 
-      // 1. Subscribe first so we never miss an event
-      console.log('[RF] Subscribing to onAuthStateChange...')
       const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('[RF] onAuthStateChange event:', event, '| session:', session ? 'present' : 'null')
-
         if (event === 'PASSWORD_RECOVERY') {
           clearTimeout(timeout)
           passwordRecoveryRef.current = true
@@ -79,10 +56,7 @@ export default function App() {
           return
         }
 
-        // Skip INITIAL_SESSION — handled below via getSession()
-        if (event === 'INITIAL_SESSION') {
-          return
-        }
+        if (event === 'INITIAL_SESSION') return
 
         if (session?.user) {
           clearTimeout(timeout)
@@ -94,14 +68,11 @@ export default function App() {
       })
       subscription = data.subscription
 
-      // 2. Check existing session once
       try {
-        console.log('[RF] Calling getSession()...')
         const { data: { session }, error: sessionErr } = await supabase.auth.getSession()
-        console.log('[RF] getSession result:', session ? `user=${session.user?.email}` : 'no session', sessionErr ? `err=${sessionErr.message}` : '')
         clearTimeout(timeout)
         if (passwordRecoveryRef.current) {
-          // PASSWORD_RECOVERY event already handled — don't override with resolveUser
+          // PASSWORD_RECOVERY already handled
         } else if (session?.user) {
           await resolveUser(session.user)
         } else {
@@ -113,7 +84,6 @@ export default function App() {
         setAuthState('unauthenticated')
       } finally {
         initialSessionHandled.current = true
-        console.log('[RF] init() complete — authState will update')
       }
     }
 
@@ -122,26 +92,20 @@ export default function App() {
   }, [])
 
   async function resolveUser(u) {
-    console.log('[RF] resolveUser called — id:', u?.id, 'email:', u?.email)
-    if (resolvingRef.current) { console.warn('[RF] resolveUser already in progress, skipping'); return }
+    if (resolvingRef.current) return
     resolvingRef.current = true
     setUser(u)
     try {
-      console.log('[RF] Fetching profile from Supabase...')
-      // Race the query against a 6-second timeout to prevent infinite hang
       const profilePromise = supabase
         .from('profiles')
         .select('id, full_name, email, phone, role, agency_id')
         .eq('id', u.id)
         .maybeSingle()
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Profile query timed out after 6s')), 6000)
+        setTimeout(() => reject(new Error('Profile query timed out')), 6000)
       )
-      const { data: prof, error: profErr } = await Promise.race([profilePromise, timeoutPromise])
+      const { data: prof } = await Promise.race([profilePromise, timeoutPromise])
 
-      console.log('[RF] Profile result:', prof ? `role=${prof.role} agency=${prof.agency_id}` : 'null', profErr ? `err=${profErr.message}` : '')
-
-      // Fetch agency separately to avoid join hanging on RLS
       if (prof?.agency_id) {
         try {
           const { data: agency } = await Promise.race([
@@ -149,23 +113,17 @@ export default function App() {
             new Promise((_, reject) => setTimeout(() => reject(new Error('Agency query timed out')), 4000)),
           ])
           if (agency) prof.agencies = agency
-          console.log('[RF] Agency result:', agency ? `plan=${agency.plan}` : 'null')
-        } catch (agErr) {
-          console.warn('[RF] Agency fetch failed (non-fatal):', agErr.message)
-        }
+        } catch {}
       }
+
       if (prof) {
         setProfile(prof)
         setAuthState('ready')
-        console.log('[RF] → ready')
       } else {
         setAuthState('onboarding')
-        console.log('[RF] → onboarding (no profile)')
       }
     } catch (err) {
       console.error('[RF] resolveUser threw:', err)
-      // On query error/timeout, go to ready with null profile (admin fallback)
-      // rather than sending an existing user back through onboarding
       setAuthState('ready')
     } finally {
       resolvingRef.current = false
@@ -182,8 +140,7 @@ export default function App() {
     setPage(target)
   }
 
-  // When auth is enabled and profile hasn't loaded, default to least-privileged role
-  const role = profile?.role ?? (USE_AUTH ? 'staff' : 'admin')
+  const role = profile?.role ?? 'staff'
   const isAdmin = role === 'admin'
   const isPremium = profile?.agencies?.plan === 'premium'
 
@@ -204,7 +161,6 @@ export default function App() {
       case 'settings':
         if (!isAdmin) { setTimeout(() => setPage('dashboard'), 0); return null }
         return <Settings />
-      case 'migrate': return <MigrateData />
       case 'basket':
         if (!isPremium) { setTimeout(() => setPage('dashboard'), 0); return null }
         return <Basket onNavigate={handleNav} />
@@ -257,7 +213,7 @@ export default function App() {
           user={user}
           profile={profile}
           isAdmin={isAdmin}
-          onSignOut={USE_AUTH ? () => supabase.auth.signOut() : null}
+          onSignOut={() => supabase.auth.signOut()}
         />
         <main className="main">{renderPage()}</main>
       </div>

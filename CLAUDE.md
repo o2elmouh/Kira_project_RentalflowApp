@@ -13,10 +13,10 @@
 ## Project Context & Stack
 **RentaFlow:** Moroccan Car Rental SaaS (React 18, Vite, dark theme).
 - **Backend:** Node/Express (Railway), Supabase (Auth/DB/Storage).
-- **Auth:** `VITE_USE_AUTH` toggles Supabase vs. localStorage-only data (`rf_*` keys).
+- **Auth:** Supabase Auth (always enabled).
 - **i18n:** French (default), Arabic (RTL), English. All namespaces fully wired.
 - **Integrations:** Resend (Email), Anthropic (Claude Haiku AI).
-- **Key Libs:** `lucide-react`, `jsPDF`.
+- **Key Libs:** `lucide-react`, `jsPDF`, `graphify`.
 
 ---
 
@@ -45,7 +45,6 @@
 │   ├── i18n.js           ← i18next config (fr default, ar, en)
 │   └── UserContext.js    ← React context: user, profile, role
 ├── utils/
-│   └── storage.js        ← localStorage CRUD helpers
 ├── public/locales/
 │   ├── fr/               ← 10 namespaces (common, auth, onboarding, dashboard, fleet, contracts, clients, invoices, restitution, settings)
 │   ├── ar/               ← same 10 namespaces (Moroccan Arabic)
@@ -79,7 +78,6 @@ See [.claude/reference/schema.md](.claude/reference/schema.md) for all env vars 
 See [CHANGELOG.md](CHANGELOG.md) for completed work history.
 ### Pending
 - Wire Resend email provider (`server/routes/email.js` — needs `RESEND_API_KEY`)
-- Supabase migration (full push deferred — all data currently localStorage)
 
 ---
 

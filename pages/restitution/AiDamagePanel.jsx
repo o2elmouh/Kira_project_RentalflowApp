@@ -25,7 +25,7 @@ export default function AiDamagePanel({ contract, vehicle, agency, returnPhotos,
         clientName: contract.clientName,
       })
       setAiResult(result)
-      // Persist AI result to contract in localStorage
+
       try {
         await updateContract({
           ...contract,
