@@ -102,7 +102,7 @@ export default function Step3Damages({ contract, vehicle, agency, returnMileage,
               className="form-input"
               min={0}
               value={fuelPriceOverride !== undefined ? fuelPriceOverride : fuelDiff * 100}
-              onChange={e => onFuelPriceOverride(Number(e.target.value) || 0)}
+              onChange={e => onFuelPriceOverride(e.target.value === '' ? undefined : Number(e.target.value))}
               style={{ maxWidth: 180 }}
             />
           </div>

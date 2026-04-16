@@ -46,7 +46,8 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
   const amortPct = price > 0 ? Math.min(100, (yearsElapsed / lifespan) * 100) : 0
 
   // Deadlines metrics
-  const nextOilKm = vehicle.nextOilChangeMileage || ''
+  const nextOilKm   = vehicle.nextOilChangeMileage || ''
+  const nextBeltKm  = vehicle.nextTimingBeltMileage || ''
   const ctDate = vehicle.nextControleTech || ''
   const assurDate = vehicle.insuranceEnd || ''
 
@@ -202,11 +203,19 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
             {nextOilKm ? (
               <>
                 {Number(nextOilKm).toLocaleString()}<span>km vidange</span>
-                {vehicle.mileage && (Number(nextOilKm) - Number(vehicle.mileage)) >= 0 && (Number(nextOilKm) - Number(vehicle.mileage)) <= 200 && (
+                {vehicle.mileage != null && (Number(nextOilKm) - Number(vehicle.mileage)) >= 0 && (Number(nextOilKm) - Number(vehicle.mileage)) <= 200 && (
                   <span style={{ marginLeft: 6, fontSize: 11, background: '#fff7ed', color: '#c2410c', borderRadius: 4, padding: '1px 5px', fontWeight: 600 }}>⚠️ &lt;200 km</span>
                 )}
               </>
             ) : <span style={{ fontSize: 14, fontWeight: 500 }}>—</span>}
+            {nextBeltKm ? (
+              <>
+                <br />{Number(nextBeltKm).toLocaleString()}<span>km courroie</span>
+                {vehicle.mileage != null && (Number(nextBeltKm) - Number(vehicle.mileage)) >= 0 && (Number(nextBeltKm) - Number(vehicle.mileage)) <= 200 && (
+                  <span style={{ marginLeft: 6, fontSize: 11, background: '#fff7ed', color: '#c2410c', borderRadius: 4, padding: '1px 5px', fontWeight: 600 }}>⚠️ &lt;200 km</span>
+                )}
+              </>
+            ) : null}
           </div>
           <div className="dashboard-tile-meta">
             <div className="dashboard-tile-meta-row">
@@ -260,10 +269,15 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
               <button className="btn btn-primary" disabled={!repairDraft.label} onClick={async () => {
-                await addRepair(vehicle.id, repairDraft)
-                setRepairs(await getRepairs(vehicle.id).catch(() => repairs))
-                setRepairDraft({ label: '', date: new Date().toISOString().split('T')[0], cost: '' })
-                setShowRepairModal(false)
+                try {
+                  await addRepair(vehicle.id, repairDraft)
+                  setRepairs(await getRepairs(vehicle.id).catch(() => repairs))
+                  setRepairDraft({ label: '', date: new Date().toISOString().split('T')[0], cost: '' })
+                  setShowRepairModal(false)
+                } catch (err) {
+                  console.error('[VehicleDetail] addRepair', err)
+                  alert('Erreur lors de l\'enregistrement de la réparation.')
+                }
               }}>Enregistrer</button>
               <button className="btn btn-ghost" onClick={() => setShowRepairModal(false)}>Annuler</button>
             </div>

@@ -79,6 +79,7 @@ export default function Step4Closure({ agency, contract, vehicle, returnDate, re
         damageFee: damageFee || 0,
         totalExtraFees,
         finalTotal,
+        totalTTC: finalTotal,
       })
 
       // 2. Update vehicle status + mileage
