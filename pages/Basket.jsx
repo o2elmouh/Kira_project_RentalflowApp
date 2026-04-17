@@ -85,7 +85,7 @@ function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
     }
   }
 
-  const images = (lead.media_urls || []).filter(u => !u.startsWith('data:') || u.includes(';base64,'))
+  const images = (lead.media_urls || []).filter(u => u.startsWith('http') || u.startsWith('data:image/'))
 
   return (
     <div style={{
@@ -269,9 +269,7 @@ export default function Basket({ onNavigate }) {
       const data = await api.getLeads(statusFilter)
       setLeads(data)
     } catch (err) {
-      if (err.message?.includes('PREMIUM_REQUIRED')) {
-        setIsPremium(false)
-      } else {
+      if (!err.message?.includes('PREMIUM_REQUIRED')) {
         setError(err.message)
       }
     } finally {
@@ -300,7 +298,7 @@ export default function Basket({ onNavigate }) {
       expiryDate:     extractedData.expiryDate  || '',
       documentType:   extractedData.documentType || 'ID_CARD',
       issuingCountry: extractedData.issuingCountry || '',
-      phone:          lead.source === 'whatsapp' ? lead.sender_id.replace('whatsapp:', '') : '',
+      phone:          lead.source === 'whatsapp' ? lead.sender_id.replace('whatsapp:', '').replace(/@.*$/, '') : '',
       email:          lead.source === 'gmail'    ? lead.sender_id : '',
       rentalIntent:   extractedData.rentalIntent || null,
       leadId:         lead.id,

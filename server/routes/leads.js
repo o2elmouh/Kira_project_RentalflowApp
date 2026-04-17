@@ -1,5 +1,4 @@
 /**
- * POST /leads/webhook/whatsapp  — Twilio inbound WhatsApp webhook
  * POST /leads/webhook/gmail     — Called by the Gmail poller when a new message arrives
  * GET  /leads                   — List pending demands for the authenticated agency
  * PATCH /leads/:id/status       — Update status (processed / ignored)
@@ -12,7 +11,7 @@
  */
 
 import { Router } from 'express'
-import { createHmac, createCipheriv, createDecipheriv, randomBytes } from 'crypto'
+import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
 import Anthropic from '@anthropic-ai/sdk'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { requireAuth } from '../middleware/auth.js'
@@ -105,30 +104,38 @@ If a mandatory field (firstName, lastName, documentNumber) cannot be read, set i
 For rentalIntent: scan any accompanying text for date mentions or vehicle class keywords (sedan, SUV, etc.).
 issuingCountry rules: Moroccan CIN/driving licence = "MAR". Infer from document layout and language otherwise.`
 
-async function extractWithClaude(imageBase64, mediaType, textHint = '') {
+// imageBlocks: Array<{type:'image', source:{type:'base64', media_type:string, data:string}}>
+async function extractWithClaude(imageBlocks, textHint = '') {
   if (!process.env.ANTHROPIC_API_KEY) return null
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-  const userContent = [
-    { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } },
-    {
-      type: 'text', text: textHint
-        ? `Additional context from the sender: "${textHint}"\n\nExtract all identity fields and rental intent.`
-        : 'Extract all identity fields and rental intent from this document image.'
-    },
-  ]
 
   const message = await anthropic.messages.create({
     model: 'claude-3-5-sonnet-20241022',
     max_tokens: 512,
     system: GLOBAL_SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: userContent }],
+    messages: [{
+      role: 'user',
+      content: [
+        ...imageBlocks,
+        {
+          type: 'text',
+          text: textHint
+            ? `Additional context from the sender: "${textHint}"\n\nExtract all identity fields and rental intent.`
+            : 'Extract all identity fields and rental intent from these document images.',
+        },
+      ],
+    }],
   })
 
   const raw = message.content?.[0]?.text?.trim() ?? ''
   const clean = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
-  return JSON.parse(clean)
+  try {
+    return JSON.parse(clean)
+  } catch {
+    console.error('[leads] Claude returned non-JSON:', raw.slice(0, 200))
+    return null
+  }
 }
 
 // ── Find existing pending demand to merge with ────────────
@@ -165,107 +172,6 @@ async function findMatchingDemand(agencyId, senderIdOrName, extractedData) {
   return null
 }
 
-// ── POST /leads/webhook/whatsapp ──────────────────────────
-// Twilio sends form-urlencoded. No auth — validated by Twilio signature.
-router.post('/webhook/whatsapp', async (req, res) => {
-  // Validate Twilio signature in production
-  if (process.env.NODE_ENV === 'production' && process.env.TWILIO_AUTH_TOKEN) {
-    const twilioSig = req.headers['x-twilio-signature']
-    const url = `${process.env.RAILWAY_PUBLIC_DOMAIN
-      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-      : 'http://localhost:3001'}/leads/webhook/whatsapp`
-    const params = req.body
-    const sortedStr = Object.keys(params).sort().reduce((s, k) => s + k + params[k], url)
-    const expected = createHmac('sha1', process.env.TWILIO_AUTH_TOKEN)
-      .update(sortedStr).digest('base64')
-    if (twilioSig !== expected) {
-      console.warn('[leads/whatsapp] Invalid Twilio signature')
-      return res.status(403).send('Forbidden')
-    }
-  }
-
-  const senderRaw = req.body?.From || ''
-  const bodyText = req.body?.Body || ''
-  const numMedia = parseInt(req.body?.NumMedia || '0', 10)
-
-  // Collect media URLs from Twilio payload
-  const mediaUrls = []
-  for (let i = 0; i < numMedia; i++) {
-    const url = req.body?.[`MediaUrl${i}`]
-    if (url) mediaUrls.push(url)
-  }
-
-  // Find which agency this WhatsApp number belongs to
-  const { data: agency } = await supabaseAdmin
-    .from('agencies')
-    .select('id, plan, whatsapp_number')
-    .eq('plan', 'premium')
-    .maybeSingle()
-
-  if (!agency) {
-    // No premium agency configured — silently ack to Twilio
-    return res.set('Content-Type', 'text/xml').send('<Response></Response>')
-  }
-
-  // Download first image and run Claude Vision
-  let extractedData = null
-  if (mediaUrls.length > 0 && process.env.ANTHROPIC_API_KEY) {
-    try {
-      const imgRes = await fetch(mediaUrls[0], {
-        headers: { Authorization: `Basic ${Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64')}` },
-      })
-      const imgBuf = await imgRes.arrayBuffer()
-      const imgB64 = Buffer.from(imgBuf).toString('base64')
-      const mimeType = imgRes.headers.get('content-type') || 'image/jpeg'
-      extractedData = await extractWithClaude(imgB64, mimeType, bodyText)
-    } catch (err) {
-      console.error('[leads/whatsapp] Claude extraction error:', err.message)
-    }
-  }
-
-  // Fuzzy match / merge logic
-  const match = await findMatchingDemand(agency.id, senderRaw, extractedData)
-
-  if (match && match.type !== 'potential') {
-    // Merge: update existing demand with new media + extracted data
-    const existing = match.demand
-    const merged = {
-      ...(existing.extracted_data || {}),
-      ...(extractedData || {}),
-    }
-    await supabaseAdmin
-      .from('pending_demands')
-      .update({
-        extracted_data: merged,
-        media_urls: [...(existing.media_urls || []), ...mediaUrls],
-        confidence_scores: extractedData?.confidenceScores || null,
-        match_score: match.score,
-        raw_payload: { ...existing.raw_payload, latestBody: bodyText },
-      })
-      .eq('id', existing.id)
-
-    console.log(`[leads/whatsapp] Merged into demand ${existing.id} (score: ${match.score})`)
-  } else {
-    // New demand
-    const row = {
-      agency_id: agency.id,
-      source: 'whatsapp',
-      sender_id: senderRaw,
-      raw_payload: { body: bodyText, numMedia, from: senderRaw },
-      extracted_data: extractedData,
-      confidence_scores: extractedData?.confidenceScores || null,
-      media_urls: mediaUrls,
-      match_score: match?.score || null,
-      merged_with_id: match?.type === 'potential' ? match.demand.id : null,
-    }
-    const { error } = await supabaseAdmin.from('pending_demands').insert(row)
-    if (error) console.error('[leads/whatsapp] insert error:', error.message)
-    else console.log(`[leads/whatsapp] New demand created from ${senderRaw}`)
-  }
-
-  // Always respond 200 to Twilio
-  res.set('Content-Type', 'text/xml').send('<Response></Response>')
-})
 
 // ── POST /leads/webhook/gmail ─────────────────────────────
 // Called internally by the Gmail poller (server/routes/gmail.js)
@@ -279,17 +185,21 @@ router.post('/webhook/gmail', async (req, res) => {
   let extractedData = null
   const mediaUrls = []
 
-  // Process first image attachment through Claude Vision
-  if (attachments?.length && process.env.ANTHROPIC_API_KEY) {
-    const img = attachments[0]
-    if (img.base64 && img.mimeType?.startsWith('image/')) {
-      try {
-        extractedData = await extractWithClaude(img.base64, img.mimeType, bodyText || subject)
-        // Store attachment as data URI reference (no external hosting needed for email)
-        mediaUrls.push(`data:${img.mimeType};name=${encodeURIComponent(img.filename || 'attachment')},${img.base64.slice(0, 100)}…`)
-      } catch (err) {
-        console.error('[leads/gmail] Claude extraction error:', err.message)
-      }
+  const imageBlocks = (attachments || [])
+    .filter(a => a.base64 && a.mimeType?.startsWith('image/'))
+    .map(a => ({ type: 'image', source: { type: 'base64', media_type: a.mimeType, data: a.base64 } }))
+
+  if (imageBlocks.length && process.env.ANTHROPIC_API_KEY) {
+    try {
+      extractedData = await extractWithClaude(imageBlocks, bodyText || subject)
+    } catch (err) {
+      console.error('[leads/gmail] Claude extraction error:', err.message)
+    }
+  }
+
+  for (const a of (attachments || [])) {
+    if (a.base64 && a.mimeType?.startsWith('image/')) {
+      mediaUrls.push(`data:${a.mimeType};base64,${a.base64}`)
     }
   }
 
@@ -397,22 +307,31 @@ router.patch('/:id/extracted', async (req, res) => {
 /**
  * Called directly by the Baileys inbound listener (no HTTP round-trip).
  */
-export async function handleInboundWhatsApp(agencyId, senderJid, imageBase64, mimeType, bodyText) {
+// images: Array<{base64: string, mimeType: string}>
+export async function handleInboundWhatsApp(agencyId, senderJid, images, bodyText) {
   let extractedData = null
-  if (imageBase64 && process.env.ANTHROPIC_API_KEY) {
+  const imageBlocks = (images || [])
+    .filter(i => i.base64 && i.mimeType)
+    .map(i => ({ type: 'image', source: { type: 'base64', media_type: i.mimeType, data: i.base64 } }))
+
+  if (imageBlocks.length && process.env.ANTHROPIC_API_KEY) {
     try {
-      extractedData = await extractWithClaude(imageBase64, mimeType, bodyText)
+      extractedData = await extractWithClaude(imageBlocks, bodyText)
     } catch (err) {
       console.error('[leads/inbound-wa] Claude error:', err.message)
     }
   }
 
   const match = await findMatchingDemand(agencyId, senderJid, extractedData)
+  const mediaUrls = (images || [])
+    .filter(i => i.base64 && i.mimeType?.startsWith('image/'))
+    .map(i => `data:${i.mimeType};base64,${i.base64}`)
 
   if (match && match.type !== 'potential') {
     const existing = match.demand
     await supabaseAdmin.from('pending_demands').update({
       extracted_data: { ...(existing.extracted_data || {}), ...(extractedData || {}) },
+      media_urls: [...(existing.media_urls || []), ...mediaUrls],
       confidence_scores: extractedData?.confidenceScores || null,
       match_score: match.score,
       raw_payload: { ...existing.raw_payload, latestBody: bodyText },
@@ -425,7 +344,7 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBase64, mi
       raw_payload: { body: bodyText, from: senderJid },
       extracted_data: extractedData,
       confidence_scores: extractedData?.confidenceScores || null,
-      media_urls: [],
+      media_urls: mediaUrls,
       match_score: match?.score || null,
       merged_with_id: match?.type === 'potential' ? match.demand.id : null,
     })
