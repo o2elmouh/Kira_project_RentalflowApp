@@ -84,4 +84,4 @@ See [CHANGELOG.md](CHANGELOG.md) for completed work history.
 ## GitHub
 Repo: `https://github.com/o2elmouh/Kira_project_RentalflowApp`
 Main branch: `main`
-Latest commit: `4a7c430` — fix(fleet): fall back to repair type as description to satisfy NOT NULL constraint
+Latest commit: `63663be` — fix(fleet): always run inferRepairType instead of passing raw label as repair_type
