@@ -81,6 +81,8 @@ async function startSession(agencyId) {
     printQRInTerminal: false,
     browser: ['RentaFlow', 'Chrome', '1.0'],
     getMessage: async () => undefined,
+    connectTimeoutMs: 60_000,
+    defaultQueryTimeoutMs: undefined, // disable per-query timeout — Railway latency can be high
   })
   entry.sock = sock
 
