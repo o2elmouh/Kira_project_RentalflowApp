@@ -777,7 +777,11 @@ async function _buildInvoiceDoc(invoice, contract, client, vehicle, agency) {
   ].filter(Boolean)
   doc.text(footerParts.join('  |  '), 105, footerY, { align: 'center' })
 
-  doc.save(`${invoice.invoiceNumber}.pdf`)
+  doc.save(`${invoice.invoiceNumber ?? 'facture'}.pdf`)
+}
+
+export async function generateInvoice(invoice, contract, client, vehicle, agency) {
+  return _buildInvoiceDoc(invoice, contract, client, vehicle, agency)
 }
 
 // ── Buffer variants (for WhatsApp upload — no file download) ──────────────

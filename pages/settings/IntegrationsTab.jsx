@@ -17,22 +17,27 @@ export default function IntegrationsTab() {
   const [waStatus, setWaStatus] = useState(null)   // null | 'connecting' | 'qr' | 'open' | 'closed'
   const [waQr, setWaQr] = useState(null)
   const [waLoading, setWaLoading] = useState(false)
+  const [waError, setWaError] = useState(null)
   const pollRef = useRef(null)
+  const connectTimeoutRef = useRef(null)
 
   function stopPoll() { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } }
+  function clearConnectTimeout() { if (connectTimeoutRef.current) { clearTimeout(connectTimeoutRef.current); connectTimeoutRef.current = null } }
 
   async function fetchWaStatus() {
     try {
       const res = await api.getWhatsAppStatus()
       setWaStatus(res.status)
       setWaQr(res.qr || null)
-      if (res.status === 'open' || res.status === 'closed') stopPoll()
+      if (res.status === 'open') { stopPoll(); clearConnectTimeout(); setWaError(null) }
+      if (res.status === 'closed') { stopPoll(); clearConnectTimeout() }
+      if (res.status === 'qr') clearConnectTimeout()
     } catch { /* ignore */ }
   }
 
   useEffect(() => {
     fetchWaStatus()
-    return stopPoll
+    return () => { stopPoll(); clearConnectTimeout() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -41,14 +46,25 @@ export default function IntegrationsTab() {
     pollRef.current = setInterval(fetchWaStatus, 3000)
   }
 
+  function startConnectTimeout() {
+    clearConnectTimeout()
+    connectTimeoutRef.current = setTimeout(() => {
+      stopPoll()
+      setWaStatus(null)
+      setWaError('La connexion a pris trop de temps. Réessayez.')
+    }, 30000)
+  }
+
   async function connectWa() {
     setWaLoading(true)
+    setWaError(null)
     try {
       await api.connectWhatsApp()
       setWaStatus('connecting')
       startPoll()
+      startConnectTimeout()
     } catch (err) {
-      alert(err.message)
+      setWaError(err.message)
     } finally {
       setWaLoading(false)
     }
@@ -191,11 +207,14 @@ export default function IntegrationsTab() {
         ) : (
           <button
             onClick={connectWa}
-            disabled={waLoading || waStatus === 'connecting' || waStatus === 'qr'}
+            disabled={waLoading || waStatus === 'qr'}
             style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--accent)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
           >
-            {waLoading || waStatus === 'connecting' ? 'Connexion en cours…' : waStatus === 'qr' ? 'En attente du scan…' : 'Connecter WhatsApp'}
+            {waLoading ? 'Connexion en cours…' : waStatus === 'connecting' ? 'Connexion… (Réessayer)' : waStatus === 'qr' ? 'En attente du scan…' : 'Connecter WhatsApp'}
           </button>
+        )}
+        {waError && (
+          <p style={{ marginTop: 10, fontSize: 13, color: '#ef4444' }}>{waError}</p>
         )}
       </div>
 

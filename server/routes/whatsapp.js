@@ -21,8 +21,11 @@ import { join } from 'path'
 import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
-  fetchLatestBaileysVersion,
 } from '@whiskeysockets/baileys'
+
+// Pinned stable WA Web version — avoids fetchLatestBaileysVersion() network call
+// which hangs on Railway and blocks QR generation.
+const WA_VERSION = [2, 3000, 1015920791]
 import { Boom } from '@hapi/boom'
 import QRCode from 'qrcode'
 import { handleInboundWhatsApp } from './leads.js'
@@ -52,16 +55,16 @@ async function startSession(agencyId) {
   mkdirSync(stateDir, { recursive: true })
 
   const { state, saveCreds } = await useMultiFileAuthState(stateDir)
-  const { version } = await fetchLatestBaileysVersion()
 
   const entry = { sock: null, qr: null, status: 'connecting' }
   sessions.set(agencyId, entry)
 
   const sock = makeWASocket({
-    version,
+    version: WA_VERSION,
     auth: state,
     printQRInTerminal: false,
     browser: ['RentaFlow', 'Chrome', '1.0'],
+    getMessage: async () => undefined,
   })
   entry.sock = sock
 
