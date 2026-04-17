@@ -94,18 +94,21 @@ async function startSession(agencyId) {
     for (const msg of messages) {
       if (msg.key.fromMe) continue
       const senderJid = msg.key.remoteJid
-      const bodyText  = msg.message?.conversation
+      const imgMsg    = msg.message?.imageMessage
+
+      // Caption on image messages lives in imgMsg.caption, not conversation
+      const bodyText = msg.message?.conversation
         || msg.message?.extendedTextMessage?.text
+        || imgMsg?.caption
         || ''
 
       // Image message
-      const imgMsg = msg.message?.imageMessage
       if (imgMsg) {
         try {
-          const buf = await sock.downloadMediaMessage(msg, 'buffer')
-          const b64 = buf.toString('base64')
+          const buf  = await sock.downloadMediaMessage(msg, 'buffer')
+          const b64  = buf.toString('base64')
           const mime = imgMsg.mimetype || 'image/jpeg'
-          await handleInboundWhatsApp(agencyId, senderJid, b64, mime, bodyText)
+          await handleInboundWhatsApp(agencyId, senderJid, [{ base64: b64, mimeType: mime }], bodyText)
         } catch (err) {
           console.error(`[WA:${agencyId}] inbound image error:`, err.message)
         }
