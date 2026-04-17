@@ -84,4 +84,4 @@ See [CHANGELOG.md](CHANGELOG.md) for completed work history.
 ## GitHub
 Repo: `https://github.com/o2elmouh/Kira_project_RentalflowApp`
 Main branch: `main`
-Latest commit: `63663be` — fix(fleet): always run inferRepairType instead of passing raw label as repair_type
+Latest commit: `289b270` — feat(invoices): add Eye button to preview invoice PDF in-app modal
