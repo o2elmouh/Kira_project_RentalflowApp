@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getInvoices, getContracts, getClients } from '../lib/db'
 import { api } from '../lib/api'
-import { generateInvoice } from '../utils/pdf'
+import { Eye, X } from 'lucide-react'
+import { generateInvoice, viewInvoice } from '../utils/pdf'
 
 // ─────────────────────────────────────────────────────────
 // INVOICES
@@ -14,8 +15,10 @@ export default function Invoices() {
   const [contracts, setContracts] = useState([])
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
-  const [waSending, setWaSending] = useState(null) // invoice id being sent
-  const [waStatus, setWaStatus] = useState({})     // { [invoiceId]: 'ok'|'err' }
+  const [waSending, setWaSending] = useState(null)
+  const [waStatus, setWaStatus] = useState({})
+  const [invoiceViewUrl, setInvoiceViewUrl] = useState(null)
+  const [viewing, setViewing] = useState(null) // invoice id being previewed
 
   useEffect(() => {
     let cancelled = false
@@ -55,6 +58,26 @@ export default function Invoices() {
     }
   }
 
+  const openInvoicePreview = async (inv) => {
+    const contract = contracts.find(c => c.id === inv.contractId) || {}
+    const client   = clients.find(cl => cl.id === (inv.clientId || contract.clientId)) || {}
+    setViewing(inv.id)
+    try {
+      const url = await viewInvoice(inv, contract, client, {}, {})
+      setInvoiceViewUrl(url)
+    } catch (err) {
+      console.error('[InvoicePreview]', err)
+      alert('Impossible de générer la prévisualisation.')
+    } finally {
+      setViewing(null)
+    }
+  }
+
+  const closeInvoicePreview = () => {
+    if (invoiceViewUrl) URL.revokeObjectURL(invoiceViewUrl)
+    setInvoiceViewUrl(null)
+  }
+
   if (loading) {
     return (
       <div>
@@ -84,6 +107,15 @@ export default function Invoices() {
                   </span>
                   <button
                     className="btn btn-ghost btn-sm"
+                    title="Prévisualiser la facture"
+                    disabled={viewing === inv.id}
+                    onClick={() => openInvoicePreview(inv)}
+                    style={{ padding: '2px 6px' }}
+                  >
+                    <Eye size={14} />
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
                     title="Envoyer par WhatsApp"
                     disabled={waSending === inv.id}
                     onClick={() => sendInvoiceWhatsApp(inv)}
@@ -97,6 +129,23 @@ export default function Invoices() {
           </div>
         </div>
       </div>
+      {invoiceViewUrl && (
+        <div
+          onClick={closeInvoicePreview}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: '90vw', maxWidth: 900, padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>Prévisualisation facture</span>
+              <button className="btn btn-ghost btn-sm" onClick={closeInvoicePreview}><X size={16} /></button>
+            </div>
+            <iframe src={invoiceViewUrl} width="100%" height="80vh" style={{ border: 'none', borderRadius: 8, minHeight: '80vh' }} title="Facture" />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

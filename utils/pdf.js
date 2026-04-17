@@ -1567,3 +1567,9 @@ export function generateDisputePackage({ agency = {}, contract, vehicle, beforeP
 
   doc.save(`dossier-litige-${contract.contractNumber || 'doc'}-${dateSlug}.pdf`)
 }
+
+export async function viewInvoice(invoice, contract, client, vehicle, agency) {
+  const buffer = await generateInvoiceBuffer(invoice, contract, client, vehicle, agency)
+  const blob = new Blob([buffer], { type: 'application/pdf' })
+  return URL.createObjectURL(blob)
+}
