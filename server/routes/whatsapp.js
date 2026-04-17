@@ -22,6 +22,7 @@ import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
+  downloadMediaMessage,
 } from '@whiskeysockets/baileys'
 
 // Fetch the latest WA Web version with a 6s timeout; fall back to a known-good pin.
@@ -142,7 +143,7 @@ async function startSession(agencyId) {
       // Image message
       if (imgMsg) {
         try {
-          const buf  = await sock.downloadMediaMessage(msg, 'buffer')
+          const buf  = await downloadMediaMessage(msg, 'buffer', {})
           const b64  = buf.toString('base64')
           const mime = imgMsg.mimetype || 'image/jpeg'
           await handleInboundWhatsApp(agencyId, senderJid, [{ base64: b64, mimeType: mime }], bodyText)
