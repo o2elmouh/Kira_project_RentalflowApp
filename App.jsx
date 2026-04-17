@@ -95,16 +95,24 @@ export default function App() {
     if (resolvingRef.current) return
     resolvingRef.current = true
     setUser(u)
+
+    const fetchProfile = () =>
+      Promise.race([
+        supabase.from('profiles').select('id, full_name, email, phone, role, agency_id').eq('id', u.id).maybeSingle(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Profile query timed out')), 8000)),
+      ])
+
     try {
-      const profilePromise = supabase
-        .from('profiles')
-        .select('id, full_name, email, phone, role, agency_id')
-        .eq('id', u.id)
-        .maybeSingle()
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Profile query timed out')), 6000)
-      )
-      const { data: prof } = await Promise.race([profilePromise, timeoutPromise])
+      let result
+      try {
+        result = await fetchProfile()
+      } catch {
+        // Retry once before giving up
+        console.warn('[RF] resolveUser: profile slow, retrying once…')
+        result = await fetchProfile()
+      }
+
+      const { data: prof } = result
 
       if (prof?.agency_id) {
         try {
@@ -124,7 +132,8 @@ export default function App() {
       }
     } catch (err) {
       console.error('[RF] resolveUser threw:', err)
-      setAuthState('ready')
+      // Profile unknown — send to onboarding rather than broken ready state
+      setAuthState('onboarding')
     } finally {
       resolvingRef.current = false
     }
