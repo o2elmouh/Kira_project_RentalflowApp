@@ -21,11 +21,25 @@ import { join } from 'path'
 import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
+  fetchLatestBaileysVersion,
 } from '@whiskeysockets/baileys'
 
-// Pinned stable WA Web version — avoids fetchLatestBaileysVersion() network call
-// which hangs on Railway and blocks QR generation.
-const WA_VERSION = [2, 3000, 1015920791]
+// Fetch the latest WA Web version with a 6s timeout; fall back to a known-good pin.
+// fetchLatestBaileysVersion() can hang on cold-start — the race ensures we never block.
+const WA_VERSION_FALLBACK = [2, 3000, 1023140551]
+async function getWAVersion() {
+  try {
+    const { version } = await Promise.race([
+      fetchLatestBaileysVersion(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('version fetch timeout')), 6000)),
+    ])
+    console.log('[WA] version:', version.join('.'))
+    return version
+  } catch (err) {
+    console.warn('[WA] version fetch failed, using fallback:', err.message)
+    return WA_VERSION_FALLBACK
+  }
+}
 import { Boom } from '@hapi/boom'
 import QRCode from 'qrcode'
 import { handleInboundWhatsApp } from './leads.js'
@@ -59,8 +73,9 @@ async function startSession(agencyId) {
   const entry = { sock: null, qr: null, status: 'connecting', retryCount: 0 }
   sessions.set(agencyId, entry)
 
+  const version = await getWAVersion()
   const sock = makeWASocket({
-    version: WA_VERSION,
+    version,
     auth: state,
     printQRInTerminal: false,
     browser: ['RentaFlow', 'Chrome', '1.0'],
