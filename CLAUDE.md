@@ -84,4 +84,4 @@ See [CHANGELOG.md](CHANGELOG.md) for completed work history.
 ## GitHub
 Repo: `https://github.com/o2elmouh/Kira_project_RentalflowApp`
 Main branch: `main`
-Latest commit: `e294158` — fix(fleet): strip non-existent columns from repairToDb/repairFromDb/getTCO
+Latest commit: `4a7c430` — fix(fleet): fall back to repair type as description to satisfy NOT NULL constraint
