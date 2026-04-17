@@ -38,10 +38,10 @@ const SESSIONS_DIR = process.env.WA_SESSIONS_DIR || '/app/wa_sessions'
 const sessions = new Map()
 
 // ── Rate limits ──────────────────────────────────────────
+// Only applied to action routes — NOT to /status (polled every 3s)
 const whatsappLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 20, keyGenerator: r => r.ip })
 const paymentLimit  = rateLimit({ windowMs: 60 * 60 * 1000, max: 5,  keyGenerator: r => r.ip })
 router.use(requireAuth)
-router.use(whatsappLimit)
 
 // ── Session management ────────────────────────────────────
 
@@ -159,7 +159,7 @@ async function sendWhatsAppMessage({ agencyId, to, body, mediaBuffer, mimetype, 
 
 router.get('/status', async (req, res) => {
   const agencyId = req.user.agency_id
-  if (!agencyId) return res.status(400).json({ error: 'No agency_id on profile' })
+  if (!agencyId) return res.json({ status: null, qr: null })
   try {
     const entry = await getSession(agencyId)
     res.json({ status: entry.status, qr: entry.qr || null })
@@ -168,7 +168,7 @@ router.get('/status', async (req, res) => {
   }
 })
 
-router.post('/connect', async (req, res) => {
+router.post('/connect', whatsappLimit, async (req, res) => {
   const agencyId = req.user.agency_id
   if (!agencyId) return res.status(400).json({ error: 'No agency_id on profile' })
   try {
@@ -180,7 +180,7 @@ router.post('/connect', async (req, res) => {
   }
 })
 
-router.post('/disconnect', (req, res) => {
+router.post('/disconnect', whatsappLimit, (req, res) => {
   const agencyId = req.user.agency_id
   const entry = sessions.get(agencyId)
   if (entry?.sock) {
@@ -193,7 +193,7 @@ router.post('/disconnect', (req, res) => {
 // ── Messaging routes ──────────────────────────────────────
 // All require agencyId in body so multi-tenant routing works.
 
-router.post('/contract', async (req, res) => {
+router.post('/contract', whatsappLimit, async (req, res) => {
   const agencyId = req.user.agency_id
   const { to, clientName, contractNumber, vehicleName, startDate, endDate } = req.body
   if (!agencyId || !to || !clientName || !contractNumber || !vehicleName || !startDate || !endDate)
@@ -208,7 +208,7 @@ router.post('/contract', async (req, res) => {
   }
 })
 
-router.post('/invoice', async (req, res) => {
+router.post('/invoice', whatsappLimit, async (req, res) => {
   const agencyId = req.user.agency_id
   const { to, clientName, invoiceNumber, totalTTC } = req.body
   if (!agencyId || !to || !clientName || !invoiceNumber || totalTTC == null)
@@ -238,7 +238,7 @@ router.post('/payment', paymentLimit, async (req, res) => {
   }
 })
 
-router.post('/restitution', async (req, res) => {
+router.post('/restitution', whatsappLimit, async (req, res) => {
   const agencyId = req.user.agency_id
   const { to, clientName, contractNumber, pdfBase64, totalExtraFees } = req.body
   if (!agencyId || !to || !clientName || !contractNumber || !pdfBase64 || totalExtraFees == null)

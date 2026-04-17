@@ -115,11 +115,12 @@ async function pollAgency(agency) {
 
     if (maxUid > minUid) lastSeenUid.set(agency.id, maxUid)
 
-    // Update last_poll_at
+    // Update last_poll_at (best-effort — column may not exist in older schemas)
     await supabaseAdmin
       .from('agencies')
       .update({ gmail_last_polled: new Date().toISOString() })
       .eq('id', agency.id)
+      .then(({ error }) => { if (error) console.warn('[gmail] gmail_last_polled update skipped:', error.message) })
 
     console.log(`[gmail] Polled ${agency.gmail_address} — ${results.length} messages, ${results.filter(i => i.attributes.uid > minUid).length} new`)
   } catch (err) {
@@ -202,13 +203,27 @@ router.delete('/credentials', async (req, res) => {
 
 // GET /gmail/status — connection status
 router.get('/status', async (req, res) => {
+  // Select gmail_address first; gmail_last_polled may not exist in older DB schemas
   const { data: agency, error } = await supabaseAdmin
     .from('agencies')
     .select('gmail_address, gmail_last_polled')
     .eq('id', req.user.agency_id)
     .maybeSingle()
 
-  if (error) return res.status(500).json({ error: error.message })
+  // Column-missing errors (PGRST116 / 42703) — return safe defaults instead of 500
+  if (error) {
+    if (error.code === '42703' || error.message?.includes('gmail_last_polled')) {
+      // Column doesn't exist yet — fall back to address-only query
+      const { data: a2, error: e2 } = await supabaseAdmin
+        .from('agencies')
+        .select('gmail_address')
+        .eq('id', req.user.agency_id)
+        .maybeSingle()
+      if (e2) return res.status(500).json({ error: e2.message })
+      return res.json({ connected: !!a2?.gmail_address, gmail_address: a2?.gmail_address || null, last_polled: null })
+    }
+    return res.status(500).json({ error: error.message })
+  }
 
   res.json({
     connected: !!agency?.gmail_address,
