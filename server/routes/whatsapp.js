@@ -56,7 +56,7 @@ async function startSession(agencyId) {
 
   const { state, saveCreds } = await useMultiFileAuthState(stateDir)
 
-  const entry = { sock: null, qr: null, status: 'connecting' }
+  const entry = { sock: null, qr: null, status: 'connecting', retryCount: 0 }
   sessions.set(agencyId, entry)
 
   const sock = makeWASocket({
@@ -79,15 +79,34 @@ async function startSession(agencyId) {
     if (connection === 'open') {
       entry.qr = null
       entry.status = 'open'
+      entry.retryCount = 0
       console.log(`[WA:${agencyId}] Connected`)
     }
     if (connection === 'close') {
       const code = new Boom(lastDisconnect?.error)?.output?.statusCode
-      const shouldReconnect = code !== DisconnectReason.loggedOut
-      console.log(`[WA:${agencyId}] Closed (code ${code}), reconnect=${shouldReconnect}`)
+      // Codes that must NOT trigger a reconnect
+      const noRetry = new Set([
+        DisconnectReason.loggedOut,       // 401 — user logged out
+        DisconnectReason.connectionReplaced, // 440 — another device took over
+        403, // forbidden / banned
+        411, // multidevice mismatch
+      ])
+      const shouldReconnect = !noRetry.has(code)
+      const MAX_RETRIES = 5
+      console.log(`[WA:${agencyId}] Closed (code ${code}), retry=${shouldReconnect}, attempt=${entry.retryCount + 1}/${MAX_RETRIES}`)
       entry.status = 'closed'
-      sessions.delete(agencyId)
-      if (shouldReconnect) setTimeout(() => startSession(agencyId), 5000)
+
+      if (shouldReconnect && entry.retryCount < MAX_RETRIES) {
+        const backoff = Math.min(5000 * Math.pow(2, entry.retryCount), 120_000) // 5s→10s→20s→40s→80s→cap 120s
+        entry.retryCount += 1
+        sessions.delete(agencyId)
+        setTimeout(() => startSession(agencyId), backoff)
+      } else {
+        if (!shouldReconnect) console.log(`[WA:${agencyId}] Permanent disconnect (code ${code}) — not retrying`)
+        if (entry.retryCount >= MAX_RETRIES) console.warn(`[WA:${agencyId}] Max retries reached — giving up`)
+        entry.status = 'failed'
+        sessions.delete(agencyId)
+      }
     }
   })
 
