@@ -32,6 +32,7 @@ export default function App() {
   const resolvingRef = useRef(false)
   const initialSessionHandled = useRef(false)
   const passwordRecoveryRef = useRef(false)
+  const isReadyRef = useRef(false)
 
   useEffect(() => {
     let subscription = null
@@ -50,6 +51,7 @@ export default function App() {
         }
 
         if (event === 'SIGNED_OUT') {
+          isReadyRef.current = false
           setUser(null)
           setProfile(null)
           setAuthState('unauthenticated')
@@ -57,6 +59,12 @@ export default function App() {
         }
 
         if (event === 'INITIAL_SESSION') return
+
+        // TOKEN_REFRESHED: token rotated silently — no need to re-fetch profile
+        if (event === 'TOKEN_REFRESHED') {
+          if (session?.user) setUser(session.user)
+          return
+        }
 
         if (session?.user) {
           clearTimeout(timeout)
@@ -127,13 +135,15 @@ export default function App() {
       if (prof) {
         setProfile(prof)
         setAuthState('ready')
+        isReadyRef.current = true
       } else {
-        setAuthState('onboarding')
+        if (!isReadyRef.current) setAuthState('onboarding')
       }
     } catch (err) {
       console.error('[RF] resolveUser threw:', err)
-      // Profile unknown — send to onboarding rather than broken ready state
-      setAuthState('onboarding')
+      // Only send to onboarding if the user was not already authenticated.
+      // A transient timeout during a token refresh must NOT evict a logged-in user.
+      if (!isReadyRef.current) setAuthState('onboarding')
     } finally {
       resolvingRef.current = false
     }
