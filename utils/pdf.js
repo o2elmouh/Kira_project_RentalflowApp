@@ -2,10 +2,13 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { getGeneralConfig } from '../lib/db'
 
-const ACCENT = [199, 75, 31]
-const DARK   = [28, 26, 22]
-const GRAY   = [120, 116, 108]
-const LIGHT  = [245, 243, 238]
+const ACCENT  = [199, 75, 31]
+const DARK    = [28, 26, 22]
+const GRAY    = [120, 116, 108]
+const LIGHT   = [245, 243, 238]
+const RED     = [220, 38, 38]
+const GREEN   = [22, 163, 74]
+const ORANGE  = [234, 88, 12]
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -457,9 +460,181 @@ export async function generateContract(contract, client, vehicle, agency) {
   doc.save(`${contract.contractNumber}.pdf`)
 }
 
+async function _buildContractDoc(contract, client, vehicle, agency) {
+  const { defaultSignature } = (await getGeneralConfig()) || {}
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  let y = header(doc, agency, 'CONTRAT DE LOCATION DE VÉHICULE', contract.contractNumber)
+
+  y = sectionTitle(doc, 'ARTICLE 1 — PARTIES', y)
+  y = fieldRow(doc, 'Loueur:', agency.name, 14, y)
+  y = fieldRow(doc, 'Adresse:', agency.address, 14, y)
+  y = fieldRow(doc, 'RC / ICE:', `${agency.rc || ''}  /  ${agency.ice || ''}`, 14, y)
+  y += 2
+  y = fieldRow(doc, 'Locataire:', `${client.firstName} ${client.lastName}`, 14, y)
+  y = fieldRow(doc, 'CIN / Passeport:', client.cinNumber, 14, y)
+  y = fieldRow(doc, 'Expiry CIN:', client.cinExpiry || '—', 14, y)
+  y = fieldRow(doc, 'Permis de conduire:', client.drivingLicenseNumber, 14, y)
+  y = fieldRow(doc, 'Expiry Permis:', client.licenseExpiry || '—', 14, y)
+  y = fieldRow(doc, 'Tél:', client.phone, 14, y)
+  y = fieldRow(doc, 'Email:', client.email, 14, y)
+  y += 3
+
+  y = sectionTitle(doc, 'ARTICLE 2 — VÉHICULE', y)
+  y = fieldRow(doc, 'Véhicule:', `${vehicle.make} ${vehicle.model} (${vehicle.year})`, 14, y)
+  y = fieldRow(doc, 'Immatriculation:', displayPlate(vehicle.plate), 14, y)
+  y = fieldRow(doc, 'Couleur:', vehicle.color, 14, y)
+  y = fieldRow(doc, 'Carburant:', vehicle.fuelType, 14, y)
+  y = fieldRow(doc, 'Kilométrage départ:', `${contract.mileageOut || vehicle.mileage || '—'} km`, 14, y)
+  y += 3
+
+  y = sectionTitle(doc, 'ARTICLE 3 — CONDITIONS DE LOCATION', y)
+  y = fieldRow(doc, 'Date de départ:', contract.startDate, 14, y)
+  y = fieldRow(doc, 'Heure de départ:', contract.startTime || '—', 14, y)
+  y = fieldRow(doc, 'Date de retour:', contract.endDate, 14, y)
+  y = fieldRow(doc, 'Heure de retour:', contract.endTime || '—', 14, y)
+  y = fieldRow(doc, 'Durée:', `${contract.days} jour(s)`, 14, y)
+  y = fieldRow(doc, 'Niveau carburant départ:', contract.fuelLevel || '—', 14, y)
+  y = fieldRow(doc, 'Lieu de départ:', contract.pickupLocation || agency.city, 14, y)
+  y = fieldRow(doc, 'Lieu de retour:', contract.returnLocation || agency.city, 14, y)
+  y += 3
+
+  y = sectionTitle(doc, 'ARTICLE 4 — TARIF ET CAUTION', y)
+  y = fieldRow(doc, 'Tarif journalier:', `${vehicle.dailyRate} MAD / jour`, 14, y)
+  y = fieldRow(doc, 'Montant total (HT):', `${contract.totalHT} MAD`, 14, y)
+  y = fieldRow(doc, 'TVA (20%):', `${contract.tva} MAD`, 14, y)
+  y = fieldRow(doc, 'Total TTC:', `${contract.totalTTC} MAD`, 14, y)
+  y = fieldRow(doc, 'Caution (dépôt):', `${contract.deposit || 2400} MAD`, 14, y)
+  y = fieldRow(doc, 'Mode de paiement:', contract.paymentMethod || 'Carte bancaire', 14, y)
+  if (vehicle && vehicle.maxKmEnabled && vehicle.maxKmPerDay) {
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...GRAY)
+    doc.text(`Kilométrage max autorisé : ${vehicle.maxKmPerDay} km/jour — tout dépassement sera facturé 2 MAD/km`, 14, y)
+    y += 6
+  }
+  y += 3
+
+  y = sectionTitle(doc, 'ARTICLE 5 — ASSURANCE', y)
+  y = fieldRow(doc, 'Couverture:', 'Tous risques avec franchise', 14, y)
+  y = fieldRow(doc, 'Responsabilité civile:', 'Incluse', 14, y)
+  y = fieldRow(doc, 'N° Police d\'assurance:', agency.insurance_policy || '—', 14, y)
+  y = fieldRow(doc, 'PAI (personnes transportées):', contract.pai ? 'Incluse' : 'Non souscrite', 14, y)
+  y = fieldRow(doc, 'CDW (dommages):', contract.cdw ? 'Incluse' : 'Franchise applicable', 14, y)
+  y += 3
+
+  if (y > 215) { doc.addPage(); y = 20 }
+  y = sectionTitle(doc, 'ARTICLE 6 — OBLIGATIONS ET CLAUSES LÉGALES', y)
+  const clauses = [
+    'Le locataire s\'engage à utiliser le véhicule conformément au Code de la Route marocain.',
+    'Il est interdit de conduire hors du territoire marocain sans autorisation écrite du loueur.',
+    'Le locataire est seul responsable des amendes et contraventions établies à son encontre.',
+    'En cas d\'accident : déclaration obligatoire dans les 24h, constat écrit sous 48h.',
+    'Le véhicule doit être restitué avec le même niveau de carburant qu\'à la prise en charge.',
+    'Toute journée commencée est due. La location est calculée par tranches de 24 heures.',
+    `Protection des données (Loi 09-08) : Les données collectées sont traitées par ${agency.name} dans le cadre exclusif de la location. Le locataire consent à leur traitement et conservation pendant 5 ans.`,
+    `En cas de litige, les tribunaux de ${agency.city || 'Casablanca'} seront seuls compétents.`,
+  ]
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7.5)
+  doc.setTextColor(60, 58, 52)
+  clauses.forEach(cl => {
+    const lines = doc.splitTextToSize(`• ${cl}`, 182)
+    if (y + lines.length * 4.5 > 280) { doc.addPage(); y = 20 }
+    doc.text(lines, 14, y)
+    y += lines.length * 4.2 + 1
+  })
+
+  doc.addPage()
+  y = header(doc, agency, 'ÉTAT DES LIEUX — VÉHICULE', contract.contractNumber)
+  y = sectionTitle(doc, 'ÉTAT DES LIEUX À LA REMISE DU VÉHICULE', y)
+  drawCarDiagram(doc, 105, y + 42)
+  y += 90
+  y = drawFuelGauge(doc, 14, y, contract.fuelLevel || 'Plein')
+  y += 4
+  y = fieldRow(doc, 'Kilométrage départ:', `${contract.mileageOut || vehicle.mileage || '—'} km`, 14, y)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(...GRAY)
+  doc.text('Kilométrage retour:', 14, y)
+  doc.setDrawColor(...GRAY)
+  doc.setLineWidth(0.3)
+  doc.line(14 + 85, y, 196, y)
+  y += 8
+  y = sectionTitle(doc, 'INSPECTION PAR ZONE', y)
+  autoTable(doc, {
+    startY: y,
+    margin: { left: 14, right: 14 },
+    head: [['Zone', 'RAS ☐', 'Rayure ☐', 'Bosselure ☐', 'Bris / Autre ☐', 'Remarques']],
+    body: [
+      ['A — AVANT',   '☐', '☐', '☐', '☐', ''],
+      ['B — ARRIÈRE', '☐', '☐', '☐', '☐', ''],
+      ['C — CÔTÉ G',  '☐', '☐', '☐', '☐', ''],
+      ['D — CÔTÉ D',  '☐', '☐', '☐', '☐', ''],
+      ['E — TOIT',    '☐', '☐', '☐', '☐', ''],
+    ],
+    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 9, textColor: DARK, minCellHeight: 10 },
+    alternateRowStyles: { fillColor: [250, 249, 246] },
+    columnStyles: {
+      0: { cellWidth: 38, fontStyle: 'bold' },
+      1: { cellWidth: 18, halign: 'center' },
+      2: { cellWidth: 20, halign: 'center' },
+      3: { cellWidth: 22, halign: 'center' },
+      4: { cellWidth: 26, halign: 'center' },
+      5: { cellWidth: 'auto' },
+    },
+  })
+  y = doc.lastAutoTable.finalY + 10
+
+  const photoEntries = contract.photos ? Object.entries(contract.photos).filter(([, v]) => v) : []
+  if (photoEntries.length > 0) {
+    const PHOTO_LABELS = { front: 'Avant', rear: 'Arrière', left: 'Côté gauche', right: 'Côté droit', interior: 'Intérieur', damage: 'Détail / Dommage' }
+    if (y > 200) { doc.addPage(); y = 20 }
+    y = sectionTitle(doc, 'PHOTOS DU VÉHICULE', y)
+    const colW = 86; const rowH = 52; const gap = 10
+    const startX = 14
+    let col = 0
+    for (const [id, dataUrl] of photoEntries) {
+      const px = startX + col * (colW + gap)
+      if (y + rowH > 285) { doc.addPage(); y = 20 }
+      try { doc.addImage(dataUrl, 'JPEG', px, y, colW, rowH - 8) } catch (_) { /* skip */ }
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7)
+      doc.setTextColor(...GRAY)
+      doc.text(PHOTO_LABELS[id] || id, px + colW / 2, y + rowH - 1, { align: 'center' })
+      col++
+      if (col >= 2) { col = 0; y += rowH + 4 }
+    }
+    if (col > 0) y += rowH + 4
+    y += 4
+  }
+
+  if (y > 250) { doc.addPage(); y = 20 }
+  if (defaultSignature) {
+    try { doc.addImage(defaultSignature, 'PNG', 27, y, 40, 15) } catch (_) { /* skip */ }
+  }
+  doc.setDrawColor(...GRAY)
+  doc.setLineWidth(0.3)
+  doc.line(14, y + 14, 80, y + 14)
+  doc.line(130, y + 14, 196, y + 14)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(...GRAY)
+  doc.text('Signature du loueur', 47, y + 19, { align: 'center' })
+  doc.text('Signature du locataire\n(Lu et approuvé)', 163, y + 19, { align: 'center' })
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(7)
+  doc.text(
+    `Établi le ${new Date().toLocaleDateString('fr-MA')} à ${agency.city || 'Casablanca'}`,
+    105, y + 28, { align: 'center' }
+  )
+
+  return doc
+}
+
 // ── Invoice ───────────────────────────────────────────────
 
-export async function generateInvoice(invoice, contract, client, vehicle, agency) {
+async function _buildInvoiceDoc(invoice, contract, client, vehicle, agency) {
   const { defaultSignature } = (await getGeneralConfig()) || {}
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
@@ -491,7 +666,7 @@ export async function generateInvoice(invoice, contract, client, vehicle, agency
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
   doc.setTextColor(255, 255, 255)
-  doc.text(invoice.invoiceNumber, 196, 10, { align: 'right' })
+  doc.text(invoice.invoiceNumber ?? '', 196, 10, { align: 'right' })
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7.5)
   doc.setTextColor(200, 195, 185)
@@ -509,7 +684,7 @@ export async function generateInvoice(invoice, contract, client, vehicle, agency
 
   // Client info
   y = sectionTitle(doc, 'FACTURÉ À', y)
-  y = fieldRow(doc, 'Client:', `${client.firstName} ${client.lastName}`, 14, y)
+  y = fieldRow(doc, 'Client:', `${client.firstName ?? ''} ${client.lastName ?? ''}`.trim(), 14, y)
   y = fieldRow(doc, 'CIN:', client.cinNumber, 14, y)
   y = fieldRow(doc, 'Tél:', client.phone, 14, y)
   y = fieldRow(doc, 'Email:', client.email, 14, y)
@@ -523,10 +698,10 @@ export async function generateInvoice(invoice, contract, client, vehicle, agency
     head: [['Description', 'Qté', 'P.U (MAD)', 'Total HT (MAD)']],
     body: [
       [
-        `Location ${vehicle.make} ${vehicle.model} — ${displayPlate(vehicle.plate)}`,
-        `${contract.days} j`,
-        String(vehicle.dailyRate),
-        String(contract.totalHT),
+        `Location ${vehicle.make ?? ''} ${vehicle.model ?? ''} — ${displayPlate(vehicle.plate)}`.trim(),
+        `${contract.days ?? 0} j`,
+        String(vehicle.dailyRate ?? 0),
+        String(contract.totalHT ?? 0),
       ],
       ...(contract.pai ? [['Assurance PAI', '1', String(contract.paiRate || 50), String((contract.paiRate || 50) * contract.days)]] : []),
       ...(contract.cdw ? [['Garantie CDW', '1', String(contract.cdwRate || 80), String((contract.cdwRate || 80) * contract.days)]] : []),
@@ -806,12 +981,12 @@ export async function generateInvoiceBuffer(invoice, contract, client, vehicle, 
     agency.if_number ? `IF: ${agency.if_number}`      : null,
     agency.patente   ? `Patente: ${agency.patente}`   : null,
   ].filter(Boolean).join('  |  ')
-  doc.text(agencyLine1, 14, 17)
-  doc.text(agencyLine2, 14, 23)
+  doc.text(agencyLine1 || '', 14, 17)
+  doc.text(agencyLine2 || '', 14, 23)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
   doc.setTextColor(255, 255, 255)
-  doc.text(invoice.invoiceNumber, 196, 10, { align: 'right' })
+  doc.text(invoice.invoiceNumber ?? '', 196, 10, { align: 'right' })
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7.5)
   doc.setTextColor(200, 195, 185)
@@ -825,7 +1000,7 @@ export async function generateInvoiceBuffer(invoice, contract, client, vehicle, 
 
   let y = 44
   y = sectionTitle(doc, 'FACTURÉ À', y)
-  y = fieldRow(doc, 'Client:', `${client.firstName} ${client.lastName}`, 14, y)
+  y = fieldRow(doc, 'Client:', `${client.firstName ?? ''} ${client.lastName ?? ''}`.trim(), 14, y)
   y = fieldRow(doc, 'CIN:', client.cinNumber, 14, y)
   y = fieldRow(doc, 'Tél:', client.phone, 14, y)
   y = fieldRow(doc, 'Email:', client.email, 14, y)
@@ -838,10 +1013,10 @@ export async function generateInvoiceBuffer(invoice, contract, client, vehicle, 
     head: [['Description', 'Qté', 'P.U (MAD)', 'Total HT (MAD)']],
     body: [
       [
-        `Location ${vehicle.make} ${vehicle.model} — ${displayPlate(vehicle.plate)}`,
-        `${contract.days} j`,
-        String(vehicle.dailyRate),
-        String(contract.totalHT),
+        `Location ${vehicle.make ?? ''} ${vehicle.model ?? ''} — ${displayPlate(vehicle.plate)}`.trim(),
+        `${contract.days ?? 0} j`,
+        String(vehicle.dailyRate ?? 0),
+        String(contract.totalHT ?? 0),
       ],
       ...(contract.pai ? [['Assurance PAI', '1', String(contract.paiRate || 50), String((contract.paiRate || 50) * contract.days)]] : []),
       ...(contract.cdw ? [['Garantie CDW', '1', String(contract.cdwRate || 80), String((contract.cdwRate || 80) * contract.days)]] : []),
