@@ -84,4 +84,4 @@ See [CHANGELOG.md](CHANGELOG.md) for completed work history.
 ## GitHub
 Repo: `https://github.com/o2elmouh/Kira_project_RentalflowApp`
 Main branch: `main`
-Latest commit: `c06ac9b` — fix(fleet): use 'other' for repair_type to satisfy DB check constraint
+Latest commit: `7b45526` — fix(fleet): infer repair_type from label instead of hardcoding 'other'
