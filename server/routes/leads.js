@@ -99,6 +99,7 @@ Your output must match this exact JSON structure:
     "start_date": "string (ISO format or descriptive) or null",
     "end_date": "string or null",
     "pickup_location": "string or null (city or address where the client wants to pick up the car)",
+    "return_location": "string or null (city or address where the client wants to return the car, if different from pickup)",
     "requested_extra_days": "number or null",
     "has_id_documents": boolean (true if they mention sending IDs/photos)
   },

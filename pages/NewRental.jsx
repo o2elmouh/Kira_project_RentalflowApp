@@ -12,6 +12,16 @@ export default function NewRental({ onDone, prefilledLead = null }) {
   const [photos, setPhotos] = useState({})
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
 
+  // Derive rental prefill from lead rental intent (text or OCR leads)
+  const ri = prefilledLead?.rentalIntent
+  const today = new Date().toISOString().split('T')[0]
+  const rentalPrefill = ri?.detected ? {
+    startDate:      ri.startDate      || today,
+    endDate:        ri.endDate        || '',
+    pickupLocation: ri.pickupLocation || '',
+    returnLocation: ri.returnLocation || '',
+  } : null
+
   const advance = (patch) => {
     if (patch.step   !== undefined) setStep(patch.step)
     if (patch.client !== undefined) setClient(patch.client)
@@ -30,7 +40,7 @@ export default function NewRental({ onDone, prefilledLead = null }) {
       <div className="page-body">
         <StepBar current={step} />
         {step === 0 && <ScanStep initialClient={prefilledLead || client} onNext={c => advance({ client: c, step: 1 })} onSaveAndQuit={onDone} onCancel={() => setShowCancelConfirm(true)} />}
-        {step === 1 && <RentalStep client={client} initialRental={rental} onNext={r => advance({ rental: r, step: 2 })} onBack={() => advance({ step: 0 })} onSaveAndQuit={onDone} onCancel={() => setShowCancelConfirm(true)} />}
+        {step === 1 && <RentalStep client={client} initialRental={rental || rentalPrefill} onNext={r => advance({ rental: r, step: 2 })} onBack={() => advance({ step: 0 })} onSaveAndQuit={onDone} onCancel={() => setShowCancelConfirm(true)} />}
         {step === 2 && <PhotoStep initialPhotos={photos} onNext={p => advance({ photos: p, step: 3 })} onBack={() => advance({ step: 1 })} onSaveAndQuit={onDone} onCancel={() => setShowCancelConfirm(true)} />}
         {step === 3 && <ContractStep client={client} rental={rental} photos={photos} onDone={onDone} onBack={() => advance({ step: 2 })} onSaveAndQuit={onDone} onCancel={() => setShowCancelConfirm(true)} />}
       </div>

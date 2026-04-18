@@ -396,7 +396,14 @@ export default function Basket({ onNavigate }) {
       licenseExpiry:        '',
       phone:                lead.source === 'whatsapp' ? lead.sender_id.replace('whatsapp:', '').replace(/@.*$/, '') : '',
       email:                lead.source === 'gmail'    ? lead.sender_id : '',
-      rentalIntent:         extractedData.rentalIntent || null,
+      rentalIntent: {
+        detected: !!(extractedData.rentalIntent?.detected || extractedData.start_date || extractedData.end_date || extractedData.pickup_location),
+        startDate:      extractedData.rentalIntent?.startDate || extractedData.start_date || null,
+        endDate:        extractedData.rentalIntent?.endDate   || extractedData.end_date   || null,
+        vehicleClass:   extractedData.rentalIntent?.vehicleClass || extractedData.requested_car || null,
+        pickupLocation: extractedData.pickup_location || null,
+        returnLocation: extractedData.return_location || null,
+      },
       leadId:               lead.id,
     }
     // Mark as processed then navigate
