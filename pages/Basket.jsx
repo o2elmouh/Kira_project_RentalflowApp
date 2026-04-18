@@ -11,6 +11,11 @@ import { UserContext } from '../lib/UserContext.js'
 const STATUS_LABELS = { pending: 'En attente', processed: 'Traité', ignored: 'Ignoré' }
 const SOURCE_LABELS  = { whatsapp: 'WhatsApp', gmail: 'Gmail' }
 
+// Strip WhatsApp JID suffix: "212XXXXXXX@s.whatsapp.net" → "212XXXXXXX"
+function formatSenderId(id) {
+  return id ? id.replace(/@.*$/, '') : id
+}
+
 const CONF_COLOR = (score) => {
   if (score == null) return 'var(--text-secondary)'
   if (score >= 0.85) return '#22c55e'
@@ -111,7 +116,9 @@ function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <span style={{ fontWeight: 600 }}>
-              {extracted.firstName || '—'} {extracted.lastName || ''}
+              {(extracted.firstName || extracted.lastName)
+                ? `${extracted.firstName || ''} ${extracted.lastName || ''}`.trim()
+                : formatSenderId(lead.sender_id)}
             </span>
             <span style={{ marginLeft: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
               {SOURCE_LABELS[lead.source] || lead.source} · {lead.sender_id}
@@ -177,6 +184,9 @@ function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
                 )}
                 {extracted.end_date && (
                   <FieldRow label="Date de fin" fieldKey="end_date" value={extracted.end_date} confidence={null} onChange={handleChange} />
+                )}
+                {extracted.pickup_location && (
+                  <FieldRow label="Lieu de récupération" fieldKey="pickup_location" value={extracted.pickup_location} confidence={null} onChange={handleChange} />
                 )}
                 {extracted.requested_extra_days != null && (
                   <FieldRow label="Jours supplémentaires" fieldKey="requested_extra_days" value={String(extracted.requested_extra_days)} confidence={null} onChange={handleChange} />
@@ -270,7 +280,7 @@ function LeadCard({ lead, onClick }) {
       </div>
 
       <div style={{ fontWeight: 600, marginBottom: 4 }}>
-        {hasName ? `${ex.firstName || ''} ${ex.lastName || ''}`.trim() : lead.sender_id}
+        {hasName ? `${ex.firstName || ''} ${ex.lastName || ''}`.trim() : formatSenderId(lead.sender_id)}
       </div>
 
       {ex.classification ? (
@@ -289,6 +299,11 @@ function LeadCard({ lead, onClick }) {
           {ex.summary_for_agent && (
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
               {ex.summary_for_agent}
+            </div>
+          )}
+          {ex.pickup_location && (
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
+              📍 {ex.pickup_location}
             </div>
           )}
         </div>
