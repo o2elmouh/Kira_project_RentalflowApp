@@ -374,18 +374,30 @@ export default function Basket({ onNavigate }) {
   }
 
   function handleConvert(lead, extractedData) {
+    // Resolve ISO-3166 country code to French nationality label (matches useScannerFlow)
+    const NATIONALITY_MAP = {
+      MAR:'Marocain',FRA:'Français',ESP:'Espagnol',ITA:'Italien',DEU:'Allemand',
+      GBR:'Britannique',BEL:'Belge',CHE:'Suisse',NLD:'Néerlandais',PRT:'Portugais',
+      USA:'Américain',CAN:'Canadien',DZA:'Algérien',TUN:'Tunisien',LBY:'Libyen',
+      EGY:'Égyptien',SAU:'Saoudien',ARE:'Émirati',QAT:'Qatarien',KWT:'Koweïtien',
+      JOR:'Jordanien',LBN:'Libanais',TUR:'Turc',
+    }
+    const countryCode = (extractedData.issuingCountry || '').toUpperCase()
+    const nationality = NATIONALITY_MAP[countryCode] || countryCode || 'Marocain'
+
     const prefill = {
-      firstName:      extractedData.firstName || '',
-      lastName:       extractedData.lastName  || '',
-      documentNumber: extractedData.documentNumber || '',
-      dateOfBirth:    extractedData.dateOfBirth || '',
-      expiryDate:     extractedData.expiryDate  || '',
-      documentType:   extractedData.documentType || 'ID_CARD',
-      issuingCountry: extractedData.issuingCountry || '',
-      phone:          lead.source === 'whatsapp' ? lead.sender_id.replace('whatsapp:', '').replace(/@.*$/, '') : '',
-      email:          lead.source === 'gmail'    ? lead.sender_id : '',
-      rentalIntent:   extractedData.rentalIntent || null,
-      leadId:         lead.id,
+      firstName:            extractedData.firstName || '',
+      lastName:             extractedData.lastName  || '',
+      cinNumber:            extractedData.documentNumber || '',   // key useScannerFlow expects
+      cinExpiry:            extractedData.expiryDate  || '',      // key useScannerFlow expects
+      dateOfBirth:          extractedData.dateOfBirth || '',
+      nationality,                                                 // resolved label, not ISO code
+      drivingLicenseNumber: '',
+      licenseExpiry:        '',
+      phone:                lead.source === 'whatsapp' ? lead.sender_id.replace('whatsapp:', '').replace(/@.*$/, '') : '',
+      email:                lead.source === 'gmail'    ? lead.sender_id : '',
+      rentalIntent:         extractedData.rentalIntent || null,
+      leadId:               lead.id,
     }
     // Mark as processed then navigate
     api.updateLeadStatus(lead.id, 'processed').catch(() => {})
