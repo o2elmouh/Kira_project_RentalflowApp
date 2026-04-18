@@ -43,8 +43,10 @@ async function getWAVersion() {
 }
 import { Boom } from '@hapi/boom'
 import QRCode from 'qrcode'
+import OpenAI, { toFile } from 'openai'
 import { handleInboundWhatsApp } from './leads.js'
 import { requireAuth } from '../middleware/auth.js'
+import supabaseAdmin from '../lib/supabaseAdmin.js'
 
 const router = Router()
 const SESSIONS_DIR = process.env.WA_SESSIONS_DIR || '/app/wa_sessions'
@@ -134,7 +136,8 @@ async function startSession(agencyId) {
     for (const msg of messages) {
       if (msg.key.fromMe) continue
       const senderJid = msg.key.remoteJid
-      const imgMsg    = msg.message?.imageMessage
+      const imgMsg   = msg.message?.imageMessage
+      const audioMsg = msg.message?.audioMessage
 
       // Caption on image messages lives in imgMsg.caption, not conversation
       const bodyText = msg.message?.conversation
@@ -142,20 +145,33 @@ async function startSession(agencyId) {
         || imgMsg?.caption
         || ''
 
-      if (imgMsg) {
-        // Image message — download and pass to OCR pipeline
+      if (audioMsg) {
+        // ── Voice note → Whisper → classification ──────────
         try {
-          const buf  = await downloadMediaMessage(msg, 'buffer', {})
-          const b64  = buf.toString('base64')
-          const mime = imgMsg.mimetype || 'image/jpeg'
-          await handleInboundWhatsApp(agencyId, senderJid, [{ base64: b64, mimeType: mime }], bodyText)
+          const buf        = await downloadMediaMessage(msg, 'buffer', {})
+          const transcript = await transcribeAudio(buf)
+          if (transcript?.trim()) {
+            console.log(`[WA:${agencyId}] audio transcribed (${transcript.length} chars)`)
+            await handleInboundWhatsApp(agencyId, senderJid, null, transcript)
+          }
+        } catch (err) {
+          console.error(`[WA:${agencyId}] inbound audio error:`, err.message)
+        }
+      } else if (imgMsg) {
+        // ── Image → Supabase Storage → OCR ─────────────────
+        try {
+          const buf      = await downloadMediaMessage(msg, 'buffer', {})
+          const mime     = imgMsg.mimetype || 'image/jpeg'
+          const imageUrl = await uploadLeadMedia(agencyId, senderJid, buf, mime)
+          console.log(`[WA:${agencyId}] image uploaded: ${imageUrl}`)
+          await handleInboundWhatsApp(agencyId, senderJid, imageUrl, bodyText)
         } catch (err) {
           console.error(`[WA:${agencyId}] inbound image error:`, err.message)
         }
       } else if (bodyText.trim()) {
-        // Text-only message — pass to classification pipeline
+        // ── Text-only → lead classification ────────────────
         try {
-          await handleInboundWhatsApp(agencyId, senderJid, [], bodyText)
+          await handleInboundWhatsApp(agencyId, senderJid, null, bodyText)
         } catch (err) {
           console.error(`[WA:${agencyId}] inbound text error:`, err.message)
         }
@@ -180,6 +196,39 @@ function normaliseJid(raw) {
   if (!num.startsWith('+')) num = '+' + num
   const digits = num.replace(/\D/g, '')
   return `${digits}@s.whatsapp.net`
+}
+
+// ── Audio transcription via OpenAI Whisper ────────────────
+
+async function transcribeAudio(buffer) {
+  if (!process.env.OPENAI_API_KEY) {
+    console.warn('[WA] OPENAI_API_KEY not set — skipping audio transcription')
+    return null
+  }
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  const file = await toFile(buffer, 'voice.ogg', { type: 'audio/ogg; codecs=opus' })
+  const transcription = await client.audio.transcriptions.create({
+    model: 'whisper-1',
+    file,
+  })
+  return transcription.text
+}
+
+// ── Image upload to Supabase Storage ─────────────────────
+
+async function uploadLeadMedia(agencyId, senderJid, buffer, mimeType) {
+  const digits = senderJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
+  const ext = mimeType.startsWith('image/png') ? 'png' : 'jpg'
+  const path = `${agencyId}/${digits}_${Date.now()}.${ext}`
+
+  const { error } = await supabaseAdmin.storage
+    .from('lead-documents')
+    .upload(path, buffer, { contentType: mimeType, upsert: false })
+
+  if (error) throw new Error(`Storage upload failed: ${error.message}`)
+
+  const { data } = supabaseAdmin.storage.from('lead-documents').getPublicUrl(path)
+  return data.publicUrl
 }
 
 async function sendWhatsAppMessage({ agencyId, to, body, mediaBuffer, mimetype, pdfBase64 }) {

@@ -395,23 +395,24 @@ async function classifyTextMessage(bodyText, clientStatus) {
 
 /**
  * Called directly by the Baileys inbound listener (no HTTP round-trip).
+ * @param {string}      agencyId
+ * @param {string}      senderJid  — e.g. "212XXXXXXXXX@s.whatsapp.net"
+ * @param {string|null} imageUrl   — public Supabase Storage URL, or null
+ * @param {string}      bodyText   — text body or Whisper transcript
  */
-// images: Array<{base64: string, mimeType: string}>
-export async function handleInboundWhatsApp(agencyId, senderJid, images, bodyText) {
+export async function handleInboundWhatsApp(agencyId, senderJid, imageUrl, bodyText) {
   let extractedData = null
-  const imageBlocks = (images || [])
-    .filter(i => i.base64 && i.mimeType)
-    .map(i => ({ type: 'image', source: { type: 'base64', media_type: i.mimeType, data: i.base64 } }))
 
-  if (imageBlocks.length && process.env.ANTHROPIC_API_KEY) {
-    // Image(s) received — run document OCR
+  if (imageUrl && process.env.ANTHROPIC_API_KEY) {
+    // Image received — run document OCR via public URL
     try {
-      extractedData = await extractWithClaude(imageBlocks, bodyText)
+      const imageBlock = { type: 'image', source: { type: 'url', url: imageUrl } }
+      extractedData = await extractWithClaude([imageBlock], bodyText)
     } catch (err) {
       console.error('[leads/inbound-wa] Claude error:', err.message)
     }
   } else if (bodyText?.trim()) {
-    // Text-only message — run lead classification
+    // Text-only or voice-note transcript — run lead classification
     try {
       const clientStatus = await getClientStatus(agencyId, senderJid)
       const classification = await classifyTextMessage(bodyText, clientStatus)
@@ -429,9 +430,7 @@ export async function handleInboundWhatsApp(agencyId, senderJid, images, bodyTex
   }
 
   const match = await findMatchingDemand(agencyId, senderJid, extractedData)
-  const mediaUrls = (images || [])
-    .filter(i => i.base64 && i.mimeType?.startsWith('image/'))
-    .map(i => `data:${i.mimeType};base64,${i.base64}`)
+  const mediaUrls = imageUrl ? [imageUrl] : []
 
   if (match && match.type !== 'potential') {
     const existing = match.demand
