@@ -85,7 +85,10 @@ function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
     }
   }
 
-  const images = (lead.media_urls || []).filter(u => u.startsWith('http') || u.startsWith('data:image/'))
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+  const images = (lead.media_urls || [])
+    .filter(u => u.startsWith('http') || u.startsWith('data:image/'))
+    .map(u => u.startsWith('data:') ? u : `${API_URL}/leads/media?url=${encodeURIComponent(u)}`)
 
   return (
     <div style={{
@@ -133,7 +136,7 @@ function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
             ) : images.map((url, i) => (
               <img
                 key={i}
-                src={url.startsWith('data:') ? url : url}
+                src={url}
                 alt={`Document ${i + 1}`}
                 style={{ width: '100%', borderRadius: 8, marginBottom: 12, border: '1px solid var(--border)' }}
               />

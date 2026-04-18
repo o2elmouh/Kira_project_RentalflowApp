@@ -268,6 +268,26 @@ router.post('/webhook/gmail', async (req, res) => {
 // ── Authenticated routes (premium required) ───────────────
 router.use(requireAuth, requirePremium)
 
+// GET /leads/media?url=... — image proxy (bypass Supabase Storage CORS)
+router.get('/media', async (req, res) => {
+  const { url } = req.query
+  if (!url || !url.startsWith('https://')) return res.status(400).json({ error: 'Invalid URL' })
+  const supabaseUrl = process.env.SUPABASE_URL
+  if (supabaseUrl && !url.startsWith(supabaseUrl)) return res.status(403).json({ error: 'Forbidden' })
+  try {
+    const upstream = await fetch(url)
+    if (!upstream.ok) return res.status(upstream.status).end()
+    const ct = upstream.headers.get('content-type') || 'image/jpeg'
+    res.set('Content-Type', ct)
+    res.set('Cache-Control', 'public, max-age=86400')
+    const buf = await upstream.arrayBuffer()
+    res.send(Buffer.from(buf))
+  } catch (err) {
+    console.error('[leads/media]', err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // GET /leads — list pending demands
 router.get('/', async (req, res) => {
   const status = req.query.status || 'pending'
