@@ -265,15 +265,14 @@ router.post('/webhook/gmail', async (req, res) => {
   res.json({ ok: true })
 })
 
-// ── Authenticated routes (premium required) ───────────────
-router.use(requireAuth, requirePremium)
-
-// GET /leads/media?url=... — image proxy (bypass Supabase Storage CORS)
+// GET /leads/media?url=... — public image proxy (no auth — bucket is already public)
+// <img> tags cannot send Authorization headers, so this must be unauthenticated.
+// Security: only Supabase Storage URLs are forwarded (SSRF prevention).
 router.get('/media', async (req, res) => {
   const { url } = req.query
-  if (!url || !url.startsWith('https://')) return res.status(400).json({ error: 'Invalid URL' })
+  if (!url || !url.startsWith('https://')) return res.status(400).end()
   const supabaseUrl = process.env.SUPABASE_URL
-  if (supabaseUrl && !url.startsWith(supabaseUrl)) return res.status(403).json({ error: 'Forbidden' })
+  if (supabaseUrl && !url.startsWith(supabaseUrl)) return res.status(403).end()
   try {
     const upstream = await fetch(url)
     if (!upstream.ok) return res.status(upstream.status).end()
@@ -284,9 +283,12 @@ router.get('/media', async (req, res) => {
     res.send(Buffer.from(buf))
   } catch (err) {
     console.error('[leads/media]', err.message)
-    res.status(500).json({ error: err.message })
+    res.status(500).end()
   }
 })
+
+// ── Authenticated routes (premium required) ───────────────
+router.use(requireAuth, requirePremium)
 
 // GET /leads — list pending demands
 router.get('/', async (req, res) => {

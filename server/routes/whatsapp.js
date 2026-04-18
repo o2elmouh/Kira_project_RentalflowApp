@@ -165,14 +165,20 @@ async function startSession(agencyId) {
         }
       } else if (imgMsg) {
         // ── Image → Supabase Storage → OCR ─────────────────
+        let imageUrl = null
         try {
-          const buf      = await downloadMediaMessage(msg, 'buffer', {})
-          const mime     = imgMsg.mimetype || 'image/jpeg'
-          const imageUrl = await uploadLeadMedia(agencyId, senderJid, buf, mime)
+          const buf  = await downloadMediaMessage(msg, 'buffer', {})
+          const mime = imgMsg.mimetype || 'image/jpeg'
+          imageUrl   = await uploadLeadMedia(agencyId, senderJid, buf, mime)
           console.log(`[WA:${agencyId}] image uploaded: ${imageUrl}`)
+        } catch (err) {
+          console.error(`[WA:${agencyId}] image upload error:`, err.message)
+        }
+        // Always create a lead — even if upload failed (OCR will be skipped)
+        try {
           await handleInboundWhatsApp(agencyId, senderJid, imageUrl, bodyText)
         } catch (err) {
-          console.error(`[WA:${agencyId}] inbound image error:`, err.message)
+          console.error(`[WA:${agencyId}] inbound image lead error:`, err.message)
         }
       } else if (bodyText.trim()) {
         // ── Text-only → lead classification ────────────────
