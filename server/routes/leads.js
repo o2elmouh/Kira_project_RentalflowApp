@@ -72,7 +72,39 @@ function nameMatchScore(nameA, nameB) {
   return 1 - levenshtein(a, b) / maxLen
 }
 
-// ── Claude Vision prompt ──────────────────────────────────
+// ── Claude routing prompt (text messages) ────────────────
+const ROUTING_SYSTEM_PROMPT = `You are an intelligent lead routing assistant for "Rentalflow", a car rental agency in Morocco.
+Your job is to analyze incoming WhatsApp messages, categorize them, and extract relevant data.
+Clients may speak in French, Standard Arabic, or Moroccan Darija.
+
+You will receive an input object containing:
+1. "client_status": Either "active_contract" (they currently have a car) or "no_contract".
+2. "message": The transcribed text or text message sent by the user.
+
+You must output ONLY a raw JSON object. Do not include markdown formatting like \`\`\`json.
+Do not include any conversational text.
+
+Categorize the "classification" field into exactly one of these four options:
+- "prolongation": An active client wants to extend their rental.
+- "new_lead": A new client wants to rent a car or asks for prices.
+- "support_issue": An active client is reporting an accident, breakdown, or issue.
+- "other": General questions or unrecognizable intents.
+
+Your output must match this exact JSON structure:
+{
+  "classification": "string",
+  "confidence": number (0.0 to 1.0),
+  "extracted_data": {
+    "requested_car": "string or null",
+    "start_date": "string (ISO format or descriptive) or null",
+    "end_date": "string or null",
+    "requested_extra_days": "number or null",
+    "has_id_documents": boolean (true if they mention sending IDs/photos)
+  },
+  "summary_for_agent": "A short, 1-sentence summary of what the client wants."
+}`
+
+// ── Claude Vision prompt (image/document OCR) ────────────
 const GLOBAL_SYSTEM_PROMPT = `You are a precise global identity document parser and rental intent extractor.
 Documents may be in any language. Dates in any format — convert all to YYYY-MM-DD.
 
@@ -304,6 +336,63 @@ router.patch('/:id/extracted', async (req, res) => {
   res.json(data)
 })
 
+// ── Client status lookup ──────────────────────────────────
+/**
+ * Given a JID like "212XXXXXXXXX@s.whatsapp.net", checks whether the sender
+ * has an active contract at this agency.
+ */
+async function getClientStatus(agencyId, senderJid) {
+  try {
+    const digits = senderJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
+    // Moroccan local format: strip leading country code
+    const localVariants = [digits, digits.replace(/^212/, '0')]
+
+    const { data: clients } = await supabaseAdmin
+      .from('clients')
+      .select('id')
+      .eq('agency_id', agencyId)
+      .in('phone', localVariants)
+      .limit(1)
+
+    if (!clients?.length) return 'no_contract'
+
+    const { data: contracts } = await supabaseAdmin
+      .from('contracts')
+      .select('id')
+      .eq('agency_id', agencyId)
+      .eq('client_id', clients[0].id)
+      .eq('status', 'active')
+      .limit(1)
+
+    return contracts?.length ? 'active_contract' : 'no_contract'
+  } catch {
+    return 'no_contract'
+  }
+}
+
+// ── Text message classifier ───────────────────────────────
+async function classifyTextMessage(bodyText, clientStatus) {
+  if (!process.env.ANTHROPIC_API_KEY) return null
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  try {
+    const message = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 256,
+      system: ROUTING_SYSTEM_PROMPT,
+      messages: [{
+        role: 'user',
+        content: JSON.stringify({ client_status: clientStatus, message: bodyText }),
+      }],
+    })
+    const raw = message.content?.[0]?.text?.trim() ?? ''
+    const clean = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+    return JSON.parse(clean)
+  } catch (err) {
+    console.error('[leads/classify] error:', err.message)
+    return null
+  }
+}
+
 /**
  * Called directly by the Baileys inbound listener (no HTTP round-trip).
  */
@@ -315,10 +404,27 @@ export async function handleInboundWhatsApp(agencyId, senderJid, images, bodyTex
     .map(i => ({ type: 'image', source: { type: 'base64', media_type: i.mimeType, data: i.base64 } }))
 
   if (imageBlocks.length && process.env.ANTHROPIC_API_KEY) {
+    // Image(s) received — run document OCR
     try {
       extractedData = await extractWithClaude(imageBlocks, bodyText)
     } catch (err) {
       console.error('[leads/inbound-wa] Claude error:', err.message)
+    }
+  } else if (bodyText?.trim()) {
+    // Text-only message — run lead classification
+    try {
+      const clientStatus = await getClientStatus(agencyId, senderJid)
+      const classification = await classifyTextMessage(bodyText, clientStatus)
+      if (classification) {
+        extractedData = {
+          classification: classification.classification,
+          confidence: classification.confidence,
+          summary_for_agent: classification.summary_for_agent,
+          ...classification.extracted_data,
+        }
+      }
+    } catch (err) {
+      console.error('[leads/inbound-wa] classify error:', err.message)
     }
   }
 

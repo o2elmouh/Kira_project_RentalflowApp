@@ -142,8 +142,8 @@ async function startSession(agencyId) {
         || imgMsg?.caption
         || ''
 
-      // Image message
       if (imgMsg) {
+        // Image message — download and pass to OCR pipeline
         try {
           const buf  = await downloadMediaMessage(msg, 'buffer', {})
           const b64  = buf.toString('base64')
@@ -151,6 +151,13 @@ async function startSession(agencyId) {
           await handleInboundWhatsApp(agencyId, senderJid, [{ base64: b64, mimeType: mime }], bodyText)
         } catch (err) {
           console.error(`[WA:${agencyId}] inbound image error:`, err.message)
+        }
+      } else if (bodyText.trim()) {
+        // Text-only message — pass to classification pipeline
+        try {
+          await handleInboundWhatsApp(agencyId, senderJid, [], bodyText)
+        } catch (err) {
+          console.error(`[WA:${agencyId}] inbound text error:`, err.message)
         }
       }
     }
