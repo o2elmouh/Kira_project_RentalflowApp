@@ -7,6 +7,8 @@
 4. **Process:** State plan → Get approval → Execute.
 5. **Ledger:** End sessions with a `Context Update` block to update this file.
 6. **Git:** Feature branches + structured commits (`feat:`, `fix:`, `chore:`).
+**Testing:** Write and run unit tests for every bug fix or new feature using the existing Vitest suite before completion.
+8. **Efficiency:** If a file (like pdf.js) is too large to parse or a task stalls, stop immediately, suggest a modular split, and restart.
 
 ---
 

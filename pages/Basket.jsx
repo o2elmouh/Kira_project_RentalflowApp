@@ -146,22 +146,60 @@ function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
               Données extraites par IA
             </div>
 
-            <FieldRow label="Prénom"          fieldKey="firstName"      value={extracted.firstName}      confidence={conf.firstName}      onChange={handleChange} />
-            <FieldRow label="Nom"             fieldKey="lastName"       value={extracted.lastName}       confidence={conf.lastName}       onChange={handleChange} />
-            <FieldRow label="N° Document"     fieldKey="documentNumber" value={extracted.documentNumber} confidence={conf.documentNumber} onChange={handleChange} />
-            <FieldRow label="Date de naissance" fieldKey="dateOfBirth"  value={extracted.dateOfBirth}    confidence={conf.dateOfBirth}    onChange={handleChange} />
-            <FieldRow label="Expiration"      fieldKey="expiryDate"     value={extracted.expiryDate}     confidence={conf.expiryDate}     onChange={handleChange} />
-            <FieldRow label="Type de doc"     fieldKey="documentType"   value={extracted.documentType}   confidence={null}                onChange={handleChange} />
-            <FieldRow label="Pays émetteur"   fieldKey="issuingCountry" value={extracted.issuingCountry} confidence={null}                onChange={handleChange} />
-
-            {extracted.rentalIntent?.detected && (
-              <div style={{ marginTop: 16, padding: 12, background: 'rgba(34,197,94,0.08)', borderRadius: 8, border: '1px solid rgba(34,197,94,0.2)' }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', marginBottom: 8 }}>Intention de location détectée</div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {extracted.rentalIntent.startDate && <span>Du {extracted.rentalIntent.startDate} </span>}
-                  {extracted.rentalIntent.endDate   && <span>au {extracted.rentalIntent.endDate} </span>}
-                  {extracted.rentalIntent.vehicleClass && <span>· {extracted.rentalIntent.vehicleClass}</span>}
+            {extracted.classification ? (
+              /* ── Routing lead (text / audio) ── */
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                  <span style={{
+                    fontSize: 12, fontWeight: 600, borderRadius: 6, padding: '4px 10px',
+                    background: extracted.classification === 'new_lead' ? 'rgba(34,197,94,0.12)' : extracted.classification === 'prolongation' ? 'rgba(59,130,246,0.12)' : extracted.classification === 'support_issue' ? 'rgba(239,68,68,0.12)' : 'rgba(148,163,184,0.12)',
+                    color: extracted.classification === 'new_lead' ? '#16a34a' : extracted.classification === 'prolongation' ? '#2563eb' : extracted.classification === 'support_issue' ? '#dc2626' : '#64748b',
+                  }}>
+                    {extracted.classification === 'new_lead' ? 'Nouveau lead' : extracted.classification === 'prolongation' ? 'Prolongation' : extracted.classification === 'support_issue' ? 'Incident' : 'Autre'}
+                  </span>
+                  {extracted.confidence != null && <ConfBadge score={extracted.confidence} />}
                 </div>
+
+                {extracted.summary_for_agent && (
+                  <div style={{ marginBottom: 16, padding: 12, background: 'rgba(99,102,241,0.06)', borderRadius: 8, border: '1px solid rgba(99,102,241,0.15)', fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                    {extracted.summary_for_agent}
+                  </div>
+                )}
+
+                {extracted.requested_car && (
+                  <FieldRow label="Véhicule demandé" fieldKey="requested_car" value={extracted.requested_car} confidence={null} onChange={handleChange} />
+                )}
+                {extracted.start_date && (
+                  <FieldRow label="Date de début" fieldKey="start_date" value={extracted.start_date} confidence={null} onChange={handleChange} />
+                )}
+                {extracted.end_date && (
+                  <FieldRow label="Date de fin" fieldKey="end_date" value={extracted.end_date} confidence={null} onChange={handleChange} />
+                )}
+                {extracted.requested_extra_days != null && (
+                  <FieldRow label="Jours supplémentaires" fieldKey="requested_extra_days" value={String(extracted.requested_extra_days)} confidence={null} onChange={handleChange} />
+                )}
+              </div>
+            ) : (
+              /* ── OCR lead (document image) ── */
+              <div>
+                <FieldRow label="Prénom"          fieldKey="firstName"      value={extracted.firstName}      confidence={conf.firstName}      onChange={handleChange} />
+                <FieldRow label="Nom"             fieldKey="lastName"       value={extracted.lastName}       confidence={conf.lastName}       onChange={handleChange} />
+                <FieldRow label="N° Document"     fieldKey="documentNumber" value={extracted.documentNumber} confidence={conf.documentNumber} onChange={handleChange} />
+                <FieldRow label="Date de naissance" fieldKey="dateOfBirth"  value={extracted.dateOfBirth}    confidence={conf.dateOfBirth}    onChange={handleChange} />
+                <FieldRow label="Expiration"      fieldKey="expiryDate"     value={extracted.expiryDate}     confidence={conf.expiryDate}     onChange={handleChange} />
+                <FieldRow label="Type de doc"     fieldKey="documentType"   value={extracted.documentType}   confidence={null}                onChange={handleChange} />
+                <FieldRow label="Pays émetteur"   fieldKey="issuingCountry" value={extracted.issuingCountry} confidence={null}                onChange={handleChange} />
+
+                {extracted.rentalIntent?.detected && (
+                  <div style={{ marginTop: 16, padding: 12, background: 'rgba(34,197,94,0.08)', borderRadius: 8, border: '1px solid rgba(34,197,94,0.2)' }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', marginBottom: 8 }}>Intention de location détectée</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      {extracted.rentalIntent.startDate && <span>Du {extracted.rentalIntent.startDate} </span>}
+                      {extracted.rentalIntent.endDate   && <span>au {extracted.rentalIntent.endDate} </span>}
+                      {extracted.rentalIntent.vehicleClass && <span>· {extracted.rentalIntent.vehicleClass}</span>}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -232,14 +270,40 @@ function LeadCard({ lead, onClick }) {
         {hasName ? `${ex.firstName || ''} ${ex.lastName || ''}`.trim() : lead.sender_id}
       </div>
 
-      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
-        {ex.documentType && <span>{ex.documentType} · </span>}
-        {ex.documentNumber && <span>{ex.documentNumber}</span>}
-        {!ex.documentNumber && <span>Aucun document extrait</span>}
-      </div>
+      {ex.classification ? (
+        /* ── Routing lead (text / audio) ── */
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <span style={{
+              fontSize: 11, fontWeight: 600, borderRadius: 4, padding: '2px 7px',
+              background: ex.classification === 'new_lead' ? 'rgba(34,197,94,0.12)' : ex.classification === 'prolongation' ? 'rgba(59,130,246,0.12)' : ex.classification === 'support_issue' ? 'rgba(239,68,68,0.12)' : 'rgba(148,163,184,0.12)',
+              color: ex.classification === 'new_lead' ? '#16a34a' : ex.classification === 'prolongation' ? '#2563eb' : ex.classification === 'support_issue' ? '#dc2626' : '#64748b',
+            }}>
+              {ex.classification === 'new_lead' ? 'Nouveau lead' : ex.classification === 'prolongation' ? 'Prolongation' : ex.classification === 'support_issue' ? 'Incident' : 'Autre'}
+            </span>
+            {ex.confidence != null && <ConfBadge score={ex.confidence} />}
+          </div>
+          {ex.summary_for_agent && (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+              {ex.summary_for_agent}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* ── OCR lead (document image) ── */
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
+          {ex.documentType && <span>{ex.documentType} · </span>}
+          {ex.documentNumber && <span>{ex.documentNumber}</span>}
+          {!ex.documentType && !ex.documentNumber && (
+            lead.raw_payload?.body
+              ? <span style={{ fontStyle: 'italic' }}>"{String(lead.raw_payload.body).slice(0, 80)}"</span>
+              : <span>Aucun document extrait</span>
+          )}
+        </div>
+      )}
 
       {lead.match_score && (
-        <div style={{ fontSize: 11, color: '#f59e0b' }}>
+        <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 4 }}>
           ⚠ Correspondance probable avec un dossier existant
         </div>
       )}

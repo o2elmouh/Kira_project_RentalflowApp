@@ -147,15 +147,21 @@ async function startSession(agencyId) {
 
       if (audioMsg) {
         // ── Voice note → Whisper → classification ──────────
+        let audioText = null
         try {
           const buf        = await downloadMediaMessage(msg, 'buffer', {})
           const transcript = await transcribeAudio(buf)
-          if (transcript?.trim()) {
-            console.log(`[WA:${agencyId}] audio transcribed (${transcript.length} chars)`)
-            await handleInboundWhatsApp(agencyId, senderJid, null, transcript)
-          }
+          audioText = transcript?.trim() || null
+          if (audioText) console.log(`[WA:${agencyId}] audio transcribed (${audioText.length} chars)`)
+          else           console.warn(`[WA:${agencyId}] audio transcription returned empty`)
         } catch (err) {
           console.error(`[WA:${agencyId}] inbound audio error:`, err.message)
+        }
+        // Always create a lead — even if transcription failed, agent needs to know
+        try {
+          await handleInboundWhatsApp(agencyId, senderJid, null, audioText || '[Message vocal reçu]')
+        } catch (err) {
+          console.error(`[WA:${agencyId}] inbound audio lead error:`, err.message)
         }
       } else if (imgMsg) {
         // ── Image → Supabase Storage → OCR ─────────────────
