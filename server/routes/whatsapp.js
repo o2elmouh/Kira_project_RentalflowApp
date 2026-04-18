@@ -73,7 +73,8 @@ async function startSession(agencyId) {
 
   const { state, saveCreds } = await useMultiFileAuthState(stateDir)
 
-  const entry = { sock: null, qr: null, status: 'connecting', retryCount: 0 }
+  // lidMap: WhatsApp LID ("7383...@lid") → phone JID ("212...@s.whatsapp.net")
+  const entry = { sock: null, qr: null, status: 'connecting', retryCount: 0, lidMap: new Map() }
   sessions.set(agencyId, entry)
 
   const version = await getWAVersion()
@@ -89,6 +90,20 @@ async function startSession(agencyId) {
   entry.sock = sock
 
   sock.ev.on('creds.update', saveCreds)
+
+  // ── LID → phone JID resolution ────────────────────────
+  // WhatsApp multi-device sometimes uses opaque LIDs instead of phone JIDs.
+  // contacts.upsert/update events carry the mapping; we cache it in-memory.
+  const storeLidMapping = (contacts) => {
+    for (const c of contacts) {
+      if (c.lid && c.id && c.id.endsWith('@s.whatsapp.net')) {
+        const lid = c.lid.endsWith('@lid') ? c.lid : `${c.lid}@lid`
+        entry.lidMap.set(lid, c.id)
+      }
+    }
+  }
+  sock.ev.on('contacts.upsert', storeLidMapping)
+  sock.ev.on('contacts.update', storeLidMapping)
 
   sock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
     if (qr) {
@@ -135,7 +150,11 @@ async function startSession(agencyId) {
     if (type !== 'notify') return
     for (const msg of messages) {
       if (msg.key.fromMe) continue
-      const senderJid = msg.key.remoteJid
+      const rawJid = msg.key.remoteJid
+      // Resolve LID ("7383...@lid") → phone JID via cached contact map
+      const senderJid = rawJid?.endsWith('@lid')
+        ? (entry.lidMap.get(rawJid) || rawJid)
+        : rawJid
       const imgMsg   = msg.message?.imageMessage
       const audioMsg = msg.message?.audioMessage
 

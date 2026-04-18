@@ -72,6 +72,7 @@ function FieldRow({ label, fieldKey, value, confidence, onChange }) {
 function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
   const [extracted, setExtracted] = useState(lead.extracted_data || {})
   const [saving, setSaving] = useState(false)
+  const [ignoring, setIgnoring] = useState(false)
 
   const conf = lead.confidence_scores || {}
 
@@ -221,10 +222,11 @@ function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
         {/* Footer */}
         <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button
-            onClick={() => onStatusChange(lead.id, 'ignored')}
-            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13 }}
+            onClick={async () => { setIgnoring(true); await onStatusChange(lead.id, 'ignored'); setIgnoring(false) }}
+            disabled={ignoring}
+            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', cursor: ignoring ? 'not-allowed' : 'pointer', fontSize: 13, opacity: ignoring ? 0.6 : 1 }}
           >
-            Ignorer
+            {ignoring ? 'Suppression…' : 'Ignorer'}
           </button>
           <button
             onClick={handleSave}
