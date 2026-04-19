@@ -541,7 +541,19 @@ export async function handleQuoteReply(agencyId, senderJid, text) {
     if (!matched) return null
 
     const intent = await analyzeQuoteReply(text)
-    const newStatus = intent === 'accepted' ? 'accepted' : intent === 'rejected' ? 'ignored' : 'offer_sent'
+
+    // For 'question' intent: note the message but return null so handleInboundWhatsApp
+    // still runs — new rental requests from offer_sent clients must not be swallowed.
+    if (intent === 'question') {
+      await supabaseAdmin
+        .from('pending_demands')
+        .update({ last_client_note: text.slice(0, 500) })
+        .eq('id', matched.id)
+      console.log(`[leads/handleQuoteReply] lead ${matched.id} → question noted, passing through`)
+      return null
+    }
+
+    const newStatus = intent === 'accepted' ? 'accepted' : 'ignored'
 
     await supabaseAdmin
       .from('pending_demands')
