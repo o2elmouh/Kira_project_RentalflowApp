@@ -15,7 +15,7 @@ export default function NewRental({ onDone, prefilledLead = null }) {
   // Derive rental prefill from lead rental intent (text or OCR leads)
   const ri = prefilledLead?.rentalIntent
   const today = new Date().toISOString().split('T')[0]
-  const rentalPrefill = ri?.detected ? {
+  const rentalPrefill = (ri?.detected || ri?.pickupLocation || ri?.returnLocation || ri?.startDate || ri?.endDate) ? {
     startDate:      ri.startDate      || today,
     endDate:        ri.endDate        || '',
     pickupLocation: ri.pickupLocation || '',

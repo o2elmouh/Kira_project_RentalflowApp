@@ -189,6 +189,9 @@ function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
                 {extracted.pickup_location && (
                   <FieldRow label="Lieu de récupération" fieldKey="pickup_location" value={extracted.pickup_location} confidence={null} onChange={handleChange} />
                 )}
+                {extracted.return_location && (
+                  <FieldRow label="Lieu de retour" fieldKey="return_location" value={extracted.return_location} confidence={null} onChange={handleChange} />
+                )}
                 {extracted.requested_extra_days != null && (
                   <FieldRow label="Jours supplémentaires" fieldKey="requested_extra_days" value={String(extracted.requested_extra_days)} confidence={null} onChange={handleChange} />
                 )}
@@ -308,6 +311,11 @@ function LeadCard({ lead, onClick }) {
               📍 {ex.pickup_location}
             </div>
           )}
+          {ex.return_location && (
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+              🏁 {ex.return_location}
+            </div>
+          )}
         </div>
       ) : (
         /* ── OCR lead (document image) ── */
@@ -397,7 +405,7 @@ export default function Basket({ onNavigate }) {
       phone:                lead.source === 'whatsapp' ? lead.sender_id.replace('whatsapp:', '').replace(/@.*$/, '') : '',
       email:                lead.source === 'gmail'    ? lead.sender_id : '',
       rentalIntent: {
-        detected: !!(extractedData.rentalIntent?.detected || extractedData.start_date || extractedData.end_date || extractedData.pickup_location),
+        detected: !!(extractedData.rentalIntent?.detected || extractedData.start_date || extractedData.end_date || extractedData.pickup_location || extractedData.return_location),
         startDate:      extractedData.rentalIntent?.startDate || extractedData.start_date || null,
         endDate:        extractedData.rentalIntent?.endDate   || extractedData.end_date   || null,
         vehicleClass:   extractedData.rentalIntent?.vehicleClass || extractedData.requested_car || null,
