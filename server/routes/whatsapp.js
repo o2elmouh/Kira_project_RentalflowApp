@@ -44,7 +44,7 @@ async function getWAVersion() {
 import { Boom } from '@hapi/boom'
 import QRCode from 'qrcode'
 import OpenAI, { toFile } from 'openai'
-import { handleInboundWhatsApp } from './leads.js'
+import { handleInboundWhatsApp, handleQuoteReply } from './leads.js'
 import { requireAuth } from '../middleware/auth.js'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 
@@ -176,14 +176,19 @@ async function startSession(agencyId) {
         } catch (err) {
           console.error(`[WA:${agencyId}] inbound audio error:`, err.message)
         }
-        // Always create a lead — even if transcription failed, agent needs to know
+        // Check if this is a reply to a pending quote offer first
+        const effectiveText = audioText || '[Message vocal reçu]'
         try {
-          await handleInboundWhatsApp(agencyId, senderJid, null, audioText || '[Message vocal reçu]')
+          const quoteLead = await handleQuoteReply(agencyId, senderJid, effectiveText)
+          if (!quoteLead) {
+            await handleInboundWhatsApp(agencyId, senderJid, null, effectiveText)
+          }
         } catch (err) {
           console.error(`[WA:${agencyId}] inbound audio lead error:`, err.message)
         }
       } else if (imgMsg) {
         // ── Image → Supabase Storage → OCR ─────────────────
+        // Images are never quote replies — go straight to lead creation
         let imageUrl = null
         try {
           const buf  = await downloadMediaMessage(msg, 'buffer', {})
@@ -200,9 +205,12 @@ async function startSession(agencyId) {
           console.error(`[WA:${agencyId}] inbound image lead error:`, err.message)
         }
       } else if (bodyText.trim()) {
-        // ── Text-only → lead classification ────────────────
+        // ── Text-only → check quote reply first, then lead classification ──
         try {
-          await handleInboundWhatsApp(agencyId, senderJid, null, bodyText)
+          const quoteLead = await handleQuoteReply(agencyId, senderJid, bodyText)
+          if (!quoteLead) {
+            await handleInboundWhatsApp(agencyId, senderJid, null, bodyText)
+          }
         } catch (err) {
           console.error(`[WA:${agencyId}] inbound text error:`, err.message)
         }
@@ -375,6 +383,57 @@ router.post('/restitution', whatsappLimit, async (req, res) => {
     res.json({ sent: true })
   } catch (err) {
     console.error('[WA/restitution]', err.message)
+    res.status(502).json({ error: err.message })
+  }
+})
+
+// POST /whatsapp/send-offer — send a quote offer to a waiting lead via WhatsApp
+router.post('/send-offer', whatsappLimit, async (req, res) => {
+  const agencyId = req.user.agency_id
+  const { leadId, vehicleId, priceTotal } = req.body
+
+  if (!agencyId || !leadId || !vehicleId || priceTotal == null) {
+    return res.status(400).json({ error: 'leadId, vehicleId and priceTotal are required' })
+  }
+
+  try {
+    const { data: lead, error: leadErr } = await supabaseAdmin
+      .from('pending_demands')
+      .select('id, sender_id, status')
+      .eq('id', leadId)
+      .eq('agency_id', agencyId)
+      .maybeSingle()
+
+    if (leadErr) return res.status(500).json({ error: leadErr.message })
+    if (!lead)   return res.status(404).json({ error: 'Lead not found' })
+
+    const { data: vehicle, error: vehErr } = await supabaseAdmin
+      .from('vehicles')
+      .select('id, name, make, model')
+      .eq('id', vehicleId)
+      .eq('agency_id', agencyId)
+      .maybeSingle()
+
+    if (vehErr) return res.status(500).json({ error: vehErr.message })
+    if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' })
+
+    const vehicleName = vehicle.name || `${vehicle.make} ${vehicle.model}`.trim()
+    const phone = lead.sender_id.replace(/@.*$/, '').replace(/\D/g, '')
+
+    const body = `Bonjour ! 🚗 Suite à votre demande, nous vous proposons une *${vehicleName}* pour *${priceTotal} MAD* au total.\n\nÊtes-vous intéressé(e) ? Répondez *Oui* pour confirmer ou *Non* pour décliner.`
+
+    await sendWhatsAppMessage({ agencyId, to: phone, body })
+
+    const { error: updateErr } = await supabaseAdmin
+      .from('pending_demands')
+      .update({ status: 'offer_sent', offered_vehicle_id: vehicleId, offered_price_total: priceTotal })
+      .eq('id', leadId)
+
+    if (updateErr) console.error('[WA/send-offer] update error:', updateErr.message)
+
+    res.json({ sent: true })
+  } catch (err) {
+    console.error('[WA/send-offer]', err.message)
     res.status(502).json({ error: err.message })
   }
 })

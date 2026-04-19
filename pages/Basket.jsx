@@ -6,9 +6,18 @@
  */
 import { useState, useEffect, useCallback, useContext } from 'react'
 import { api } from '../lib/api.js'
+import { supabase } from '../lib/supabase.js'
 import { UserContext } from '../lib/UserContext.js'
 
-const STATUS_LABELS = { pending: 'En attente', processed: 'Traité', ignored: 'Ignoré' }
+const STATUS_LABELS = {
+  pending:    'En attente',
+  waiting:    'Devis à préparer',
+  offer_sent: 'Offre envoyée',
+  accepted:   'Accepté',
+  processed:  'Traité',
+  ignored:    'Ignoré',
+  converted:  'Converti',
+}
 const SOURCE_LABELS  = { whatsapp: 'WhatsApp', gmail: 'Gmail' }
 
 // Strip WhatsApp JID suffix: "212XXXXXXX@s.whatsapp.net" → "212XXXXXXX"
@@ -68,11 +77,104 @@ function FieldRow({ label, fieldKey, value, confidence, onChange }) {
   )
 }
 
+// ── Smart Quote panel ──────────────────────────────────────
+function SmartQuotePanel({ lead, onSent }) {
+  const [vehicles, setVehicles]   = useState([])
+  const [vehicleId, setVehicleId] = useState('')
+  const [price, setPrice]         = useState('')
+  const [sending, setSending]     = useState(false)
+  const [error, setError]         = useState(null)
+  const [done, setDone]           = useState(lead.status === 'offer_sent')
+
+  useEffect(() => {
+    supabase
+      .from('vehicles')
+      .select('id, make, model, license_plate, name')
+      .eq('agency_id', lead.agency_id)
+      .then(({ data }) => setVehicles(data || []))
+  }, [lead.agency_id])
+
+  async function handleSend() {
+    if (!vehicleId || !price) return
+    setSending(true)
+    setError(null)
+    try {
+      await api.sendQuoteOffer({ leadId: lead.id, vehicleId, priceTotal: parseFloat(price) })
+      setDone(true)
+      onSent()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  if (done) {
+    return (
+      <div style={{ marginTop: 20, padding: 14, background: 'rgba(34,197,94,0.08)', borderRadius: 8, border: '1px solid rgba(34,197,94,0.25)', fontSize: 13, color: '#22c55e' }}>
+        ✅ Offre envoyée au client via WhatsApp. En attente de sa réponse.
+        {lead.offered_price_total && (
+          <span style={{ marginLeft: 8, color: 'var(--text-secondary)' }}>({lead.offered_price_total} MAD)</span>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ marginTop: 20, padding: 16, background: 'rgba(99,102,241,0.06)', borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#818cf8', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        Devis Rapide
+      </div>
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>Véhicule proposé</label>
+        <select
+          value={vehicleId}
+          onChange={e => setVehicleId(e.target.value)}
+          style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-primary)', fontSize: 13, boxSizing: 'border-box' }}
+        >
+          <option value="">— Choisir un véhicule —</option>
+          {vehicles.map(v => (
+            <option key={v.id} value={v.id}>
+              {v.name || `${v.make} ${v.model}`.trim()} {v.license_plate ? `(${v.license_plate})` : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>Prix total (MAD)</label>
+        <input
+          type="number"
+          min="0"
+          value={price}
+          onChange={e => setPrice(e.target.value)}
+          placeholder="Ex : 1500"
+          style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-primary)', fontSize: 13, boxSizing: 'border-box' }}
+        />
+      </div>
+      {error && <div style={{ fontSize: 12, color: '#ef4444', marginBottom: 8 }}>{error}</div>}
+      <button
+        onClick={handleSend}
+        disabled={sending || !vehicleId || !price}
+        style={{
+          width: '100%', padding: '9px 16px', borderRadius: 8,
+          background: sending || !vehicleId || !price ? 'var(--bg-secondary)' : '#22c55e',
+          color: sending || !vehicleId || !price ? 'var(--text-secondary)' : '#fff',
+          border: 'none', fontWeight: 600, cursor: sending || !vehicleId || !price ? 'not-allowed' : 'pointer', fontSize: 13,
+        }}
+      >
+        {sending ? 'Envoi…' : '📲 Envoyer l\'Offre via WhatsApp'}
+      </button>
+    </div>
+  )
+}
+
 // ── Comparison modal ───────────────────────────────────────
 function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
   const [extracted, setExtracted] = useState(lead.extracted_data || {})
   const [saving, setSaving] = useState(false)
   const [ignoring, setIgnoring] = useState(false)
+  const [preparing, setPreparing] = useState(false)
+  const [localStatus, setLocalStatus] = useState(lead.status)
 
   const conf = lead.confidence_scores || {}
 
@@ -219,11 +321,31 @@ function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
                 )}
               </div>
             )}
+
+            {/* Smart Quote panel — shown when status is waiting or offer_sent */}
+            {(localStatus === 'waiting' || localStatus === 'offer_sent') && (
+              <SmartQuotePanel
+                lead={{ ...lead, status: localStatus }}
+                onSent={() => setLocalStatus('offer_sent')}
+              />
+            )}
+
+            {/* Accepted badge */}
+            {localStatus === 'accepted' && (
+              <div style={{ marginTop: 20, padding: 14, background: 'rgba(34,197,94,0.08)', borderRadius: 8, border: '1px solid rgba(34,197,94,0.25)', fontSize: 13, color: '#22c55e', fontWeight: 600 }}>
+                ✅ Le client a accepté l'offre — vous pouvez convertir en contrat.
+                {lead.last_client_note && (
+                  <div style={{ fontWeight: 400, marginTop: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
+                    Réponse : « {lead.last_client_note} »
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <button
             onClick={async () => { setIgnoring(true); await onStatusChange(lead.id, 'ignored'); setIgnoring(false) }}
             disabled={ignoring}
@@ -238,6 +360,26 @@ function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
           >
             {saving ? 'Enregistrement…' : 'Sauvegarder'}
           </button>
+          {/* Préparer Devis — available for pending/new_lead to queue a quote offer */}
+          {localStatus === 'pending' && extracted.classification === 'new_lead' && (
+            <button
+              onClick={async () => {
+                setPreparing(true)
+                try {
+                  await api.updateLeadStatus(lead.id, 'waiting')
+                  setLocalStatus('waiting')
+                } catch (err) {
+                  console.error(err)
+                } finally {
+                  setPreparing(false)
+                }
+              }}
+              disabled={preparing}
+              style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.4)', background: 'rgba(99,102,241,0.08)', color: '#818cf8', cursor: preparing ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}
+            >
+              {preparing ? 'Mise à jour…' : '💬 Préparer Devis'}
+            </button>
+          )}
           <button
             onClick={() => onConvert(lead, extracted)}
             style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--accent)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}

@@ -323,10 +323,11 @@ router.get('/:id', async (req, res) => {
 })
 
 // PATCH /leads/:id/status
+const VALID_STATUSES = ['pending', 'processed', 'ignored', 'waiting', 'offer_sent', 'accepted', 'converted']
 router.patch('/:id/status', async (req, res) => {
   const { status } = req.body
-  if (!['pending', 'processed', 'ignored'].includes(status)) {
-    return res.status(400).json({ error: 'status must be pending|processed|ignored' })
+  if (!VALID_STATUSES.includes(status)) {
+    return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join('|')}` })
   }
 
   const { data, error } = await supabaseAdmin
@@ -478,6 +479,80 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageUrl, bodyT
       merged_with_id: match?.type === 'potential' ? match.demand.id : null,
     })
     if (error) console.error('[leads/inbound-wa] insert error:', error.message)
+  }
+}
+
+// ── Smart Quote: reply intent analysis ───────────────────
+/**
+ * Analyze a client's WhatsApp reply to decide if they accepted, rejected or asked
+ * a question about the quote. Handles Moroccan Darija and French.
+ * Returns: 'accepted' | 'rejected' | 'question'
+ */
+export async function analyzeQuoteReply(text) {
+  if (!process.env.ANTHROPIC_API_KEY) return 'question'
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  try {
+    const message = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 64,
+      temperature: 0,
+      system: `You analyze client replies to car rental quote offers. The client may write in French or Moroccan Darija.
+Return ONLY valid JSON with a single key "intent". No markdown, no explanation.
+Rules:
+- "accepted": client clearly agrees (oui, wakha, mwafaq, ça marche, ok, d'accord, je prends, okay, مواطق, واخا, etc.)
+- "rejected": client clearly refuses (non, la, trop cher, annuler, لا, etc.)
+- "question": anything else — questions, negotiations, unclear messages`,
+      messages: [{ role: 'user', content: text }],
+    })
+    const raw = message.content?.[0]?.text?.trim() ?? ''
+    const clean = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+    const parsed = JSON.parse(clean)
+    return ['accepted', 'rejected', 'question'].includes(parsed.intent) ? parsed.intent : 'question'
+  } catch (err) {
+    console.error('[leads/analyzeQuoteReply] error:', err.message)
+    return 'question'
+  }
+}
+
+/**
+ * Handle a client reply to a pending quote offer.
+ * Checks if the sender has an `offer_sent` lead; if so, runs intent analysis and
+ * updates the lead status accordingly.
+ * Returns the matched leadId if handled, or null if no offer_sent lead was found.
+ */
+export async function handleQuoteReply(agencyId, senderJid, text) {
+  try {
+    const digits9 = (senderJid || '').replace(/\D/g, '').slice(-9)
+    if (!digits9) return null
+
+    const { data: leads } = await supabaseAdmin
+      .from('pending_demands')
+      .select('id, sender_id')
+      .eq('agency_id', agencyId)
+      .eq('status', 'offer_sent')
+      .order('created_at', { ascending: false })
+      .limit(20)
+
+    const matched = (leads || []).find(l => {
+      const leadDigits9 = (l.sender_id || '').replace(/\D/g, '').slice(-9)
+      return leadDigits9 === digits9
+    })
+
+    if (!matched) return null
+
+    const intent = await analyzeQuoteReply(text)
+    const newStatus = intent === 'accepted' ? 'accepted' : intent === 'rejected' ? 'ignored' : 'offer_sent'
+
+    await supabaseAdmin
+      .from('pending_demands')
+      .update({ status: newStatus, last_client_note: text.slice(0, 500) })
+      .eq('id', matched.id)
+
+    console.log(`[leads/handleQuoteReply] lead ${matched.id} → ${newStatus} (intent: ${intent})`)
+    return matched.id
+  } catch (err) {
+    console.error('[leads/handleQuoteReply] error:', err.message)
+    return null
   }
 }
 
