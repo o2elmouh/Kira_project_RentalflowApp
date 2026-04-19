@@ -174,6 +174,7 @@ function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
   const [saving, setSaving] = useState(false)
   const [ignoring, setIgnoring] = useState(false)
   const [preparing, setPreparing] = useState(false)
+  const [prepareError, setPrepareError] = useState(null)
   const [localStatus, setLocalStatus] = useState(lead.status)
 
   const conf = lead.confidence_scores || {}
@@ -362,23 +363,31 @@ function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
           </button>
           {/* Préparer Devis — available for pending/new_lead to queue a quote offer */}
           {localStatus === 'pending' && extracted.classification === 'new_lead' && (
-            <button
-              onClick={async () => {
-                setPreparing(true)
-                try {
-                  await api.updateLeadStatus(lead.id, 'waiting')
-                  setLocalStatus('waiting')
-                } catch (err) {
-                  console.error(err)
-                } finally {
-                  setPreparing(false)
-                }
-              }}
-              disabled={preparing}
-              style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.4)', background: 'rgba(99,102,241,0.08)', color: '#818cf8', cursor: preparing ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}
-            >
-              {preparing ? 'Mise à jour…' : '💬 Préparer Devis'}
-            </button>
+            <>
+              {prepareError && (
+                <div style={{ fontSize: 12, color: '#ef4444', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)' }}>
+                  {prepareError}
+                </div>
+              )}
+              <button
+                onClick={async () => {
+                  setPreparing(true)
+                  setPrepareError(null)
+                  try {
+                    await api.updateLeadStatus(lead.id, 'waiting')
+                    setLocalStatus('waiting')
+                  } catch (err) {
+                    setPrepareError(err.message)
+                  } finally {
+                    setPreparing(false)
+                  }
+                }}
+                disabled={preparing}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.4)', background: 'rgba(99,102,241,0.08)', color: '#818cf8', cursor: preparing ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}
+              >
+                {preparing ? 'Mise à jour…' : '💬 Préparer Devis'}
+              </button>
+            </>
           )}
           <button
             onClick={() => onConvert(lead, extracted)}
