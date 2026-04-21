@@ -434,6 +434,19 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
     try {
       const imageBlock = { type: 'image', source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: imageBuffer.toString('base64') } }
       extractedData = await extractWithClaude([imageBlock], bodyText)
+      // Document scan = always a new lead; also extract rental intent from caption if present
+      if (extractedData) {
+        extractedData.classification = 'new_lead'
+        if (bodyText?.trim()) {
+          try {
+            const clientStatus = await getClientStatus(agencyId, senderJid)
+            const captionClass = await classifyTextMessage(bodyText, clientStatus)
+            if (captionClass?.extracted_data) {
+              extractedData = { ...extractedData, ...captionClass.extracted_data }
+            }
+          } catch (_) {}
+        }
+      }
     } catch (err) {
       console.error('[leads/inbound-wa] Claude error:', err.message)
     }
