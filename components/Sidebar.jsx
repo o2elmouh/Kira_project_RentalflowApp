@@ -16,7 +16,7 @@ const NAV_IDS = [
 ]
 
 // Pages restricted to admin role only
-const ADMIN_ONLY_PAGES = ['settings', 'accounting']
+const ADMIN_ONLY_PAGES = ['accounting']
 
 export default function Sidebar({ active, onNav, user, profile, isAdmin = true, onSignOut }) {
   const { t } = useTranslation('common')
