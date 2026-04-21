@@ -420,18 +420,19 @@ async function classifyTextMessage(bodyText, clientStatus) {
 
 /**
  * Called directly by the Baileys inbound listener (no HTTP round-trip).
- * @param {string}      agencyId
- * @param {string}      senderJid  — e.g. "212XXXXXXXXX@s.whatsapp.net"
- * @param {string|null} imageUrl   — public Supabase Storage URL, or null
- * @param {string}      bodyText   — text body or Whisper transcript
+ * @param {string}         agencyId
+ * @param {string}         senderJid   — e.g. "212XXXXXXXXX@s.whatsapp.net"
+ * @param {Buffer|null}    imageBuffer — raw image bytes (never persisted)
+ * @param {string}         mimeType    — e.g. "image/jpeg"
+ * @param {string}         bodyText    — text body or Whisper transcript
  */
-export async function handleInboundWhatsApp(agencyId, senderJid, imageUrl, bodyText) {
+export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mimeType, bodyText) {
   let extractedData = null
 
-  if (imageUrl && process.env.ANTHROPIC_API_KEY) {
-    // Image received — run document OCR via public URL
+  if (imageBuffer && process.env.ANTHROPIC_API_KEY) {
+    // Process & Purge — send buffer directly to Claude as base64, never stored
     try {
-      const imageBlock = { type: 'image', source: { type: 'url', url: imageUrl } }
+      const imageBlock = { type: 'image', source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: imageBuffer.toString('base64') } }
       extractedData = await extractWithClaude([imageBlock], bodyText)
     } catch (err) {
       console.error('[leads/inbound-wa] Claude error:', err.message)
@@ -455,13 +456,12 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageUrl, bodyT
   }
 
   const match = await findMatchingDemand(agencyId, senderJid, extractedData)
-  const mediaUrls = imageUrl ? [imageUrl] : []
 
   if (match && match.type !== 'potential') {
     const existing = match.demand
     await supabaseAdmin.from('pending_demands').update({
       extracted_data: { ...(existing.extracted_data || {}), ...(extractedData || {}) },
-      media_urls: [...(existing.media_urls || []), ...mediaUrls],
+      media_urls: existing.media_urls || [],
       confidence_scores: extractedData?.confidenceScores || null,
       match_score: match.score,
       raw_payload: { ...existing.raw_payload, latestBody: bodyText },
@@ -474,7 +474,7 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageUrl, bodyT
       raw_payload: { body: bodyText, from: senderJid },
       extracted_data: extractedData,
       confidence_scores: extractedData?.confidenceScores || null,
-      media_urls: mediaUrls,
+      media_urls: [],
       match_score: match?.score || null,
       merged_with_id: match?.type === 'potential' ? match.demand.id : null,
     })
