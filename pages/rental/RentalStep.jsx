@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { AlertCircle, ArrowLeft, ArrowRight, X } from 'lucide-react'
 import { getAvailableVehicles } from '../../lib/db'
+import { api } from '../../lib/api'
 import { getRentalOptions } from '../../utils/rentalOptions'
 import StepButtons from './StepButtons'
 
@@ -34,9 +35,16 @@ export default function RentalStep({ client, onNext, onBack, onSaveAndQuit, onCa
     if (!form.startDate || !form.endDate || form.endDate < form.startDate) return
     let cancelled = false
     setVehiclesLoading(true)
-    getAvailableVehicles(form.startDate, form.endDate)
-      .then(data => { if (!cancelled) setVehicles(data) })
-      .catch(err => { console.error('[NewRental] getAvailableVehicles', err) })
+    Promise.all([
+      getAvailableVehicles(form.startDate, form.endDate),
+      api.network.borrowedFleet({ startDate: form.startDate, endDate: form.endDate })
+        .then(r => r.vehicles ?? [])
+        .catch(() => []),
+    ])
+      .then(([own, borrowed]) => {
+        if (!cancelled) setVehicles([...own, ...borrowed])
+      })
+      .catch(err => { console.error('[NewRental] vehicles fetch', err) })
       .finally(() => { if (!cancelled) setVehiclesLoading(false) })
     return () => { cancelled = true }
   }, [form.startDate, form.endDate])
@@ -109,8 +117,11 @@ export default function RentalStep({ client, onNext, onBack, onSaveAndQuit, onCa
             <div className="fleet-grid mt-3">
               {vehicles.map(v => (
                 <div key={v.id} className="vehicle-card"
-                  style={{ cursor:'pointer', border: form.vehicleId === v.id ? '2px solid var(--accent)' : undefined }}
+                  style={{ cursor:'pointer', border: form.vehicleId === v.id ? '2px solid var(--accent)' : v._isNetworkVehicle ? '1px solid #a5b4fc' : undefined }}
                   onClick={() => selectVehicle(v)}>
+                  {v._isNetworkVehicle && (
+                    <span className="badge badge-purple" style={{ marginBottom: 6, display: 'inline-block' }}>🌐 Network</span>
+                  )}
                   <div className="vehicle-plate">{v.plate}</div>
                   <div className="vehicle-name">{v.make} {v.model} {v.year}</div>
                   <div className="vehicle-meta">{v.category} · {v.color} · {v.fuelType}</div>

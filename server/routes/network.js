@@ -388,6 +388,23 @@ router.patch('/requests/:id/status', async (req, res, next) => {
       .single()
 
     if (uErr) return next(uErr)
+
+    // Sync vehicle status with the request lifecycle
+    if (newStatus === 'APPROVED') {
+      await supabaseAdmin
+        .from('vehicles')
+        .update({ status: 'rented' })
+        .eq('id', request.vehicle_id)
+    } else if (['COMPLETED', 'REJECTED', 'CANCELLED'].includes(newStatus)) {
+      // Only revert if it was rented due to this request (status was APPROVED)
+      if (['APPROVED', 'PENDING'].includes(request.status)) {
+        await supabaseAdmin
+          .from('vehicles')
+          .update({ status: 'available' })
+          .eq('id', request.vehicle_id)
+      }
+    }
+
     res.json({ request: updated })
   } catch (err) {
     next(err)
@@ -452,6 +469,75 @@ router.get('/requests/:id/reveal', async (req, res, next) => {
       vehicle: revealedCar,
       // Note: end-customer PII is never stored — no customer field here
     })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /network/requests/borrowed-fleet?startDate=&endDate=
+// Returns APPROVED borrowed vehicles shaped for the New Rental vehicle picker.
+// Daily rate = network_daily_price (inter-agency rate, not the owner's daily_rate).
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/requests/borrowed-fleet', async (req, res, next) => {
+  try {
+    const agencyId = await resolveAgencyId(req)
+    if (!agencyId) return res.status(403).json({ error: 'No agency associated with account' })
+
+    const { startDate, endDate } = req.query
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'startDate and endDate are required' })
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('cross_agency_requests')
+      .select(`
+        id,
+        start_date,
+        end_date,
+        agreed_price,
+        vehicles (
+          id, brand, model, year, plate_number, fuel_type,
+          transmission, seats, color, network_daily_price,
+          status, image_url
+        )
+      `)
+      .eq('requesting_agency_id', agencyId)
+      .eq('status', 'APPROVED')
+      // Request window must overlap the queried rental window
+      .lte('start_date', endDate)
+      .gte('end_date', startDate)
+
+    if (error) return next(error)
+
+    const FUEL_MAP  = { gasoline: 'Essence', diesel: 'Diesel', electric: 'Électrique', hybrid: 'Hybride' }
+    const TRANS_MAP = { manual: 'Manuelle', automatic: 'Automatique' }
+
+    const vehicles = (data ?? [])
+      .filter(r => r.vehicles)
+      .map(r => ({
+        // Shape matches vehicleFromDb output so RentalStep works unchanged
+        id:           r.vehicles.id,
+        make:         r.vehicles.brand,
+        model:        r.vehicles.model,
+        year:         r.vehicles.year,
+        plate:        r.vehicles.plate_number,
+        color:        r.vehicles.color ?? '—',
+        fuelType:     FUEL_MAP[r.vehicles.fuel_type] || r.vehicles.fuel_type,
+        transmission: TRANS_MAP[r.vehicles.transmission] || r.vehicles.transmission,
+        seats:        r.vehicles.seats,
+        dailyRate:    r.vehicles.network_daily_price ?? r.agreed_price ?? 0,
+        depositAmount: 0,
+        category:     'Network',
+        image_url:    r.vehicles.image_url ?? [],
+        status:       r.vehicles.status,
+        // Extra metadata so the UI can badge it
+        _isNetworkVehicle: true,
+        _networkRequestId: r.id,
+        _networkWindow:    { start: r.start_date, end: r.end_date },
+      }))
+
+    res.json({ vehicles })
   } catch (err) {
     next(err)
   }
