@@ -86,4 +86,9 @@ See [CHANGELOG.md](CHANGELOG.md) for completed work history.
 ## GitHub
 Repo: `https://github.com/o2elmouh/Kira_project_RentalflowApp`
 Main branch: `main`
-Latest commit: `289b270` — feat(invoices): add Eye button to preview invoice PDF in-app modal
+Latest commit: `650ad26` — feat(network): RentalFlow Network feature (staging)
+
+## Versioning
+- Version is displayed in the Sidebar bottom-left, next to the agency name.
+- **Every push must bump the version** in `components/Sidebar.jsx` (the `v1.x.x` string).
+- Current version: **v1.1.6** (commit `adc2bda` baseline, bumped each push from here)
