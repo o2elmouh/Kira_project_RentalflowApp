@@ -4,13 +4,12 @@
 -- ============================================================
 
 -- ── 1. Enum for request lifecycle ────────────────────────────
-CREATE TYPE public.network_request_status AS ENUM (
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'COMPLETED',
-  'CANCELLED'
-);
+DO $$ BEGIN
+  CREATE TYPE public.network_request_status AS ENUM (
+    'PENDING', 'APPROVED', 'REJECTED', 'COMPLETED', 'CANCELLED'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ── 2. Extend vehicles ────────────────────────────────────────
 -- Only the owning agency's admin may flip is_network_visible via the API.
