@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, PlusCircle, Car, Users, FileText, Receipt, Settings, LogOut, RotateCcw, Calculator, Inbox } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Car, Users, FileText, Receipt, Settings, LogOut, RotateCcw, Calculator, Inbox, Globe } from 'lucide-react'
 import LanguageSelector from './LanguageSelector'
 
 const NAV_IDS = [
@@ -12,6 +12,7 @@ const NAV_IDS = [
   { id: 'invoices',          key: 'invoices',     icon: Receipt },
   { id: 'accounting',        key: 'accounting',   icon: Calculator },
   { id: 'basket',            key: 'basket',       icon: Inbox, premium: true },
+  { id: 'network',           key: 'network',      icon: Globe },
   { id: 'settings',          key: 'settings',     icon: Settings },
 ]
 

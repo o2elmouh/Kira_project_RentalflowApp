@@ -17,6 +17,7 @@ import WelcomeScreen from './pages/WelcomeScreen'
 import SignContract from './pages/SignContract'
 import Accounting from './pages/Accounting'
 import Basket from './pages/Basket'
+import Network from './pages/Network'
 
 const PREVIEW = new URLSearchParams(window.location.search).get('preview')
 const PAGE_PARAM = new URLSearchParams(window.location.search).get('page')
@@ -180,6 +181,7 @@ export default function App() {
       case 'settings':
         if (!isAdmin) { setTimeout(() => setPage('dashboard'), 0); return null }
         return <Settings />
+      case 'network':  return <Network />
       case 'basket':
         if (!isPremium) { setTimeout(() => setPage('dashboard'), 0); return null }
         return <Basket onNavigate={handleNav} />
