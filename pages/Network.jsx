@@ -3,9 +3,10 @@
  * UI follows the same design system as NewRental / RentalStep.
  */
 
-import { useState, useEffect, useContext } from 'react'
-import { Globe, Search, ArrowUpRight, ArrowDownLeft, Eye, Check, X, Loader2, Calendar } from 'lucide-react'
+import { useState, useEffect, useRef, useContext } from 'react'
+import { Globe, Search, ArrowUpRight, ArrowDownLeft, Eye, Check, X, Loader2, Calendar, RefreshCw } from 'lucide-react'
 import { api } from '../lib/api'
+import { supabase } from '../lib/supabase'
 import { UserContext } from '../lib/UserContext'
 
 // ─── Status badge ─────────────────────────────────────────────
@@ -179,10 +180,36 @@ export default function Network() {
   const [loading, setLoading]         = useState(false)
   const [reqLoading, setReqLoading]   = useState(false)
   const [error, setError]             = useState('')
+  const [refreshing, setRefreshing]   = useState(false)
+
+  const incomingRefreshRef = useRef(null)
 
   useEffect(() => {
     if (tab === 'outgoing') loadOutgoing()
-    if (tab === 'incoming') loadIncoming()
+    if (tab === 'incoming') {
+      loadIncoming()
+      // Subscribe to real-time inserts on cross_agency_requests for this agency
+      const channel = supabase
+        .channel('network-incoming')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'cross_agency_requests',
+        }, () => loadIncoming())
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'cross_agency_requests',
+        }, () => loadIncoming())
+        .subscribe()
+      incomingRefreshRef.current = channel
+    }
+    return () => {
+      if (incomingRefreshRef.current) {
+        supabase.removeChannel(incomingRefreshRef.current)
+        incomingRefreshRef.current = null
+      }
+    }
   }, [tab])
 
   async function handleSearch(e) {
@@ -207,11 +234,14 @@ export default function Network() {
     } catch { /* silent */ }
   }
 
-  async function loadIncoming() {
+  async function loadIncoming(showSpinner = false) {
+    if (showSpinner) setRefreshing(true)
     try {
       const { requests } = await api.network.getIncoming()
       setIncoming(requests ?? [])
-    } catch { /* silent */ }
+    } catch { /* silent */ } finally {
+      if (showSpinner) setRefreshing(false)
+    }
   }
 
   async function handleCreateRequest(body) {
@@ -426,7 +456,18 @@ export default function Network() {
               </p>
             ) : (
               <div className="card">
-                <div className="card-header"><h3>Incoming Requests</h3></div>
+                <div className="card-header">
+                <h3>Incoming Requests</h3>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: 5 }}
+                  onClick={() => loadIncoming(true)}
+                  disabled={refreshing}
+                >
+                  <RefreshCw size={12} style={refreshing ? { animation: 'spin 1s linear infinite' } : undefined} />
+                  Actualiser
+                </button>
+              </div>
                 <div style={{ padding: 0 }}>
                   {incoming.map((r, i) => (
                     <div key={r.id} style={{
