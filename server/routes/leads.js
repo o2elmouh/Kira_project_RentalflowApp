@@ -261,18 +261,19 @@ router.post('/webhook/gmail', async (req, res) => {
   let extractedData = null
   const mediaUrls = []
 
-  const imageBlocks = (attachments || [])
-    .filter(a => a.base64 && a.mimeType?.startsWith('image/'))
-    .map(a => ({ type: 'image', source: { type: 'base64', media_type: a.mimeType, data: a.base64 } }))
-
-  if (!imageBlocks.length) {
-    const textForTriage = [subject, bodyText].filter(Boolean).join('\n\n')
+  // Triage gate — always runs on any available text before any extraction
+  const textForTriage = [subject, bodyText].filter(Boolean).join('\n\n')
+  if (textForTriage) {
     const triage = await triageMessage(textForTriage)
     if (triage && !triage.is_rental_business) {
       console.log(`[leads/gmail] triage dropped: ${triage.category} (${triage.confidence}%) — ${triage.reason}`)
       return res.json({ ok: true, dropped: true })
     }
   }
+
+  const imageBlocks = (attachments || [])
+    .filter(a => a.base64 && a.mimeType?.startsWith('image/'))
+    .map(a => ({ type: 'image', source: { type: 'base64', media_type: a.mimeType, data: a.base64 } }))
 
   if (imageBlocks.length && process.env.ANTHROPIC_API_KEY) {
     try {
@@ -497,6 +498,15 @@ async function classifyTextMessage(bodyText, clientStatus) {
 export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mimeType, bodyText) {
   let extractedData = null
 
+  // Triage gate — always runs on any text before extraction (covers text, audio transcript, and image captions)
+  if (bodyText?.trim()) {
+    const triage = await triageMessage(bodyText)
+    if (triage && !triage.is_rental_business) {
+      console.log(`[leads/inbound-wa] triage dropped: ${triage.category} (${triage.confidence}%) — ${triage.reason}`)
+      return
+    }
+  }
+
   if (imageBuffer && process.env.ANTHROPIC_API_KEY) {
     // Process & Purge — send buffer directly to Claude as base64, never stored
     try {
@@ -519,12 +529,6 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       console.error('[leads/inbound-wa] Claude error:', err.message)
     }
   } else if (bodyText?.trim()) {
-    // Text-only or voice-note transcript — triage first, then classify
-    const triage = await triageMessage(bodyText)
-    if (triage && !triage.is_rental_business) {
-      console.log(`[leads/inbound-wa] triage dropped: ${triage.category} (${triage.confidence}%) — ${triage.reason}`)
-      return
-    }
     try {
       const clientStatus = await getClientStatus(agencyId, senderJid)
       const classification = await classifyTextMessage(bodyText, clientStatus)
