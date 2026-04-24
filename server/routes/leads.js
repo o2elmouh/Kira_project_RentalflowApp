@@ -519,8 +519,13 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
           try {
             const clientStatus = await getClientStatus(agencyId, senderJid)
             const captionClass = await classifyTextMessage(bodyText, clientStatus)
-            if (captionClass?.extracted_data) {
-              extractedData = { ...extractedData, ...captionClass.extracted_data }
+            if (captionClass) {
+              extractedData = {
+                ...extractedData,
+                ...captionClass.extracted_data,
+                ...(captionClass.classification && { classification: captionClass.classification }),
+                ...(captionClass.summary_for_agent && { summary_for_agent: captionClass.summary_for_agent }),
+              }
             }
           } catch (_) {}
         }
