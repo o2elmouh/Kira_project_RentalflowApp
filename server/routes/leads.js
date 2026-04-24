@@ -231,6 +231,23 @@ router.post('/webhook/gmail', async (req, res) => {
     }
   }
 
+  if (!extractedData && (bodyText || subject) && process.env.ANTHROPIC_API_KEY) {
+    try {
+      const textToClassify = [subject, bodyText].filter(Boolean).join('\n\n')
+      const classification = await classifyTextMessage(textToClassify, 'no_contract')
+      if (classification) {
+        extractedData = {
+          classification: classification.classification,
+          confidence: classification.confidence,
+          summary_for_agent: classification.summary_for_agent,
+          ...classification.extracted_data,
+        }
+      }
+    } catch (err) {
+      console.error('[leads/gmail] text classification error:', err.message)
+    }
+  }
+
   for (const a of (attachments || [])) {
     if (a.base64 && a.mimeType?.startsWith('image/')) {
       mediaUrls.push(`data:${a.mimeType};base64,${a.base64}`)
