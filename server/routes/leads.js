@@ -106,6 +106,48 @@ Your output must match this exact JSON structure:
   "summary_for_agent": "A short, 1-sentence summary of what the client wants."
 }`
 
+// ── Triage prompt (pre-extraction gate) ──────────────────
+const TRIAGE_SYSTEM_PROMPT = `You are a strict message classifier for a Moroccan car rental agency (RentaFlow).
+Your ONLY job is to determine if an incoming message is related to the car rental business or if it is personal/spam.
+
+Rental Business messages include:
+- Inquiries about car availability or prices
+- Booking requests (dates, car models)
+- Questions about existing reservations, contracts, or breakdowns
+- Messages mentioning IDs, passports, or flights
+
+Personal/Spam messages include:
+- Family/friends saying hello
+- Marketing spam or automated notifications
+- Messages completely unrelated to vehicles or travel
+
+Analyze the user's message and output ONLY a JSON object with this exact structure:
+{
+  "is_rental_business": boolean,
+  "confidence": number (0-100),
+  "category": "booking_inquiry" | "support" | "personal" | "spam",
+  "reason": "Short 1 sentence explanation"
+}`
+
+async function triageMessage(text) {
+  if (!process.env.ANTHROPIC_API_KEY || !text?.trim()) return null
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  try {
+    const message = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 128,
+      system: TRIAGE_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: text }],
+    })
+    const raw = message.content?.[0]?.text?.trim() ?? ''
+    const clean = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+    return JSON.parse(clean)
+  } catch (err) {
+    console.error('[leads/triage] error:', err.message)
+    return null
+  }
+}
+
 // ── Claude Vision prompt (image/document OCR) ────────────
 const GLOBAL_SYSTEM_PROMPT = `You are a precise global identity document parser and rental intent extractor.
 Documents may be in any language. Dates in any format — convert all to YYYY-MM-DD.
@@ -222,6 +264,15 @@ router.post('/webhook/gmail', async (req, res) => {
   const imageBlocks = (attachments || [])
     .filter(a => a.base64 && a.mimeType?.startsWith('image/'))
     .map(a => ({ type: 'image', source: { type: 'base64', media_type: a.mimeType, data: a.base64 } }))
+
+  if (!imageBlocks.length) {
+    const textForTriage = [subject, bodyText].filter(Boolean).join('\n\n')
+    const triage = await triageMessage(textForTriage)
+    if (triage && !triage.is_rental_business) {
+      console.log(`[leads/gmail] triage dropped: ${triage.category} (${triage.confidence}%) — ${triage.reason}`)
+      return res.json({ ok: true, dropped: true })
+    }
+  }
 
   if (imageBlocks.length && process.env.ANTHROPIC_API_KEY) {
     try {
@@ -468,7 +519,12 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       console.error('[leads/inbound-wa] Claude error:', err.message)
     }
   } else if (bodyText?.trim()) {
-    // Text-only or voice-note transcript — run lead classification
+    // Text-only or voice-note transcript — triage first, then classify
+    const triage = await triageMessage(bodyText)
+    if (triage && !triage.is_rental_business) {
+      console.log(`[leads/inbound-wa] triage dropped: ${triage.category} (${triage.confidence}%) — ${triage.reason}`)
+      return
+    }
     try {
       const clientStatus = await getClientStatus(agencyId, senderJid)
       const classification = await classifyTextMessage(bodyText, clientStatus)
