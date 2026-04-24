@@ -62,7 +62,7 @@ router.post('/scan-claude', upload.single('document'), async (req, res, next) =>
   let message
   try {
     message = await anthropic.messages.create({
-      model: 'claude-opus-4-5',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 512,
       system: CLAUDE_SYSTEM_PROMPT,
       messages: [{
