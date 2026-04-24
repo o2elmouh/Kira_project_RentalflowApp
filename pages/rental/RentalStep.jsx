@@ -258,18 +258,18 @@ export default function RentalStep({ client, onNext, onBack, onSaveAndQuit, onCa
       <StepButtons
         leftBtns={
           <>
-            <button className="btn btn-primary btn-lg" onClick={onBack} style={{ color: 'white' }}><ArrowLeft size={15} /> Retour</button>
-            <button className="btn btn-primary btn-lg" style={{ color: 'white' }} onClick={onCancel}>
+            <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onBack}><ArrowLeft size={15} /> Retour</button>
+            <button className="btn-outline-ink" style={{ fontSize: 14, color: '#CF4500', borderColor: '#CF4500' }} onClick={onCancel}>
               <X size={15} /> Annuler la location
             </button>
           </>
         }
         rightBtns={
           <>
-            <button className="btn btn-ghost" onClick={onSaveAndQuit} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onSaveAndQuit}>
               💾 Sauvegarder & quitter
             </button>
-            <button className="btn btn-primary btn-lg" disabled={!canContinue} onClick={handleNext}>
+            <button className="btn-ink" style={{ fontSize: 15 }} disabled={!canContinue} onClick={handleNext}>
               Continuer <ArrowRight size={15} />
             </button>
           </>

@@ -52,7 +52,7 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
                 <PenLine size={18} style={{ color: 'var(--accent)' }} />
                 Saisie manuelle recommandée
               </h3>
-              <button className="btn btn-ghost btn-sm" onClick={dismissManualEntryPrompt}>
+              <button className="btn-outline-ink" style={{ padding: '4px 12px', fontSize: 13 }} onClick={dismissManualEntryPrompt}>
                 <X size={14} />
               </button>
             </div>
@@ -65,10 +65,10 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
               Vous pouvez également réessayer avec une photo plus lumineuse.
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={dismissManualEntryPrompt}>
+              <button className="btn-ink" style={{ flex: 1, justifyContent: 'center', fontSize: 14 }} onClick={dismissManualEntryPrompt}>
                 <PenLine size={13} /> Saisir manuellement
               </button>
-              <button className="btn btn-secondary btn-sm" onClick={() => {
+              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={() => {
                 if (manualEntrySlot) resetAttemptCount(manualEntrySlot)
                 dismissManualEntryPrompt()
               }}>
@@ -235,17 +235,16 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
 
       <StepButtons
         leftBtns={
-          <button className="btn btn-primary btn-lg" style={{ color: '#dc2626' }} onClick={onCancel}>
+          <button className="btn-outline-ink" style={{ fontSize: 14, color: '#CF4500', borderColor: '#CF4500' }} onClick={onCancel}>
             <X size={15} /> Annuler
           </button>
         }
         rightBtns={
           <>
-            <button className="btn btn-ghost" onClick={() => onSaveAndQuit(clientData)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={() => onSaveAndQuit(clientData)}>
               💾 Sauvegarder & quitter
             </button>
-            <button className="btn btn-primary btn-lg" disabled={!allFilled} onClick={() => onNext(clientData)}>
+            <button className="btn-ink" style={{ fontSize: 15 }} disabled={!allFilled} onClick={() => onNext(clientData)}>
               Continuer <ArrowRight size={15} />
             </button>
           </>

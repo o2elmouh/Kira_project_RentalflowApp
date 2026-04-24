@@ -119,7 +119,7 @@ export default function PhotoStep({ onNext, onBack, onSaveAndQuit, onCancel, ini
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 12, fontWeight: 500 }}>{label}</span>
                 {photos[id] && (
-                  <button className="btn btn-ghost btn-sm" style={{ padding: '2px 6px', fontSize: 10 }}
+                  <button className="btn-outline-ink" style={{ padding: '3px 10px', fontSize: 11 }}
                     onClick={() => triggerCapture(id)}>
                     <Camera size={10} /> Reprendre
                   </button>
@@ -140,18 +140,18 @@ export default function PhotoStep({ onNext, onBack, onSaveAndQuit, onCancel, ini
       <StepButtons
         leftBtns={
           <>
-            <button className="btn btn-primary btn-lg" onClick={onBack} style={{ color: 'white' }}><ArrowLeft size={15} /> Retour</button>
-            <button className="btn btn-primary btn-lg" style={{ color: 'white' }} onClick={onCancel}>
+            <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onBack}><ArrowLeft size={15} /> Retour</button>
+            <button className="btn-outline-ink" style={{ fontSize: 14, color: '#CF4500', borderColor: '#CF4500' }} onClick={onCancel}>
               <X size={15} /> Annuler la location
             </button>
           </>
         }
         rightBtns={
           <>
-            <button className="btn btn-ghost" onClick={onSaveAndQuit} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onSaveAndQuit}>
               💾 Sauvegarder & quitter
             </button>
-            <button className="btn btn-primary btn-lg" onClick={() => onNext(photos)}>
+            <button className="btn-ink" style={{ fontSize: 15 }} onClick={() => onNext(photos)}>
               Continuer <ArrowRight size={15} />
             </button>
           </>
