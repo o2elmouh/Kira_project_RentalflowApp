@@ -91,4 +91,5 @@ Latest commit: `650ad26` — feat(network): RentalFlow Network feature (staging)
 ## Versioning
 - Version is displayed in the Sidebar bottom-left, next to the agency name.
 - **Every push must bump the version** in `components/Sidebar.jsx` (the `v1.x.x` string).
-- Current version: **v1.1.6** (commit `adc2bda` baseline, bumped each push from here)
+- **Increment rule: +0.0.1 per push** (patch version only). Example: v1.1.6 → v1.1.7 → v1.1.8.
+- Current version: **v1.1.8** (commit `30085e3` — DESIGN.md button fixes)
