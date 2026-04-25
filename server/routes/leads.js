@@ -297,6 +297,16 @@ router.get('/', async (req, res) => {
   const status = req.query.status || 'pending'
   const classification = req.query.classification
 
+  const VALID_CLASSIFICATIONS = ['alert', 'normal', 'spam']
+  if (classification && !VALID_CLASSIFICATIONS.includes(classification)) {
+    return res.status(400).json({ error: 'Invalid classification' })
+  }
+
+  const VALID_STATUSES_GET = ['pending', 'waiting', 'offer_sent', 'accepted', 'ignored']
+  if (!VALID_STATUSES_GET.includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' })
+  }
+
   let query = supabaseAdmin
     .from('pending_demands')
     .select('*')
