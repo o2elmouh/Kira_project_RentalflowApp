@@ -2,6 +2,13 @@ import { franc } from 'franc'
 import Anthropic from '@anthropic-ai/sdk'
 import supabaseAdmin from './supabaseAdmin.js'
 
+// ── Module-level Anthropic client (instantiated once) ────
+const anthropic = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null
+
+const HAIKU_MODEL = 'claude-haiku-4-5-20251001'
+
 // ── Core languages that skip translation ─────────────────
 const CORE_LANGS = new Set(['fra', 'ara', 'eng'])
 
@@ -27,9 +34,9 @@ const KEYWORDS = {
     // English
     'car', 'vehicle', 'contract', 'insurance', 'breakdown', 'accident', 'license', 'mileage', 'fuel',
     // Dutch
-    'voertuig', 'verzekering', 'pech', 'ongeluk', 'rijbewijs',
+    'auto', 'contract', 'voertuig', 'verzekering', 'pech', 'ongeluk', 'rijbewijs',
     // German
-    'fahrzeug', 'vertrag', 'versicherung', 'panne', 'unfall', 'führerschein',
+    'auto', 'fahrzeug', 'vertrag', 'versicherung', 'panne', 'unfall', 'führerschein',
   ],
   low: [
     'prix', 'tarif', 'disponible', 'disponibilité',
@@ -78,11 +85,10 @@ export function preFilter(text) {
 
 // ── translateToFrench ─────────────────────────────────────
 export async function translateToFrench(text) {
-  if (!process.env.ANTHROPIC_API_KEY || !text?.trim()) return text
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  if (!anthropic || !text?.trim()) return text
   try {
     const msg = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: HAIKU_MODEL,
       max_tokens: 200,
       system: 'Traduis le message suivant en français. Réponds uniquement avec la traduction, sans explication.',
       messages: [{ role: 'user', content: text }],
@@ -96,11 +102,10 @@ export async function translateToFrench(text) {
 
 // ── summarizeForAlert ─────────────────────────────────────
 async function summarizeForAlert(frenchText) {
-  if (!process.env.ANTHROPIC_API_KEY) return null
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  if (!anthropic) return null
   try {
     const msg = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: HAIKU_MODEL,
       max_tokens: 50,
       system: `Tu es un assistant pour une agence de location de voitures.
 Résume le message suivant en UNE phrase courte (max 15 mots).

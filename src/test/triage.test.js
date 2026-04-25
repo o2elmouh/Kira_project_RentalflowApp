@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { preFilter, detectLanguage } from '../../server/lib/triage.js'
+import { preFilter, detectLanguage, translateToFrench } from '../../server/lib/triage.js'
 
 describe('detectLanguage', () => {
   it('detects French', () => {
@@ -10,6 +10,9 @@ describe('detectLanguage', () => {
   })
   it('returns und for very short text', () => {
     expect(detectLanguage('ok')).toBe('und')
+  })
+  it('detects Arabic', () => {
+    expect(detectLanguage('بغيت نحجز سيارة ليوم الجمعة من فضلك')).toBe('arb')
   })
 })
 
@@ -57,5 +60,22 @@ describe('preFilter', () => {
   it('is case-insensitive', () => {
     const r = preFilter('LOCATION VOITURE DISPONIBLE')
     expect(r.result).toBe('pass')
+  })
+  it('handles null input', () => {
+    expect(preFilter(null).result).toBe('fail')
+  })
+  it('handles empty string', () => {
+    expect(preFilter('').result).toBe('fail')
+  })
+  it('PASS on 1 MEDIUM + 2 LOW keywords', () => {
+    const r = preFilter('voiture prix disponible disponibilité')
+    expect(r.result).toBe('pass')
+  })
+})
+
+describe('translateToFrench', () => {
+  it('returns empty string unchanged', async () => {
+    const result = await translateToFrench('')
+    expect(result).toBe('')
   })
 })
