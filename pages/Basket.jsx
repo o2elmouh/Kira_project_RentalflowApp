@@ -6,6 +6,7 @@
  */
 import { useState, useEffect, useCallback, useContext } from 'react'
 import { api } from '../lib/api.js'
+import AlertCard from '../components/AlertCard.jsx'
 import { supabase } from '../lib/supabase.js'
 import { UserContext } from '../lib/UserContext.js'
 
@@ -497,11 +498,13 @@ function LeadCard({ lead, onClick }) {
 }
 
 // ── Main page ──────────────────────────────────────────────
-export default function Basket({ onNavigate }) {
+export default function Basket({ onNavigate, initialTab = null }) {
   const [leads, setLeads]           = useState([])
+  const [alerts, setAlerts]         = useState([])
   const [loading, setLoading]       = useState(true)
   const [error, setError]           = useState(null)
   const { isPremium } = useContext(UserContext)
+  const [activeTab, setActiveTab]   = useState(initialTab === 'alertes' ? 'alertes' : 'leads')
   const [statusFilter, setStatusFilter] = useState('pending')
   const [selectedLead, setSelectedLead] = useState(null)
 
@@ -509,8 +512,13 @@ export default function Basket({ onNavigate }) {
     setLoading(true)
     setError(null)
     try {
-      const data = await api.getLeads(statusFilter)
-      setLeads(data)
+      if (activeTab === 'alertes') {
+        const data = await api.getAlerts()
+        setAlerts(data)
+      } else {
+        const data = await api.getLeads(statusFilter)
+        setLeads(data)
+      }
     } catch (err) {
       if (!err.message?.includes('PREMIUM_REQUIRED')) {
         setError(err.message)
@@ -518,7 +526,7 @@ export default function Basket({ onNavigate }) {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter])
+  }, [activeTab, statusFilter])
 
   useEffect(() => { load() }, [load])
 
@@ -526,10 +534,19 @@ export default function Basket({ onNavigate }) {
     try {
       await api.updateLeadStatus(id, status)
       setLeads(prev => prev.filter(l => l.id !== id))
+      setAlerts(prev => prev.filter(a => a.id !== id))
       setSelectedLead(null)
     } catch (err) {
       console.error(err)
     }
+  }
+
+  async function handleEscalate(id) {
+    await handleStatusChange(id, 'pending')
+  }
+
+  async function handleIgnoreAlert(id) {
+    await handleStatusChange(id, 'ignored')
   }
 
   function handleConvert(lead, extractedData) {
@@ -590,12 +607,19 @@ export default function Basket({ onNavigate }) {
     )
   }
 
+  const SUB_FILTERS = [
+    ['pending', 'En attente'],
+    ['waiting', 'Devis à préparer'],
+    ['offer_sent', 'Offre envoyée'],
+    ['accepted', 'Accepté'],
+  ]
+
   return (
     <div style={{ padding: '24px 32px', maxWidth: 1100 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22 }}>Corbeille de Dossiers</h1>
+          <h1 style={{ margin: 0, fontSize: 22 }}>Boîte de réception</h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 13 }}>
             Demandes entrantes WhatsApp &amp; Gmail — extraction IA automatique
           </p>
@@ -608,37 +632,78 @@ export default function Basket({ onNavigate }) {
         </button>
       </div>
 
-      {/* Status tabs */}
+      {/* Top-level tabs: Leads / Alertes */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {Object.entries(STATUS_LABELS).map(([val, label]) => (
-          <button
-            key={val}
-            onClick={() => setStatusFilter(val)}
-            style={{
-              padding: '6px 16px',
-              borderRadius: 20,
-              border: '1px solid var(--border)',
-              background: statusFilter === val ? 'var(--accent)' : 'none',
-              color: statusFilter === val ? '#fff' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: statusFilter === val ? 600 : 400,
-            }}
-          >
-            {label}
-          </button>
-        ))}
+        <button
+          onClick={() => setActiveTab('leads')}
+          style={{
+            padding: '6px 18px', borderRadius: 20, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+            background: activeTab === 'leads' ? '#141413' : 'none',
+            color: activeTab === 'leads' ? '#F3F0EE' : 'var(--text-secondary)',
+          }}
+        >
+          Leads {leads.length > 0 && <span style={{ marginLeft: 6, background: '#F3F0EE', color: '#141413', borderRadius: 10, padding: '1px 7px', fontSize: 11 }}>{leads.length}</span>}
+        </button>
+        <button
+          onClick={() => setActiveTab('alertes')}
+          style={{
+            padding: '6px 18px', borderRadius: 20, border: '1px solid #f9c6a0', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+            background: activeTab === 'alertes' ? '#CF4500' : '#FEF0E8',
+            color: activeTab === 'alertes' ? '#fff' : '#CF4500',
+          }}
+        >
+          ⚠ Alertes {alerts.length > 0 && <span style={{ marginLeft: 6, background: activeTab === 'alertes' ? '#fff' : '#CF4500', color: activeTab === 'alertes' ? '#CF4500' : '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 11 }}>{alerts.length}</span>}
+        </button>
       </div>
+
+      {/* Sub-filters (Leads tab only) */}
+      {activeTab === 'leads' && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          {SUB_FILTERS.map(([val, label]) => (
+            <button
+              key={val}
+              onClick={() => setStatusFilter(val)}
+              style={{
+                padding: '5px 14px', borderRadius: 20, border: '1px solid var(--border)',
+                background: statusFilter === val ? 'var(--accent)' : 'none',
+                color: statusFilter === val ? '#fff' : 'var(--text-secondary)',
+                cursor: 'pointer', fontSize: 12,
+                fontWeight: statusFilter === val ? 600 : 400,
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       {loading ? (
         <div style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: 60 }}>Chargement…</div>
       ) : error ? (
         <div style={{ color: '#ef4444', textAlign: 'center', marginTop: 60 }}>{error}</div>
+      ) : activeTab === 'alertes' ? (
+        alerts.length === 0 ? (
+          <div style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: 60 }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>✓</div>
+            Aucune alerte en attente — tout est sous contrôle
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+            {alerts.map(alert => (
+              <AlertCard
+                key={alert.id}
+                alert={alert}
+                onEscalate={handleEscalate}
+                onIgnore={handleIgnoreAlert}
+              />
+            ))}
+          </div>
+        )
       ) : leads.length === 0 ? (
         <div style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: 60 }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
-          Aucun dossier {STATUS_LABELS[statusFilter].toLowerCase()}
+          Aucun dossier en attente
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
