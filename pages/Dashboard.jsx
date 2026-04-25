@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Car, Users, FileText, Receipt, TrendingUp, PlusCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Car, Users, FileText, Receipt, TrendingUp, PlusCircle, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
 import { getFleet, getClients, getContracts, getInvoices } from '../lib/db'
+import { api } from '../lib/api.js'
 
 function inMonth(dateStr, year, month) {
   if (!dateStr) return false
@@ -37,6 +38,11 @@ export default function Dashboard({ onNav }) {
   const [contracts, setContracts] = useState([])
   const [invoices,  setInvoices]  = useState([])
   const [loading,   setLoading]   = useState(true)
+  const [alertCount, setAlertCount] = useState(0)
+
+  useEffect(() => {
+    api.getAlerts().then(data => setAlertCount(data.length)).catch(() => {})
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -136,6 +142,45 @@ export default function Dashboard({ onNav }) {
           <StatCard icon={FileText}   label={t('stats.monthContracts')}    value={filteredContracts.length}          variant="orange" sub={t('stats.activeCount', { count: active })} />
           <StatCard icon={Receipt}    label={t('stats.monthInvoices')}     value={filteredInvoices.length}           variant="green"  />
           <StatCard icon={TrendingUp} label={t('stats.revenue')}          value={`${revenue.toLocaleString()} ${tc('currency')}`} variant="pink" />
+          {alertCount > 0 && (
+            <div
+              onClick={() => onNav('basket', { initialTab: 'alertes' })}
+              style={{
+                background: '#FEF0E8',
+                border: '1px solid #f9c6a0',
+                borderRadius: 999,
+                padding: '16px 24px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                cursor: 'pointer',
+                position: 'relative',
+              }}
+            >
+              <div style={{
+                width: 44, height: 44, borderRadius: '50%',
+                border: '1px solid rgba(207,69,0,0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <AlertTriangle size={20} color="#CF4500" />
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: '#CF4500', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  Alertes
+                </div>
+                <div style={{ fontSize: 26, fontWeight: 700, color: '#CF4500', letterSpacing: '-0.5px' }}>
+                  {alertCount}
+                </div>
+                <div style={{ fontSize: 11, color: '#CF4500', opacity: 0.8 }}>Voir →</div>
+              </div>
+              <div style={{
+                position: 'absolute', top: 12, right: 16,
+                width: 8, height: 8, borderRadius: '50%',
+                background: '#CF4500',
+              }} />
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 24 }}>

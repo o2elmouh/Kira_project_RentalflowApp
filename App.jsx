@@ -26,6 +26,7 @@ export default function App() {
   const [page, setPage] = useState(PAGE_PARAM || 'dashboard')
   const [restitutionContract, setRestitutionContract] = useState(null)
   const [prefilledLead, setPrefilledLead] = useState(null)
+  const [basketInitialTab, setBasketInitialTab] = useState(null)
   const [authState, setAuthState] = useState('loading')
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -156,6 +157,7 @@ export default function App() {
 
   const handleNav = (target, state = {}) => {
     if (state.prefilledLead !== undefined) setPrefilledLead(state.prefilledLead)
+    setBasketInitialTab(state.initialTab ?? null)
     setPage(target)
   }
 
@@ -165,7 +167,7 @@ export default function App() {
 
   const renderPage = () => {
     switch (page) {
-      case 'dashboard': return <Dashboard onNav={setPage} />
+      case 'dashboard': return <Dashboard onNav={handleNav} />
       case 'new-rental': return <NewRental
         onDone={() => { setPrefilledLead(null); setPage('dashboard') }}
         prefilledLead={prefilledLead}
@@ -182,7 +184,7 @@ export default function App() {
         return <Settings />
       case 'basket':
         if (!isPremium) { setTimeout(() => setPage('dashboard'), 0); return null }
-        return <Basket onNavigate={handleNav} />
+        return <Basket onNavigate={handleNav} initialTab={basketInitialTab} />
       case 'restitution-picker':
         return <RestitutionPicker onPick={handleRestitution} onCancel={() => setPage('contracts')} />
       case 'restitution':
