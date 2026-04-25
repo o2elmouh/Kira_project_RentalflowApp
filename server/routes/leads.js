@@ -295,15 +295,22 @@ router.use(requireAuth, requirePremium)
 // GET /leads — list pending demands
 router.get('/', async (req, res) => {
   const status = req.query.status || 'pending'
+  const classification = req.query.classification
 
-  const { data, error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from('pending_demands')
     .select('*')
     .eq('agency_id', req.user.agency_id)
-    .eq('status', status)
     .order('created_at', { ascending: false })
     .limit(100)
 
+  if (classification) {
+    query = query.eq('classification', classification).neq('status', 'ignored')
+  } else {
+    query = query.eq('status', status).neq('classification', 'alert')
+  }
+
+  const { data, error } = await query
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
 })
