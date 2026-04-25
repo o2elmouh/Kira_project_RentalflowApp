@@ -481,13 +481,36 @@ async function classifyTextMessage(bodyText, clientStatus) {
 export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mimeType, bodyText) {
   let extractedData = null
 
-  // Triage gate — always runs on any text before extraction (covers text, audio transcript, and image captions)
+  // Triage gate — language detection → keyword pre-filter → ambiguous handler
   if (bodyText?.trim()) {
-    const triage = await triageMessage(bodyText)
-    if (triage && !triage.is_rental_business) {
-      console.log(`[leads/inbound-wa] triage dropped: ${triage.category} (${triage.confidence}%) — ${triage.reason}`)
+    const lang = detectLanguage(bodyText)
+    const CORE = new Set(['fra', 'ara', 'eng'])
+    const translatedText = (!CORE.has(lang) && lang !== 'und')
+      ? await translateToFrench(bodyText)
+      : null
+    const textToFilter = translatedText ?? bodyText
+    const { result, matchedKeywords } = preFilter(textToFilter)
+
+    if (result === 'fail') {
+      console.log(`[leads/inbound-wa] pre-filter dropped: no rental keywords (lang=${lang})`)
       return
     }
+
+    if (result === 'ambiguous') {
+      console.log(`[leads/inbound-wa] pre-filter ambiguous: keywords=[${matchedKeywords.join(',')}]`)
+      await handleAmbiguous({
+        agencyId,
+        senderId: senderJid,
+        source: 'whatsapp',
+        originalText: bodyText,
+        translatedText,
+        rawPayload: { body: bodyText, from: senderJid },
+      })
+      return
+    }
+
+    // result === 'pass' — continue to extraction below
+    console.log(`[leads/inbound-wa] pre-filter pass: keywords=[${matchedKeywords.join(',')}]`)
   }
 
   if (imageBuffer && process.env.ANTHROPIC_API_KEY) {
