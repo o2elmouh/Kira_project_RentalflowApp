@@ -46,6 +46,11 @@ const KEYWORDS = {
   ],
 }
 
+// ── Deduplicate keywords to prevent double-counting ────────
+KEYWORDS.high   = [...new Set(KEYWORDS.high)]
+KEYWORDS.medium = [...new Set(KEYWORDS.medium)]
+KEYWORDS.low    = [...new Set(KEYWORDS.low)]
+
 // ── detectLanguage ────────────────────────────────────────
 export function detectLanguage(text) {
   if (!text?.trim()) return 'und'

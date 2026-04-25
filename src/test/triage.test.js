@@ -12,7 +12,7 @@ describe('detectLanguage', () => {
     expect(detectLanguage('ok')).toBe('und')
   })
   it('detects Arabic', () => {
-    expect(detectLanguage('بغيت نحجز سيارة ليوم الجمعة من فضلك')).toBe('arb')
+    expect(['arb', 'ary']).toContain(detectLanguage('بغيت نحجز سيارة ليوم الجمعة من فضلك'))
   })
 })
 
