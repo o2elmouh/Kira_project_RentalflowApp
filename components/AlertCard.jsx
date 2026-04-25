@@ -4,8 +4,11 @@ function formatSenderId(id) {
   return id ? id.replace(/@.*$/, '') : id
 }
 
+// TODO: wire timeAgo strings via i18n (components use useTranslation but this is a plain util)
 function timeAgo(dateStr) {
-  const diff = Date.now() - new Date(dateStr).getTime()
+  const ts = new Date(dateStr).getTime()
+  if (!dateStr || isNaN(ts)) return '—'
+  const diff = Date.now() - ts
   const mins = Math.floor(diff / 60000)
   if (mins < 60) return `il y a ${mins} min`
   const hrs = Math.floor(mins / 60)
@@ -74,6 +77,7 @@ export default function AlertCard({ alert, onEscalate, onIgnore }) {
       <div style={{ display: 'flex', gap: 8 }}>
         <button
           onClick={() => onEscalate(alert.id)}
+          disabled={!alert.id}
           style={{
             background: '#141413', color: '#F3F0EE', border: 'none',
             borderRadius: 20, padding: '5px 14px', fontSize: 12,
@@ -84,6 +88,7 @@ export default function AlertCard({ alert, onEscalate, onIgnore }) {
         </button>
         <button
           onClick={() => onIgnore(alert.id)}
+          disabled={!alert.id}
           style={{
             background: '#fff', color: '#696969',
             border: '1px solid #ddd', borderRadius: 20,
