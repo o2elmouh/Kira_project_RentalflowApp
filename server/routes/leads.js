@@ -16,6 +16,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { requireAuth } from '../middleware/auth.js'
 import { requirePremium } from '../middleware/premium.js'
+import { detectLanguage, translateToFrench, preFilter, handleAmbiguous } from '../lib/triage.js'
 
 const router = Router()
 
@@ -106,47 +107,6 @@ Your output must match this exact JSON structure:
   "summary_for_agent": "A short, 1-sentence summary of what the client wants."
 }`
 
-// ── Triage prompt (pre-extraction gate) ──────────────────
-const TRIAGE_SYSTEM_PROMPT = `You are a strict message classifier for a Moroccan car rental agency (RentaFlow).
-Your ONLY job is to determine if an incoming message is related to the car rental business or if it is personal/spam.
-
-Rental Business messages include:
-- Inquiries about car availability or prices
-- Booking requests (dates, car models)
-- Questions about existing reservations, contracts, or breakdowns
-- Messages mentioning IDs, passports, or flights
-
-Personal/Spam messages include:
-- Family/friends saying hello
-- Marketing spam or automated notifications
-- Messages completely unrelated to vehicles or travel
-
-Analyze the user's message and output ONLY a JSON object with this exact structure:
-{
-  "is_rental_business": boolean,
-  "confidence": number (0-100),
-  "category": "booking_inquiry" | "support" | "personal" | "spam",
-  "reason": "Short 1 sentence explanation"
-}`
-
-async function triageMessage(text) {
-  if (!process.env.ANTHROPIC_API_KEY || !text?.trim()) return null
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  try {
-    const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 128,
-      system: TRIAGE_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: text }],
-    })
-    const raw = message.content?.[0]?.text?.trim() ?? ''
-    const clean = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
-    return JSON.parse(clean)
-  } catch (err) {
-    console.error('[leads/triage] error:', err.message)
-    return null
-  }
-}
 
 // ── Claude Vision prompt (image/document OCR) ────────────
 const GLOBAL_SYSTEM_PROMPT = `You are a precise global identity document parser and rental intent extractor.
@@ -261,14 +221,37 @@ router.post('/webhook/gmail', async (req, res) => {
   let extractedData = null
   const mediaUrls = []
 
-  // Triage gate — always runs on any available text before any extraction
+  // Triage gate — language detection → keyword pre-filter → ambiguous handler
   const textForTriage = [subject, bodyText].filter(Boolean).join('\n\n')
   if (textForTriage) {
-    const triage = await triageMessage(textForTriage)
-    if (triage && !triage.is_rental_business) {
-      console.log(`[leads/gmail] triage dropped: ${triage.category} (${triage.confidence}%) — ${triage.reason}`)
+    const lang = detectLanguage(textForTriage)
+    const CORE = new Set(['fra', 'ara', 'eng'])
+    const translatedText = (!CORE.has(lang) && lang !== 'und')
+      ? await translateToFrench(textForTriage)
+      : null
+    const textToFilter = translatedText ?? textForTriage
+    const { result, matchedKeywords } = preFilter(textToFilter)
+
+    if (result === 'fail') {
+      console.log(`[leads/gmail] pre-filter dropped: no rental keywords (lang=${lang})`)
       return res.json({ ok: true, dropped: true })
     }
+
+    if (result === 'ambiguous') {
+      console.log(`[leads/gmail] pre-filter ambiguous: keywords=[${matchedKeywords.join(',')}]`)
+      await handleAmbiguous({
+        agencyId,
+        senderId: senderEmail,
+        source: 'gmail',
+        originalText: textForTriage,
+        translatedText,
+        rawPayload: { subject, bodyText: (bodyText || '').slice(0, 2000) },
+      })
+      return res.json({ ok: true, alert: true })
+    }
+
+    // result === 'pass' — continue to extraction below
+    console.log(`[leads/gmail] pre-filter pass: keywords=[${matchedKeywords.join(',')}]`)
   }
 
   const imageBlocks = (attachments || [])
