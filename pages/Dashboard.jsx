@@ -103,6 +103,13 @@ export default function Dashboard({ onNav }) {
   }
 
   return (
+    <>
+    <style>{`
+      @keyframes pulse-dot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.75); }
+      }
+    `}</style>
     <div>
       <div className="page-header">
         <div>
@@ -178,6 +185,7 @@ export default function Dashboard({ onNav }) {
                 position: 'absolute', top: 12, right: 16,
                 width: 8, height: 8, borderRadius: '50%',
                 background: '#CF4500',
+                animation: 'pulse-dot 2s ease-in-out infinite',
               }} />
             </div>
           )}
@@ -231,5 +239,6 @@ export default function Dashboard({ onNav }) {
         </div>
       </div>
     </div>
+    </>
   )
 }
