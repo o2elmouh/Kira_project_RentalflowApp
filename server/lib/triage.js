@@ -29,19 +29,31 @@ const KEYWORDS = {
   medium: [
     // French
     'voiture', 'véhicule', 'contrat', 'assurance', 'panne', 'accident', 'permis', 'kilométrage',
+    // French — rental duration (week/day = unambiguous rental intent)
+    'semaine', 'semaines', 'journée', 'journées',
     // Darija / Arabic
     'سيارة', 'طوموبيل', 'عقد', 'تأمين', 'رخصة', 'بنزين', 'حادث', 'بريكاج',
     // English
     'car', 'vehicle', 'contract', 'insurance', 'breakdown', 'accident', 'license', 'mileage', 'fuel',
+    // English — rental duration
+    'week', 'weeks', 'days',
     // Dutch
     'auto', 'contract', 'voertuig', 'verzekering', 'pech', 'ongeluk', 'rijbewijs',
+    // Dutch — duration
+    'week', 'weken',
     // German
     'auto', 'fahrzeug', 'vertrag', 'versicherung', 'panne', 'unfall', 'führerschein',
+    // German — duration
+    'woche', 'wochen',
   ],
   low: [
-    'prix', 'tarif', 'disponible', 'disponibilité',
+    // French
+    'prix', 'tarif', 'disponible', 'disponibilité', 'renseigner', 'renseignement', 'besoin',
+    // Dutch/German prices
     'prijs', 'preis',
-    'price', 'rate', 'available',
+    // English
+    'price', 'rate', 'available', 'need',
+    // Arabic
     'ثمن', 'سعر', 'متاح',
   ],
 }

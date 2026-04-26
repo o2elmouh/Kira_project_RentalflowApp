@@ -97,7 +97,8 @@ Latest commit: `650ad26` — feat(network): RentalFlow Network feature (staging)
 ## Staging Deployments
 | Version | Commit | What's in it |
 |---|---|---|
-| v1.2.0 | `f38ca3c` → bumped in next push | Alerts Dashboard: orange widget on Dashboard, Leads/Alertes tabs in Basket, triage pipeline (Gmail + WhatsApp keyword filter + ambiguous→alert), DB migration `002_alerts_classification.sql` (run in Supabase before testing) |
+| v1.2.1 | pending | Fix triage pre-filter: add semaine/semaines/journée/week/weeks/woche to MEDIUM, renseigner/besoin/need to LOW — rental inquiry messages now correctly score PASS instead of AMBIGUOUS |
+| v1.2.0 | `3533bbf` | Alerts Dashboard: orange widget on Dashboard, Leads/Alertes tabs in Basket, triage pipeline, DB migration `002_alerts_classification.sql` |
 
 ## API Usage Policy
 - **Never use the `ANTHROPIC_API_KEY` for development tasks, exploration, or testing within Claude Code sessions.** API calls bill against the project key directly and are not covered by the Claude subscription.
