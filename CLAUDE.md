@@ -7,6 +7,7 @@
 4. **Process:** State plan → Get approval → Execute.
 5. **Ledger:** End sessions with a `Context Update` block to update this file.
 6. **Git:** Feature branches + structured commits (`feat:`, `fix:`, `chore:`).
+7. **Never push to staging without explicit user instruction.** Commit locally, then stop and wait. Only run `git push origin staging` when the user says "push to staging" or equivalent.
 **Testing:** Write and run unit tests for every bug fix or new feature using the existing Vitest suite before completion.
 8. **Efficiency:** If a file (like pdf.js) is too large to parse or a task stalls, stop immediately, suggest a modular split, and restart.
 
