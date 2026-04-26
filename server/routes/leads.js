@@ -347,15 +347,32 @@ router.use(requireAuth, requirePremium)
 // GET /leads — list pending demands
 router.get('/', async (req, res) => {
   const status = req.query.status || 'pending'
+  const classification = req.query.classification
 
-  const { data, error } = await supabaseAdmin
+  const VALID_CLASSIFICATIONS = ['alert', 'normal', 'spam']
+  if (classification && !VALID_CLASSIFICATIONS.includes(classification)) {
+    return res.status(400).json({ error: 'Invalid classification' })
+  }
+
+  const VALID_STATUSES_GET = ['pending', 'waiting', 'offer_sent', 'accepted', 'ignored']
+  if (!VALID_STATUSES_GET.includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' })
+  }
+
+  let query = supabaseAdmin
     .from('pending_demands')
     .select('*')
     .eq('agency_id', req.user.agency_id)
-    .eq('status', status)
     .order('created_at', { ascending: false })
     .limit(100)
 
+  if (classification) {
+    query = query.eq('classification', classification).neq('status', 'ignored')
+  } else {
+    query = query.eq('status', status).neq('classification', 'alert')
+  }
+
+  const { data, error } = await query
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
 })
