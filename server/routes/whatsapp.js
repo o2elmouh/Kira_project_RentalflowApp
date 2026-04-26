@@ -369,7 +369,7 @@ router.post('/restitution', whatsappLimit, async (req, res) => {
 // POST /whatsapp/send-offer — send a quote offer to a waiting lead via WhatsApp
 router.post('/send-offer', whatsappLimit, async (req, res) => {
   const agencyId = req.user.agency_id
-  const { leadId, vehicleId, priceTotal } = req.body
+  const { leadId, vehicleId, priceTotal, startDate, endDate, notes } = req.body
 
   if (!agencyId || !leadId || !vehicleId || priceTotal == null) {
     return res.status(400).json({ error: 'leadId, vehicleId and priceTotal are required' })
@@ -399,13 +399,21 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
     const vehicleName = vehicle.name || `${vehicle.make} ${vehicle.model}`.trim()
     const phone = lead.sender_id.replace(/@.*$/, '').replace(/\D/g, '')
 
-    const body = `Bonjour ! 🚗 Suite à votre demande, nous vous proposons une *${vehicleName}* pour *${priceTotal} MAD* au total.\n\nÊtes-vous intéressé(e) ? Répondez *Oui* pour confirmer ou *Non* pour décliner.`
+    let body = `Bonjour ! 🚗 Suite à votre demande, nous vous proposons une *${vehicleName}* pour *${priceTotal} MAD* au total.`
+    if (startDate && endDate) body += `\n📅 Du *${startDate}* au *${endDate}*`
+    if (notes) body += `\n\n${notes}`
+    body += `\n\nÊtes-vous intéressé(e) ? Répondez *Oui* pour confirmer ou *Non* pour décliner.`
 
     await sendWhatsAppMessage({ agencyId, to: phone, body })
 
     const { error: updateErr } = await supabaseAdmin
       .from('pending_demands')
-      .update({ status: 'offer_sent', offered_vehicle_id: vehicleId, offered_price_total: priceTotal })
+      .update({
+        status: 'offer_sent',
+        offered_vehicle_id: vehicleId,
+        offered_price_total: priceTotal,
+        extracted_data: supabaseAdmin.rpc ? undefined : undefined, // preserve existing
+      })
       .eq('id', leadId)
 
     if (updateErr) console.error('[WA/send-offer] update error:', updateErr.message)

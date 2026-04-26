@@ -98,7 +98,8 @@ Latest commit: `650ad26` — feat(network): RentalFlow Network feature (staging)
 ## Staging Deployments
 | Version | Commit | What's in it |
 |---|---|---|
-| v1.2.2 | pending | Fix Escalader: sets classification='lead' + status='pending' so escalated alerts appear in Leads tab |
+| v1.2.3 | pending | Smart Quote: available-vehicles only, start/end date fields, notes field, channel-aware send button (Email vs WhatsApp), POST /email/send-offer via Resend |
+| v1.2.2 | `22a561a` | Fix Escalader: sets classification='lead' + status='pending' so escalated alerts appear in Leads tab |
 | v1.2.1 | `ea88635` | Fix triage pre-filter: add semaine/semaines/journée/week/weeks/woche to MEDIUM, renseigner/besoin/need to LOW |
 | v1.2.0 | `3533bbf` | Alerts Dashboard: orange widget on Dashboard, Leads/Alertes tabs in Basket, triage pipeline, DB migration `002_alerts_classification.sql` |
 
