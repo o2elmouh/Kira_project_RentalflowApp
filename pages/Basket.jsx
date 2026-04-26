@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback, useContext } from 'react'
 import { api } from '../lib/api.js'
 import AlertCard from '../components/AlertCard.jsx'
 import { supabase } from '../lib/supabase.js'
+import { getAvailableVehicles } from '../lib/db.js'
 import { UserContext } from '../lib/UserContext.js'
 
 const STATUS_LABELS = {
@@ -94,13 +95,10 @@ function SmartQuotePanel({ lead, onSent }) {
   const canSend = vehicleId && price && startDate && endDate && !sending
 
   useEffect(() => {
-    supabase
-      .from('vehicles')
-      .select('id, make, model, license_plate, name')
-      .eq('agency_id', lead.agency_id)
-      .eq('status', 'available')
-      .then(({ data }) => setVehicles(data || []))
-  }, [lead.agency_id])
+    getAvailableVehicles(startDate || null, endDate || null)
+      .then(data => setVehicles(data || []))
+      .catch(() => setVehicles([]))
+  }, [startDate, endDate])
 
   async function handleSend() {
     if (!canSend) return
