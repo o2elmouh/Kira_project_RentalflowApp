@@ -47,5 +47,10 @@
     "accounting": "Accounting",
     "basket": "Basket",
     "settings": "Settings"
+  },
+  "alerts": {
+    "label": "Alerts",
+    "seeAll": "View →",
+    "empty": "No pending alerts — all clear"
   }
 }

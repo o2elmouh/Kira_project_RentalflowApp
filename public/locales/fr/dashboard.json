@@ -19,5 +19,10 @@
   },
   "fleetStatus": {
     "title": "État du parc"
+  },
+  "alerts": {
+    "label": "Alertes",
+    "seeAll": "Voir →",
+    "empty": "Aucune alerte en attente — tout est sous contrôle"
   }
 }
