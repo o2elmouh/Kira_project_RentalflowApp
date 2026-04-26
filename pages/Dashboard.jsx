@@ -11,16 +11,71 @@ function inMonth(dateStr, year, month) {
   return d.getFullYear() === year && d.getMonth() === month
 }
 
+const ICON_COLORS = {
+  green:  '#4caf50',
+  pink:   '#cb0c9f',
+  blue:   '#3860BE',
+  orange: '#CF4500',
+  dark:   '#141413',
+}
+
 function StatCard({ icon: Icon, label, value, variant = 'dark', sub }) {
+  const color = ICON_COLORS[variant] || '#141413'
   return (
-    <div className="card stat-card">
-      <div className={`stat-icon ${variant}`}>
-        <Icon size={22} />
+    <div style={{
+      background: '#FCFBFA',
+      borderRadius: 999,
+      padding: '16px 24px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 16,
+      boxShadow: 'rgba(0,0,0,0.04) 0px 4px 24px 0px',
+      border: '1px solid rgba(0,0,0,0.05)',
+    }}>
+      <div style={{
+        width: 44,
+        height: 44,
+        borderRadius: '50%',
+        background: '#F3F0EE',
+        border: `1.5px solid ${color}33`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color,
+        flexShrink: 0,
+      }}>
+        <Icon size={20} />
       </div>
       <div>
-        <div className="stat-value">{value}</div>
-        <div className="stat-label">{label}</div>
-        {sub != null && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>{sub}</div>}
+        <div style={{
+          fontSize: 26,
+          fontWeight: 500,
+          color: '#141413',
+          letterSpacing: '-0.52px',
+          lineHeight: 1.1,
+          fontFamily: "'Sofia Sans', 'Inter', sans-serif",
+        }}>
+          {value}
+        </div>
+        <div style={{
+          fontSize: 12,
+          color: '#696969',
+          marginTop: 3,
+          fontFamily: "'Sofia Sans', 'Inter', sans-serif",
+          fontWeight: 500,
+        }}>
+          {label}
+        </div>
+        {sub != null && (
+          <div style={{
+            fontSize: 11,
+            color: '#D1CDC7',
+            marginTop: 1,
+            fontFamily: "'Sofia Sans', 'Inter', sans-serif",
+          }}>
+            {sub}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -96,59 +151,127 @@ export default function Dashboard({ onNav }) {
 
   if (loading) {
     return (
-      <div className="page-body">
-        <p style={{ color: 'var(--text3)' }}>Chargement…</p>
+      <div style={{
+        background: '#F3F0EE',
+        minHeight: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 32,
+      }}>
+        <p style={{
+          color: '#696969',
+          fontFamily: "'Sofia Sans', 'Inter', sans-serif",
+          fontSize: 15,
+        }}>
+          Chargement…
+        </p>
       </div>
     )
   }
 
   return (
-    <>
-    <style>{`
-      @keyframes pulse-dot {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.4; transform: scale(0.75); }
-      }
-    `}</style>
-    <div>
-      <div className="page-header">
+    <div style={{ background: '#F3F0EE', minHeight: '100%' }}>
+      <style>{`
+        @keyframes pulse-dot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.75); }
+        }
+      `}</style>
+
+      {/* ── Page Header ───────────────────────────────────────── */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        padding: '36px 40px 24px',
+      }}>
         <div>
-          <h2>{t('title')}</h2>
-          <p>{t('subtitle')}</p>
+          <div className="mc-eyebrow">
+            <span style={{ color: '#F37338', fontSize: 14, lineHeight: 1 }}>•</span>
+            {t('title')}
+          </div>
+          <h2 style={{
+            fontSize: 36,
+            fontWeight: 500,
+            color: '#141413',
+            letterSpacing: '-0.72px',
+            lineHeight: '44px',
+            fontFamily: "'Sofia Sans', 'Inter', sans-serif",
+          }}>
+            {t('subtitle')}
+          </h2>
         </div>
-        <button className="btn btn-primary" onClick={() => onNav('new-rental')}>
-          <PlusCircle size={15} /> {t('newRental')}
+        <button className="btn-ink" onClick={() => onNav('new-rental')}>
+          <PlusCircle size={15} />
+          {t('newRental')}
         </button>
       </div>
 
-      <div className="page-body">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <button className="btn btn-ghost btn-sm" onClick={prevMonth}>
-            <ChevronLeft size={15} />
-          </button>
-          <div style={{ minWidth: 160, textAlign: 'center' }}>
-            <span style={{ fontWeight: 700, fontSize: 16 }}>{months[month]} {year}</span>
-            {isCurrentMonth && (
-              <span className="badge badge-green" style={{ marginLeft: 8 }}>{t('thisMonth')}</span>
-            )}
+      <div style={{ padding: '0 40px 48px' }}>
+
+        {/* ── Month Navigator ────────────────────────────────── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32 }}>
+          <div className="mc-month-nav">
+            <button className="mc-month-nav-btn" onClick={prevMonth}>
+              <ChevronLeft size={16} />
+            </button>
+            <div style={{
+              minWidth: 170,
+              textAlign: 'center',
+              padding: '0 8px',
+              fontFamily: "'Sofia Sans', 'Inter', sans-serif",
+            }}>
+              <span style={{
+                fontWeight: 500,
+                fontSize: 15,
+                color: '#141413',
+                letterSpacing: '-0.3px',
+              }}>
+                {months[month]} {year}
+              </span>
+              {isCurrentMonth && (
+                <span
+                  className="mc-chip mc-chip--cream"
+                  style={{ marginLeft: 8, verticalAlign: 'middle' }}
+                >
+                  {t('thisMonth')}
+                </span>
+              )}
+            </div>
+            <button
+              className="mc-month-nav-btn"
+              onClick={nextMonth}
+              disabled={isCurrentMonth}
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={nextMonth} disabled={isCurrentMonth}>
-            <ChevronRight size={15} />
-          </button>
+
           {!isCurrentMonth && (
-            <button className="btn btn-secondary btn-sm" onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth()) }}>
+            <button
+              className="btn-outline-ink"
+              style={{ padding: '5px 20px', fontSize: 13 }}
+              onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth()) }}
+            >
               {t('today')}
             </button>
           )}
         </div>
 
-        <div className="stats-grid">
-          <StatCard icon={Car}        label={t('stats.availableVehicles')} value={available}                        variant="green"  />
-          <StatCard icon={Car}        label={t('stats.rentedVehicles')}    value={rented}                           variant="pink"   />
-          <StatCard icon={Users}      label={t('stats.newClients')}        value={filteredClients.length}            variant="blue"   />
-          <StatCard icon={FileText}   label={t('stats.monthContracts')}    value={filteredContracts.length}          variant="orange" sub={t('stats.activeCount', { count: active })} />
-          <StatCard icon={Receipt}    label={t('stats.monthInvoices')}     value={filteredInvoices.length}           variant="green"  />
-          <StatCard icon={TrendingUp} label={t('stats.revenue')}          value={`${revenue.toLocaleString()} ${tc('currency')}`} variant="pink" />
+        {/* ── Stats Grid ─────────────────────────────────────── */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+          gap: 12,
+          marginBottom: 40,
+        }}>
+          <StatCard icon={Car}        label={t('stats.availableVehicles')} value={available}                                                     variant="green"  />
+          <StatCard icon={Car}        label={t('stats.rentedVehicles')}    value={rented}                                                         variant="pink"   />
+          <StatCard icon={Users}      label={t('stats.newClients')}        value={filteredClients.length}                                          variant="blue"   />
+          <StatCard icon={FileText}   label={t('stats.monthContracts')}    value={filteredContracts.length} sub={t('stats.activeCount', { count: active })} variant="orange" />
+          <StatCard icon={Receipt}    label={t('stats.monthInvoices')}     value={filteredInvoices.length}                                         variant="green"  />
+          <StatCard icon={TrendingUp} label={t('stats.revenue')}           value={`${revenue.toLocaleString()} ${tc('currency')}`}                 variant="pink"   />
           {alertCount > 0 && (
             <div
               onClick={() => onNav('basket', { initialTab: 'alertes' })}
@@ -191,27 +314,78 @@ export default function Dashboard({ onNav }) {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 24 }}>
-          <div className="card">
-            <div className="card-header">
-              <h3>{t('contracts.title', { month: months[month] })}</h3>
-              <span className="badge badge-gray">{filteredContracts.length}</span>
+        {/* ── Two-column tables ──────────────────────────────── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+          {/* Contracts */}
+          <div className="mc-stadium">
+            <div style={{
+              padding: '28px 32px 16px',
+              borderBottom: '1px solid rgba(0,0,0,0.05)',
+            }}>
+              <div className="mc-eyebrow">
+                <span style={{ color: '#F37338' }}>•</span>
+                {t('contracts.title', { month: months[month] })}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{
+                  fontSize: 20,
+                  fontWeight: 500,
+                  color: '#141413',
+                  letterSpacing: '-0.4px',
+                  fontFamily: "'Sofia Sans', 'Inter', sans-serif",
+                }}>
+                  Contrats du mois
+                </h3>
+                <span className="mc-chip mc-chip--cream">{filteredContracts.length}</span>
+              </div>
             </div>
-            <div className="card-body">
+            <div style={{ padding: '8px 32px 28px' }}>
               {filteredContracts.length === 0 && (
-                <p style={{ color: 'var(--text3)', fontSize: 13 }}>{t('contracts.empty')}</p>
+                <p style={{
+                  color: '#D1CDC7',
+                  fontSize: 13,
+                  padding: '20px 0',
+                  fontFamily: "'Sofia Sans', 'Inter', sans-serif",
+                }}>
+                  {t('contracts.empty')}
+                </p>
               )}
               {filteredContracts.slice(0, 8).map(c => (
-                <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                <div
+                  key={c.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 0',
+                    borderBottom: '1px solid rgba(0,0,0,0.04)',
+                  }}
+                >
                   <div>
-                    <div style={{ fontWeight: 500 }}>{c.contractNumber}</div>
-                    <div style={{ color: 'var(--text3)', fontSize: 11 }}>{c.clientName} — {c.vehicleName}</div>
+                    <div style={{
+                      fontWeight: 500,
+                      color: '#141413',
+                      fontSize: 13,
+                      letterSpacing: '-0.26px',
+                      fontFamily: "'Sofia Sans', 'Inter', sans-serif",
+                    }}>
+                      {c.contractNumber}
+                    </div>
+                    <div style={{
+                      color: '#696969',
+                      fontSize: 11,
+                      marginTop: 2,
+                      fontFamily: "'Sofia Sans', 'Inter', sans-serif",
+                    }}>
+                      {c.clientName} — {c.vehicleName}
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
-                    <span className={`badge ${c.status === 'active' ? 'badge-green' : 'badge-gray'}`}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                    <span className={`mc-chip ${c.status === 'active' ? 'mc-chip--ink' : 'mc-chip--cream'}`}>
                       {tc(`status.${c.status}`) || c.status}
                     </span>
-                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: 'var(--accent)' }}>
+                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#CF4500' }}>
                       {(c.totalTTC || 0).toLocaleString()} {tc('currency')}
                     </span>
                   </div>
@@ -220,25 +394,71 @@ export default function Dashboard({ onNav }) {
             </div>
           </div>
 
-          <div className="card">
-            <div className="card-header"><h3>{t('fleetStatus.title')}</h3></div>
-            <div className="card-body">
+          {/* Fleet Status */}
+          <div className="mc-stadium">
+            <div style={{
+              padding: '28px 32px 16px',
+              borderBottom: '1px solid rgba(0,0,0,0.05)',
+            }}>
+              <div className="mc-eyebrow">
+                <span style={{ color: '#F37338' }}>•</span>
+                {t('fleetStatus.title')}
+              </div>
+              <h3 style={{
+                fontSize: 20,
+                fontWeight: 500,
+                color: '#141413',
+                letterSpacing: '-0.4px',
+                fontFamily: "'Sofia Sans', 'Inter', sans-serif",
+              }}>
+                Statut du parc
+              </h3>
+            </div>
+            <div style={{ padding: '8px 32px 28px' }}>
               {fleet.slice(0, 8).map(v => (
-                <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                <div
+                  key={v.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 0',
+                    borderBottom: '1px solid rgba(0,0,0,0.04)',
+                  }}
+                >
                   <div>
-                    <div style={{ fontWeight: 500 }}>{v.make} {v.model} {v.year}</div>
-                    <div style={{ color: 'var(--text3)', fontSize: 11, fontFamily: 'DM Mono, monospace' }}>{v.plate}</div>
+                    <div style={{
+                      fontWeight: 500,
+                      color: '#141413',
+                      fontSize: 13,
+                      letterSpacing: '-0.26px',
+                      fontFamily: "'Sofia Sans', 'Inter', sans-serif",
+                    }}>
+                      {v.make} {v.model} {v.year}
+                    </div>
+                    <div style={{
+                      fontFamily: 'DM Mono, monospace',
+                      fontSize: 11,
+                      color: '#696969',
+                      marginTop: 2,
+                    }}>
+                      {v.plate}
+                    </div>
                   </div>
-                  <span className={`badge ${v.status === 'available' ? 'badge-green' : v.status === 'rented' ? 'badge-orange' : 'badge-gray'}`}>
+                  <span className={`mc-chip ${
+                    v.status === 'available' ? 'mc-chip--ink' :
+                    v.status === 'rented'    ? 'mc-chip--orange' :
+                                              'mc-chip--cream'
+                  }`}>
                     {tc(`status.${v.status}`) || v.status}
                   </span>
                 </div>
               ))}
             </div>
           </div>
+
         </div>
       </div>
     </div>
-    </>
   )
 }

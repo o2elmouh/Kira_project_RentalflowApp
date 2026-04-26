@@ -187,20 +187,16 @@ async function startSession(agencyId) {
           console.error(`[WA:${agencyId}] inbound audio lead error:`, err.message)
         }
       } else if (imgMsg) {
-        // ── Image → Supabase Storage → OCR ─────────────────
-        // Images are never quote replies — go straight to lead creation
-        let imageUrl = null
+        // ── Image → Process & Purge (base64 direct to Claude, never stored) ──
+        let imageBuf = null
+        const mime = imgMsg.mimetype || 'image/jpeg'
         try {
-          const buf  = await downloadMediaMessage(msg, 'buffer', {})
-          const mime = imgMsg.mimetype || 'image/jpeg'
-          imageUrl   = await uploadLeadMedia(agencyId, senderJid, buf, mime)
-          console.log(`[WA:${agencyId}] image uploaded: ${imageUrl}`)
+          imageBuf = await downloadMediaMessage(msg, 'buffer', {})
         } catch (err) {
-          console.error(`[WA:${agencyId}] image upload error:`, err.message)
+          console.error(`[WA:${agencyId}] image download error:`, err.message)
         }
-        // Always create a lead — even if upload failed (OCR will be skipped)
         try {
-          await handleInboundWhatsApp(agencyId, senderJid, imageUrl, bodyText)
+          await handleInboundWhatsApp(agencyId, senderJid, imageBuf, mime, bodyText)
         } catch (err) {
           console.error(`[WA:${agencyId}] inbound image lead error:`, err.message)
         }
@@ -251,23 +247,6 @@ async function transcribeAudio(buffer) {
     file,
   })
   return transcription.text
-}
-
-// ── Image upload to Supabase Storage ─────────────────────
-
-async function uploadLeadMedia(agencyId, senderJid, buffer, mimeType) {
-  const digits = senderJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
-  const ext = mimeType.startsWith('image/png') ? 'png' : 'jpg'
-  const path = `${agencyId}/${digits}_${Date.now()}.${ext}`
-
-  const { error } = await supabaseAdmin.storage
-    .from('lead-documents')
-    .upload(path, buffer, { contentType: mimeType, upsert: false })
-
-  if (error) throw new Error(`Storage upload failed: ${error.message}`)
-
-  const { data } = supabaseAdmin.storage.from('lead-documents').getPublicUrl(path)
-  return data.publicUrl
 }
 
 async function sendWhatsAppMessage({ agencyId, to, body, mediaBuffer, mimetype, pdfBase64 }) {

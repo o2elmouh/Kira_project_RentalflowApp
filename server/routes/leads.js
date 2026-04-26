@@ -16,6 +16,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { requireAuth } from '../middleware/auth.js'
 import { requirePremium } from '../middleware/premium.js'
+import { detectLanguage, translateToFrench, preFilter, handleAmbiguous } from '../lib/triage.js'
 
 const router = Router()
 
@@ -105,6 +106,7 @@ Your output must match this exact JSON structure:
   },
   "summary_for_agent": "A short, 1-sentence summary of what the client wants."
 }`
+
 
 // ── Claude Vision prompt (image/document OCR) ────────────
 const GLOBAL_SYSTEM_PROMPT = `You are a precise global identity document parser and rental intent extractor.
@@ -219,6 +221,39 @@ router.post('/webhook/gmail', async (req, res) => {
   let extractedData = null
   const mediaUrls = []
 
+  // Triage gate — language detection → keyword pre-filter → ambiguous handler
+  const textForTriage = [subject, bodyText].filter(Boolean).join('\n\n')
+  if (textForTriage) {
+    const lang = detectLanguage(textForTriage)
+    const CORE = new Set(['fra', 'ara', 'eng'])
+    const translatedText = (!CORE.has(lang) && lang !== 'und')
+      ? await translateToFrench(textForTriage)
+      : null
+    const textToFilter = translatedText ?? textForTriage
+    const { result, matchedKeywords } = preFilter(textToFilter)
+
+    if (result === 'fail') {
+      console.log(`[leads/gmail] pre-filter dropped: no rental keywords (lang=${lang})`)
+      return res.json({ ok: true, dropped: true })
+    }
+
+    if (result === 'ambiguous') {
+      console.log(`[leads/gmail] pre-filter ambiguous: keywords=[${matchedKeywords.join(',')}]`)
+      await handleAmbiguous({
+        agencyId,
+        senderId: senderEmail,
+        source: 'gmail',
+        originalText: textForTriage,
+        translatedText,
+        rawPayload: { subject, bodyText: (bodyText || '').slice(0, 2000) },
+      })
+      return res.json({ ok: true, alert: true })
+    }
+
+    // result === 'pass' — continue to extraction below
+    console.log(`[leads/gmail] pre-filter pass: keywords=[${matchedKeywords.join(',')}]`)
+  }
+
   const imageBlocks = (attachments || [])
     .filter(a => a.base64 && a.mimeType?.startsWith('image/'))
     .map(a => ({ type: 'image', source: { type: 'base64', media_type: a.mimeType, data: a.base64 } }))
@@ -228,6 +263,23 @@ router.post('/webhook/gmail', async (req, res) => {
       extractedData = await extractWithClaude(imageBlocks, bodyText || subject)
     } catch (err) {
       console.error('[leads/gmail] Claude extraction error:', err.message)
+    }
+  }
+
+  if (!extractedData && (bodyText || subject) && process.env.ANTHROPIC_API_KEY) {
+    try {
+      const textToClassify = [subject, bodyText].filter(Boolean).join('\n\n')
+      const classification = await classifyTextMessage(textToClassify, 'no_contract')
+      if (classification) {
+        extractedData = {
+          classification: classification.classification,
+          confidence: classification.confidence,
+          summary_for_agent: classification.summary_for_agent,
+          ...classification.extracted_data,
+        }
+      }
+    } catch (err) {
+      console.error('[leads/gmail] text classification error:', err.message)
     }
   }
 
@@ -437,24 +489,74 @@ async function classifyTextMessage(bodyText, clientStatus) {
 
 /**
  * Called directly by the Baileys inbound listener (no HTTP round-trip).
- * @param {string}      agencyId
- * @param {string}      senderJid  — e.g. "212XXXXXXXXX@s.whatsapp.net"
- * @param {string|null} imageUrl   — public Supabase Storage URL, or null
- * @param {string}      bodyText   — text body or Whisper transcript
+ * @param {string}         agencyId
+ * @param {string}         senderJid   — e.g. "212XXXXXXXXX@s.whatsapp.net"
+ * @param {Buffer|null}    imageBuffer — raw image bytes (never persisted)
+ * @param {string}         mimeType    — e.g. "image/jpeg"
+ * @param {string}         bodyText    — text body or Whisper transcript
  */
-export async function handleInboundWhatsApp(agencyId, senderJid, imageUrl, bodyText) {
+export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mimeType, bodyText) {
   let extractedData = null
 
-  if (imageUrl && process.env.ANTHROPIC_API_KEY) {
-    // Image received — run document OCR via public URL
+  // Triage gate — language detection → keyword pre-filter → ambiguous handler
+  if (bodyText?.trim()) {
+    const lang = detectLanguage(bodyText)
+    const CORE = new Set(['fra', 'ara', 'eng'])
+    const translatedText = (!CORE.has(lang) && lang !== 'und')
+      ? await translateToFrench(bodyText)
+      : null
+    const textToFilter = translatedText ?? bodyText
+    const { result, matchedKeywords } = preFilter(textToFilter)
+
+    if (result === 'fail') {
+      console.log(`[leads/inbound-wa] pre-filter dropped: no rental keywords (lang=${lang})`)
+      return
+    }
+
+    if (result === 'ambiguous') {
+      console.log(`[leads/inbound-wa] pre-filter ambiguous: keywords=[${matchedKeywords.join(',')}]`)
+      await handleAmbiguous({
+        agencyId,
+        senderId: senderJid,
+        source: 'whatsapp',
+        originalText: bodyText,
+        translatedText,
+        rawPayload: { body: bodyText, from: senderJid },
+      })
+      return
+    }
+
+    // result === 'pass' — continue to extraction below
+    console.log(`[leads/inbound-wa] pre-filter pass: keywords=[${matchedKeywords.join(',')}]`)
+  }
+
+  if (imageBuffer && process.env.ANTHROPIC_API_KEY) {
+    // Process & Purge — send buffer directly to Claude as base64, never stored
     try {
-      const imageBlock = { type: 'image', source: { type: 'url', url: imageUrl } }
+      const imageBlock = { type: 'image', source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: imageBuffer.toString('base64') } }
       extractedData = await extractWithClaude([imageBlock], bodyText)
+      // Document scan = always a new lead; also extract rental intent from caption if present
+      if (extractedData) {
+        extractedData.classification = 'new_lead'
+        if (bodyText?.trim()) {
+          try {
+            const clientStatus = await getClientStatus(agencyId, senderJid)
+            const captionClass = await classifyTextMessage(bodyText, clientStatus)
+            if (captionClass) {
+              extractedData = {
+                ...extractedData,
+                ...captionClass.extracted_data,
+                ...(captionClass.classification && { classification: captionClass.classification }),
+                ...(captionClass.summary_for_agent && { summary_for_agent: captionClass.summary_for_agent }),
+              }
+            }
+          } catch (_) {}
+        }
+      }
     } catch (err) {
       console.error('[leads/inbound-wa] Claude error:', err.message)
     }
   } else if (bodyText?.trim()) {
-    // Text-only or voice-note transcript — run lead classification
     try {
       const clientStatus = await getClientStatus(agencyId, senderJid)
       const classification = await classifyTextMessage(bodyText, clientStatus)
@@ -472,13 +574,12 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageUrl, bodyT
   }
 
   const match = await findMatchingDemand(agencyId, senderJid, extractedData)
-  const mediaUrls = imageUrl ? [imageUrl] : []
 
   if (match && match.type !== 'potential') {
     const existing = match.demand
     await supabaseAdmin.from('pending_demands').update({
       extracted_data: { ...(existing.extracted_data || {}), ...(extractedData || {}) },
-      media_urls: [...(existing.media_urls || []), ...mediaUrls],
+      media_urls: existing.media_urls || [],
       confidence_scores: extractedData?.confidenceScores || null,
       match_score: match.score,
       raw_payload: { ...existing.raw_payload, latestBody: bodyText },
@@ -491,7 +592,7 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageUrl, bodyT
       raw_payload: { body: bodyText, from: senderJid },
       extracted_data: extractedData,
       confidence_scores: extractedData?.confidenceScores || null,
-      media_urls: mediaUrls,
+      media_urls: [],
       match_score: match?.score || null,
       merged_with_id: match?.type === 'potential' ? match.demand.id : null,
     })

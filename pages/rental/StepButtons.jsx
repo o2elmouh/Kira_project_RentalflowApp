@@ -5,9 +5,9 @@ export default function StepButtons({ leftBtns, rightBtns }) {
       justifyContent: 'space-between',
       alignItems: 'center',
       gap: 12,
-      marginTop: 24,
-      paddingTop: 16,
-      borderTop: '1px solid var(--border)'
+      marginTop: 28,
+      paddingTop: 20,
+      borderTop: '1px solid rgba(0,0,0,0.07)',
     }}>
       <div style={{ display: 'flex', gap: 10 }}>
         {leftBtns}

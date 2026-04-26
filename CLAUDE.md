@@ -86,4 +86,15 @@ See [CHANGELOG.md](CHANGELOG.md) for completed work history.
 ## GitHub
 Repo: `https://github.com/o2elmouh/Kira_project_RentalflowApp`
 Main branch: `main`
-Latest commit: `289b270` — feat(invoices): add Eye button to preview invoice PDF in-app modal
+Latest commit: `650ad26` — feat(network): RentalFlow Network feature (staging)
+
+## Versioning
+- Version is displayed in the Sidebar bottom-left, next to the agency name.
+- **Every push must bump the version** in `components/Sidebar.jsx` (the `v1.x.x` string).
+- **Increment rule: +0.0.1 per push** (patch version only). Example: v1.1.6 → v1.1.7 → v1.1.8.
+- Current version: **v1.1.12** (commit pending)
+
+## API Usage Policy
+- **Never use the `ANTHROPIC_API_KEY` for development tasks, exploration, or testing within Claude Code sessions.** API calls bill against the project key directly and are not covered by the Claude subscription.
+- All Anthropic API calls in the app must use `claude-haiku-4-5-20251001` unless a specific quality reason justifies Sonnet. Opus is forbidden.
+- Every AI function must have `max_tokens` set conservatively and a retry circuit breaker (max 3 attempts).

@@ -193,10 +193,10 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
         leftBtns={
           !finalized ? (
             <>
-              <button className="btn btn-primary btn-lg" onClick={onBack} disabled={saving} style={{ color: 'white' }}>
+              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onBack} disabled={saving}>
                 <ArrowLeft size={15} /> Retour
               </button>
-              <button className="btn btn-primary btn-lg" style={{ color: 'white' }} disabled={saving} onClick={onCancel}>
+              <button className="btn-outline-ink" style={{ fontSize: 14, color: '#CF4500', borderColor: '#CF4500' }} disabled={saving} onClick={onCancel}>
                 <X size={15} /> Annuler la location
               </button>
             </>
@@ -205,25 +205,25 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
         rightBtns={
           !finalized ? (
             <>
-              <button className="btn btn-ghost" onClick={onSaveAndQuit} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onSaveAndQuit} disabled={saving}>
                 💾 Sauvegarder & quitter
               </button>
-              <button className="btn btn-primary btn-lg" disabled={saving} onClick={handleFinalize}>
+              <button className="btn-ink" style={{ fontSize: 15 }} disabled={saving} onClick={handleFinalize}>
                 {saving ? 'Finalisation…' : <><CheckCircle size={15} /> Finaliser le contrat</>}
               </button>
             </>
           ) : (
             <>
-              <button className="btn btn-primary btn-lg" onClick={downloadInvoice}>
+              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={downloadInvoice}>
                 <Download size={14} /> Télécharger l'invoice
               </button>
-              <button className="btn btn-primary btn-lg" onClick={downloadContract}>
+              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={downloadContract}>
                 <Printer size={14} /> Télécharger le contrat
               </button>
-              <button className="btn btn-primary btn-lg" disabled={signing} onClick={handleSign}>
+              <button className="btn-ink" style={{ fontSize: 14 }} disabled={signing} onClick={handleSign}>
                 <MessageSquare size={14} /> {signing ? 'Envoi…' : 'Signer le contrat'}
               </button>
-              <button className="btn btn-primary btn-lg" onClick={onDone}>
+              <button className="btn-ink" style={{ fontSize: 15 }} onClick={onDone}>
                 <CheckCircle size={15} /> Terminer
               </button>
             </>

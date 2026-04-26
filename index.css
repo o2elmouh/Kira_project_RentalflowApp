@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Sofia+Sans:wght@300;400;500;600;700&display=swap');
 
 :root {
   /* Brand */
@@ -623,3 +623,119 @@ body {
 [dir="rtl"] .sidebar-logo         { flex-direction: row-reverse }
 [dir="rtl"] body                  { font-family: 'Segoe UI', 'Arial', sans-serif }
 [dir="rtl"] .text-mono, [dir="rtl"] .vehicle-plate { direction: ltr; text-align: right }
+
+/* ═══════════════════════════════════════════════════════════
+   DESIGN.md — Mastercard-inspired design system
+   Sofia Sans ≈ open-source stand-in for MarkForMC
+   ═══════════════════════════════════════════════════════════ */
+
+/* Ink Pill — primary CTA */
+.btn-ink {
+  background: #141413;
+  color: #F3F0EE;
+  border: 1.5px solid #141413;
+  border-radius: 20px;
+  padding: 6px 24px;
+  font-family: 'Sofia Sans', 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.32px;
+  line-height: 1.4;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.btn-ink:hover:not(:disabled) { opacity: 0.82; }
+.btn-ink:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Outlined Ink Pill — secondary CTA */
+.btn-outline-ink {
+  background: #FFFFFF;
+  color: #141413;
+  border: 1.5px solid #141413;
+  border-radius: 20px;
+  padding: 6px 24px;
+  font-family: 'Sofia Sans', 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.4;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.btn-outline-ink:hover:not(:disabled) { opacity: 0.75; }
+.btn-outline-ink:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Eyebrow label — "• SECTION TITLE" */
+.mc-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Sofia Sans', 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.56px;
+  text-transform: uppercase;
+  color: #696969;
+  margin-bottom: 8px;
+}
+
+/* Stadium card — 40px radius, lifted cream */
+.mc-stadium {
+  background: #FCFBFA;
+  border-radius: 40px;
+  box-shadow: rgba(0,0,0,0.08) 0px 24px 48px 0px;
+  overflow: hidden;
+}
+
+/* Pill chip — status badges */
+.mc-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-family: 'Sofia Sans', 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.mc-chip--ink    { background: #141413; color: #F3F0EE; }
+.mc-chip--cream  { background: #F3F0EE; color: #696969; border: 1px solid rgba(0,0,0,0.06); }
+.mc-chip--orange { background: #FEF0E8; color: #CF4500; border: 1px solid rgba(207,69,0,0.25); }
+.mc-chip--blue   { background: #E8EEFA; color: #3860BE; border: 1px solid rgba(56,96,190,0.2); }
+
+/* Month nav pill */
+.mc-month-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #FFFFFF;
+  border-radius: 999px;
+  padding: 6px 8px;
+  box-shadow: rgba(0,0,0,0.04) 0px 4px 24px 0px;
+}
+
+.mc-month-nav-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #141413;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.mc-month-nav-btn:hover:not(:disabled) { background: #F3F0EE; }
+.mc-month-nav-btn:disabled { color: #D1CDC7; cursor: not-allowed; }

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, PlusCircle, Car, Users, FileText, Receipt, Settings, LogOut, RotateCcw, Calculator, Inbox } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Car, Users, FileText, Receipt, Settings, LogOut, RotateCcw, Calculator, Inbox, Globe } from 'lucide-react'
 import LanguageSelector from './LanguageSelector'
 
 const NAV_IDS = [
@@ -12,11 +12,12 @@ const NAV_IDS = [
   { id: 'invoices',          key: 'invoices',     icon: Receipt },
   { id: 'accounting',        key: 'accounting',   icon: Calculator },
   { id: 'basket',            key: 'basket',       icon: Inbox, premium: true },
+  { id: 'network',           key: 'network',      icon: Globe },
   { id: 'settings',          key: 'settings',     icon: Settings },
 ]
 
 // Pages restricted to admin role only
-const ADMIN_ONLY_PAGES = ['settings', 'accounting']
+const ADMIN_ONLY_PAGES = ['accounting']
 
 export default function Sidebar({ active, onNav, user, profile, isAdmin = true, onSignOut }) {
   const { t } = useTranslation('common')
@@ -68,8 +69,13 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
       {user && onSignOut && (
         <div style={{ padding: '12px 10px', borderTop: '1px solid var(--border)', marginTop: 'auto' }}>
           {agencyName && (
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4, paddingLeft: 8 }}>
-              {agencyName}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, paddingLeft: 8, paddingRight: 4 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {agencyName}
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', opacity: 0.6 }}>
+                v1.1.14
+              </span>
             </div>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 8, marginBottom: 8 }}>

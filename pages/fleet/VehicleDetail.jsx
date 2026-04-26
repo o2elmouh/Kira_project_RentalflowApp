@@ -1,11 +1,16 @@
-import { useState, useEffect } from 'react'
-import { ChevronLeft, Edit2, Trash2, PlusCircle } from 'lucide-react'
+import { useState, useEffect, useContext } from 'react'
+import { ChevronLeft, Edit2, Trash2, PlusCircle, Globe } from 'lucide-react'
 import { getContracts, getRepairs, addRepair } from '../../lib/db'
+import { api } from '../../lib/api'
+import { UserContext } from '../../lib/UserContext'
 import { getDefaultConfigForMake as getFleetConfigForMake } from '../../lib/fleetConfigDefaults'
 import DeadlineBadge from './DeadlineBadge'
 import { displayPlate, computeDeadlinesFromConfig } from './constants'
 
 export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDelete }) {
+  const { profile } = useContext(UserContext)
+  const isAdmin = profile?.role === 'admin'
+
   const [showDeadlineEdit, setShowDeadlineEdit] = useState(false)
   const [deadlineForm, setDeadlineForm] = useState(() => computeDeadlinesFromConfig(vehicle))
   const [deadlineSaved, setDeadlineSaved] = useState(false)
@@ -13,6 +18,31 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
   const [repairs, setRepairs] = useState([])
   const [showRepairModal, setShowRepairModal] = useState(false)
   const [repairDraft, setRepairDraft] = useState({ label: '', date: new Date().toISOString().split('T')[0], cost: '' })
+
+  const [networkForm, setNetworkForm]   = useState({
+    is_network_visible:  vehicle.is_network_visible  ?? false,
+    network_daily_price: vehicle.network_daily_price ?? '',
+  })
+  const [networkSaving, setNetworkSaving] = useState(false)
+  const [networkSaved,  setNetworkSaved]  = useState(false)
+  const [networkError,  setNetworkError]  = useState('')
+
+  const saveNetwork = async () => {
+    setNetworkError('')
+    setNetworkSaving(true)
+    try {
+      await api.network.toggleVisibility(vehicle.id, {
+        is_network_visible:  networkForm.is_network_visible,
+        network_daily_price: networkForm.is_network_visible ? Number(networkForm.network_daily_price) : undefined,
+      })
+      setNetworkSaved(true)
+      setTimeout(() => setNetworkSaved(false), 2500)
+    } catch (err) {
+      setNetworkError(err.message)
+    } finally {
+      setNetworkSaving(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -329,6 +359,62 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
           </div>
         </div>
       )}
+
+      {/* ── RentalFlow Network visibility ── */}
+      <div style={{ borderTop: '1px solid var(--border)', padding: '20px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <Globe size={15} color="var(--accent)" />
+          <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text1)' }}>RentalFlow Network</span>
+          {networkForm.is_network_visible && <span className="badge badge-green">Visible</span>}
+        </div>
+
+        {isAdmin ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={networkForm.is_network_visible}
+                onChange={e => setNetworkForm(p => ({ ...p, is_network_visible: e.target.checked }))}
+                style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: 13, color: 'var(--text1)' }}>
+                Share this vehicle on the network
+              </span>
+            </label>
+
+            {networkForm.is_network_visible && (
+              <div className="form-group" style={{ maxWidth: 220 }}>
+                <label className="form-label">Inter-agency daily price (MAD) *</label>
+                <input
+                  className="form-input text-mono"
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 350"
+                  value={networkForm.network_daily_price}
+                  onChange={e => setNetworkForm(p => ({ ...p, network_daily_price: e.target.value }))}
+                />
+              </div>
+            )}
+
+            {networkError && (
+              <p style={{ fontSize: 12, color: '#dc2626', margin: 0 }}>{networkError}</p>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button className="btn btn-primary btn-sm" onClick={saveNetwork} disabled={networkSaving}>
+                {networkSaving ? 'Saving…' : 'Save'}
+              </button>
+              {networkSaved && <span className="badge badge-green">Saved ✓</span>}
+            </div>
+          </div>
+        ) : (
+          <p style={{ fontSize: 13, color: 'var(--text3)', margin: 0 }}>
+            {networkForm.is_network_visible
+              ? `Shared at ${networkForm.network_daily_price || '—'} MAD/day`
+              : 'Not shared on the network.'}
+          </p>
+        )}
+      </div>
     </div>
   )
 }

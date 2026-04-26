@@ -182,7 +182,8 @@ export default function Fleet() {
               const targetBeltKm = v.nextTimingBeltMileage || (vConfig ? currentKm + vConfig.courroieKm : null)
 
               return (
-                <div key={v.id} className="vehicle-card" style={{ cursor: 'pointer' }}
+                <div key={v.id} className="vehicle-card"
+                  style={{ cursor: 'pointer', opacity: v.status === 'rented' ? 0.55 : 1, position: 'relative' }}
                   onClick={() => { setDetail(v); setEditing(null) }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div className="vehicle-plate" style={{ direction: 'rtl', fontSize: 13, letterSpacing: 2 }}>{displayPlate(v.plate)}</div>
