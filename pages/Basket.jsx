@@ -542,7 +542,13 @@ export default function Basket({ onNavigate, initialTab = null }) {
   }
 
   async function handleEscalate(id) {
-    await handleStatusChange(id, 'pending')
+    try {
+      await api.escalateAlert(id)
+      setAlerts(prev => prev.filter(a => a.id !== id))
+      setSelectedLead(null)
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   async function handleIgnoreAlert(id) {

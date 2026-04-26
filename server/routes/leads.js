@@ -393,15 +393,22 @@ router.get('/:id', async (req, res) => {
 
 // PATCH /leads/:id/status
 const VALID_STATUSES = ['pending', 'processed', 'ignored', 'waiting', 'offer_sent', 'accepted', 'converted']
+const VALID_PATCH_CLASSIFICATIONS = ['lead', 'alert', 'normal', 'spam']
 router.patch('/:id/status', async (req, res) => {
-  const { status } = req.body
+  const { status, classification } = req.body
   if (!VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join('|')}` })
   }
+  if (classification !== undefined && !VALID_PATCH_CLASSIFICATIONS.includes(classification)) {
+    return res.status(400).json({ error: `classification must be one of: ${VALID_PATCH_CLASSIFICATIONS.join('|')}` })
+  }
+
+  const update = { status }
+  if (classification !== undefined) update.classification = classification
 
   const { data, error } = await supabaseAdmin
     .from('pending_demands')
-    .update({ status })
+    .update(update)
     .eq('id', req.params.id)
     .eq('agency_id', req.user.agency_id)
     .select()
