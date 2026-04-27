@@ -73,7 +73,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
                 {agencyName}
               </span>
               <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', opacity: 0.6 }}>
-                v1.3.0
+                v1.3.1
               </span>
             </div>
           )}
