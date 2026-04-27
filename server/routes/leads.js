@@ -11,6 +11,7 @@
  */
 
 import { Router } from 'express'
+import Anthropic from '@anthropic-ai/sdk'
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { requireAuth } from '../middleware/auth.js'
