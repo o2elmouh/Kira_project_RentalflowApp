@@ -77,7 +77,7 @@ export default function SmartQuotePanel({ lead, onSent }) {
           <option value="">— Choisir un véhicule —</option>
           {vehicles.map(v => (
             <option key={v.id} value={v.id}>
-              {v.name || `${v.make} ${v.model}`.trim()} {v.license_plate ? `(${v.license_plate})` : ''}
+              {`${v.make} ${v.model}`.trim()}{v.plate ? ` (${v.plate})` : ''}
             </option>
           ))}
         </select>
