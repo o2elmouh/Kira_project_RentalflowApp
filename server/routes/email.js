@@ -60,7 +60,7 @@ router.post('/send-offer', emailLimit, async (req, res) => {
 
     const { data: vehicle, error: vehErr } = await supabaseAdmin
       .from('vehicles')
-      .select('id, make, model')
+      .select('id, brand, model')
       .eq('id', vehicleId)
       .eq('agency_id', agencyId)
       .maybeSingle()
@@ -68,7 +68,7 @@ router.post('/send-offer', emailLimit, async (req, res) => {
     if (vehErr) return res.status(500).json({ error: vehErr.message })
     if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' })
 
-    const vehicleName = `${vehicle.make} ${vehicle.model}`.trim()
+    const vehicleName = `${vehicle.brand} ${vehicle.model}`.trim()
     const to = lead.sender_id  // Gmail leads store the email address in sender_id
 
     const subject = `Offre de location — ${vehicleName}`
