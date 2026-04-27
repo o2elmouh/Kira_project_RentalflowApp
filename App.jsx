@@ -16,6 +16,8 @@ import OnboardingPage from './pages/Onboarding'
 import WelcomeScreen from './pages/WelcomeScreen'
 import SignContract from './pages/SignContract'
 import Accounting from './pages/Accounting'
+import Documents from './pages/Documents'
+import Calendar  from './pages/Calendar'
 import Basket from './pages/Basket'
 import Network from './pages/Network'
 
@@ -173,13 +175,17 @@ export default function App() {
         onDone={() => { setPrefilledLead(null); setPage('dashboard') }}
         prefilledLead={prefilledLead}
       />
-      case 'contracts': return <Contracts onRestitution={handleRestitution} />
-      case 'invoices': return <Invoices />
+      case 'documents':
+        return <Documents onRestitution={handleRestitution} isAdmin={isAdmin} />
+      case 'contracts':
+        return <Documents onRestitution={handleRestitution} isAdmin={isAdmin} initialTab="contracts" />
+      case 'invoices':
+        return <Documents onRestitution={handleRestitution} isAdmin={isAdmin} initialTab="invoices" />
+      case 'accounting':
+        return <Documents onRestitution={handleRestitution} isAdmin={isAdmin} initialTab="accounting" />
       case 'clients': return <Clients />
       case 'fleet': return <Fleet />
-      case 'accounting':
-        if (!isAdmin) { setTimeout(() => setPage('dashboard'), 0); return null }
-        return <Accounting />
+      case 'calendar': return <Calendar />
       case 'settings':
         if (!isAdmin) { setTimeout(() => setPage('dashboard'), 0); return null }
         return <Settings />

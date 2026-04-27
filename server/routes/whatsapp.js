@@ -44,7 +44,10 @@ async function getWAVersion() {
 import { Boom } from '@hapi/boom'
 import QRCode from 'qrcode'
 import OpenAI, { toFile } from 'openai'
-import { handleInboundWhatsApp, handleQuoteReply } from './leads.js'
+import { handleInboundWhatsApp } from '../lib/inboundPipeline.js'
+import { vehicleRowToApi } from '../lib/vehicleMapper.js'
+import { handleQuoteReply } from '../lib/quoteAnalysis.js'
+import { appendConversation } from '../lib/conversation.js'
 import { requireAuth } from '../middleware/auth.js'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 
@@ -181,7 +184,7 @@ async function startSession(agencyId) {
         try {
           const quoteLead = await handleQuoteReply(agencyId, senderJid, effectiveText)
           if (!quoteLead) {
-            await handleInboundWhatsApp(agencyId, senderJid, null, effectiveText)
+            await handleInboundWhatsApp(agencyId, senderJid, null, null, effectiveText)
           }
         } catch (err) {
           console.error(`[WA:${agencyId}] inbound audio lead error:`, err.message)
@@ -205,7 +208,7 @@ async function startSession(agencyId) {
         try {
           const quoteLead = await handleQuoteReply(agencyId, senderJid, bodyText)
           if (!quoteLead) {
-            await handleInboundWhatsApp(agencyId, senderJid, null, bodyText)
+            await handleInboundWhatsApp(agencyId, senderJid, null, null, bodyText)
           }
         } catch (err) {
           console.error(`[WA:${agencyId}] inbound text error:`, err.message)
@@ -251,7 +254,19 @@ async function transcribeAudio(buffer) {
 
 async function sendWhatsAppMessage({ agencyId, to, body, mediaBuffer, mimetype, pdfBase64 }) {
   const entry = await getSession(agencyId)
-  if (entry.status !== 'open') throw new Error(`WhatsApp session not connected (status: ${entry.status})`)
+  if (entry.status !== 'open') {
+    // Wait up to 15s for session to become open — handles post-restart reconnect window
+    await new Promise((resolve, reject) => {
+      const deadline = Date.now() + 15_000
+      const check = setInterval(() => {
+        if (entry.status === 'open') { clearInterval(check); resolve() }
+        else if (Date.now() > deadline) {
+          clearInterval(check)
+          reject(new Error(`WhatsApp session not ready after 15s (status: ${entry.status})`))
+        }
+      }, 500)
+    })
+  }
 
   const jid = normaliseJid(to)
   if (!jid) throw new Error('Invalid phone number')
@@ -388,7 +403,7 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
 
     const { data: vehicle, error: vehErr } = await supabaseAdmin
       .from('vehicles')
-      .select('id, name, make, model')
+      .select('id, brand, model')
       .eq('id', vehicleId)
       .eq('agency_id', agencyId)
       .maybeSingle()
@@ -396,7 +411,7 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
     if (vehErr) return res.status(500).json({ error: vehErr.message })
     if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' })
 
-    const vehicleName = vehicle.name || `${vehicle.make} ${vehicle.model}`.trim()
+    const vehicleName = `${vehicle.brand} ${vehicle.model}`.trim()
     const phone = lead.sender_id.replace(/@.*$/, '').replace(/\D/g, '')
 
     let body = `Bonjour ! 🚗 Suite à votre demande, nous vous proposons une *${vehicleName}* pour *${priceTotal} MAD* au total.`
@@ -405,6 +420,10 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
     body += `\n\nÊtes-vous intéressé(e) ? Répondez *Oui* pour confirmer ou *Non* pour décliner.`
 
     await sendWhatsAppMessage({ agencyId, to: phone, body })
+
+    // Log offer after confirmed send — fire-and-forget, must not block response
+    appendConversation(leadId, { role: 'agent', type: 'offer', text: body, vehicleName, priceTotal })
+      .catch(err => console.error('[WA/send-offer] conv log error:', err.message))
 
     const { error: updateErr } = await supabaseAdmin
       .from('pending_demands')
@@ -424,5 +443,27 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
     res.status(502).json({ error: err.message })
   }
 })
+
+/**
+ * Called once at server startup — reconnects any agency that has session files on disk.
+ * Prevents messages being missed after a Railway redeploy.
+ */
+export async function autoReconnectSessions() {
+  const { readdirSync, existsSync } = await import('fs')
+  const { join } = await import('path')
+  if (!existsSync(SESSIONS_DIR)) return
+  const dirs = readdirSync(SESSIONS_DIR, { withFileTypes: true })
+    .filter(d => d.isDirectory())
+    .map(d => d.name)
+  if (!dirs.length) return
+  console.log(`[WA] auto-reconnecting ${dirs.length} session(s): ${dirs.join(", ")}`)
+  for (const agencyId of dirs) {
+    try {
+      await startSession(agencyId)
+    } catch (err) {
+      console.error(`[WA] auto-reconnect failed for ${agencyId}:`, err.message)
+    }
+  }
+}
 
 export default router

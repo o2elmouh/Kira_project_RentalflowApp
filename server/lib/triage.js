@@ -10,7 +10,7 @@ const anthropic = process.env.ANTHROPIC_API_KEY
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001'
 
 // ── Core languages that skip translation ─────────────────
-const CORE_LANGS = new Set(['fra', 'ara', 'eng'])
+export const CORE_LANGS = new Set(['fra', 'ara', 'eng'])
 
 // ── Keyword dictionary ────────────────────────────────────
 const KEYWORDS = {

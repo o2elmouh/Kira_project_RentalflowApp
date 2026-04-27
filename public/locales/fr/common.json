@@ -57,6 +57,11 @@
     "accounting": "Comptabilité",
     "basket": "Corbeille",
     "network": "Réseau",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "documents": "Documents",
+    "documentsContracts": "Contrats",
+    "documentsInvoices": "Factures",
+    "documentsAccounting": "Comptabilité",
+    "calendar": "Calendrier"
   }
 }
