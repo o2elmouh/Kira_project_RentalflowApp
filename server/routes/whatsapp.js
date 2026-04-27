@@ -183,7 +183,7 @@ async function startSession(agencyId) {
         try {
           const quoteLead = await handleQuoteReply(agencyId, senderJid, effectiveText)
           if (!quoteLead) {
-            await handleInboundWhatsApp(agencyId, senderJid, null, effectiveText)
+            await handleInboundWhatsApp(agencyId, senderJid, null, null, effectiveText)
           }
         } catch (err) {
           console.error(`[WA:${agencyId}] inbound audio lead error:`, err.message)
@@ -207,7 +207,7 @@ async function startSession(agencyId) {
         try {
           const quoteLead = await handleQuoteReply(agencyId, senderJid, bodyText)
           if (!quoteLead) {
-            await handleInboundWhatsApp(agencyId, senderJid, null, bodyText)
+            await handleInboundWhatsApp(agencyId, senderJid, null, null, bodyText)
           }
         } catch (err) {
           console.error(`[WA:${agencyId}] inbound text error:`, err.message)
