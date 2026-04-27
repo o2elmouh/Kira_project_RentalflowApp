@@ -44,7 +44,7 @@ async function getWAVersion() {
 import { Boom } from '@hapi/boom'
 import QRCode from 'qrcode'
 import OpenAI, { toFile } from 'openai'
-import { handleInboundWhatsApp } from './leads.js'
+import { handleInboundWhatsApp } from '../lib/inboundPipeline.js'
 import { handleQuoteReply } from '../lib/quoteAnalysis.js'
 import { appendConversation } from '../lib/conversation.js'
 import { requireAuth } from '../middleware/auth.js'
