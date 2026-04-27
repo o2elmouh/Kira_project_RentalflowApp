@@ -431,4 +431,26 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
   }
 })
 
+/**
+ * Called once at server startup — reconnects any agency that has session files on disk.
+ * Prevents messages being missed after a Railway redeploy.
+ */
+export async function autoReconnectSessions() {
+  const { readdirSync, existsSync } = await import('fs')
+  const { join } = await import('path')
+  if (!existsSync(SESSIONS_DIR)) return
+  const dirs = readdirSync(SESSIONS_DIR, { withFileTypes: true })
+    .filter(d => d.isDirectory())
+    .map(d => d.name)
+  if (!dirs.length) return
+  console.log(`[WA] auto-reconnecting ${dirs.length} session(s): ${dirs.join(", ")}`)
+  for (const agencyId of dirs) {
+    try {
+      await startSession(agencyId)
+    } catch (err) {
+      console.error(`[WA] auto-reconnect failed for ${agencyId}:`, err.message)
+    }
+  }
+}
+
 export default router
