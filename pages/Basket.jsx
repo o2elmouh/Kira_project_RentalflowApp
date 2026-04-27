@@ -4,12 +4,14 @@
  * Opens a comparison modal: image(s) left, AI-extracted fields right.
  * "Convert to Rental" pre-fills the NewRental wizard.
  */
-import { useState, useEffect, useCallback, useContext } from 'react'
+import { useState, useContext } from 'react'
 import { api } from '../lib/api.js'
 import AlertCard from '../components/AlertCard.jsx'
 import { supabase } from '../lib/supabase.js'
 import { UserContext } from '../lib/UserContext.js'
 import SmartQuotePanel from '../components/SmartQuotePanel.jsx'
+import { useLeads } from '../hooks/useLeads.js'
+import { buildRentalPrefill } from '../utils/leadToRental.js'
 
 const STATUS_LABELS = {
   pending:    'En attente',
@@ -410,90 +412,15 @@ function LeadCard({ lead, onClick }) {
 
 // ── Main page ──────────────────────────────────────────────
 export default function Basket({ onNavigate, initialTab = null }) {
-  const [leads, setLeads]           = useState([])
-  const [alerts, setAlerts]         = useState([])
-  const [loading, setLoading]       = useState(true)
-  const [error, setError]           = useState(null)
   const { isPremium } = useContext(UserContext)
   const [activeTab, setActiveTab]   = useState(initialTab === 'alertes' ? 'alertes' : 'leads')
   const [statusFilter, setStatusFilter] = useState('pending')
   const [selectedLead, setSelectedLead] = useState(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      if (activeTab === 'alertes') {
-        const data = await api.getAlerts()
-        setAlerts(data)
-      } else {
-        const data = await api.getLeads(statusFilter)
-        setLeads(data)
-      }
-    } catch (err) {
-      if (!err.message?.includes('PREMIUM_REQUIRED')) {
-        setError(err.message)
-      }
-    } finally {
-      setLoading(false)
-    }
-  }, [activeTab, statusFilter])
-
-  useEffect(() => { load() }, [load])
-
-  async function handleStatusChange(id, status) {
-    try {
-      await api.updateLeadStatus(id, status)
-      setLeads(prev => prev.filter(l => l.id !== id))
-      setAlerts(prev => prev.filter(a => a.id !== id))
-      setSelectedLead(null)
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  async function handleEscalate(id) {
-    await handleStatusChange(id, 'pending')
-  }
-
-  async function handleIgnoreAlert(id) {
-    await handleStatusChange(id, 'ignored')
-  }
+  const { leads, alerts, loading, error, load, handleStatusChange, handleEscalate, handleIgnoreAlert } = useLeads(activeTab, statusFilter)
 
   function handleConvert(lead, extractedData) {
-    // Resolve ISO-3166 country code to French nationality label (matches useScannerFlow)
-    const NATIONALITY_MAP = {
-      MAR:'Marocain',FRA:'Français',ESP:'Espagnol',ITA:'Italien',DEU:'Allemand',
-      GBR:'Britannique',BEL:'Belge',CHE:'Suisse',NLD:'Néerlandais',PRT:'Portugais',
-      USA:'Américain',CAN:'Canadien',DZA:'Algérien',TUN:'Tunisien',LBY:'Libyen',
-      EGY:'Égyptien',SAU:'Saoudien',ARE:'Émirati',QAT:'Qatarien',KWT:'Koweïtien',
-      JOR:'Jordanien',LBN:'Libanais',TUR:'Turc',
-    }
-    const countryCode = (extractedData.issuingCountry || '').toUpperCase()
-    const nationality = NATIONALITY_MAP[countryCode] || countryCode || 'Marocain'
-
-    const prefill = {
-      firstName:            extractedData.firstName || '',
-      lastName:             extractedData.lastName  || '',
-      cinNumber:            extractedData.documentNumber || '',   // key useScannerFlow expects
-      cinExpiry:            extractedData.expiryDate  || '',      // key useScannerFlow expects
-      dateOfBirth:          extractedData.dateOfBirth || '',
-      nationality,                                                 // resolved label, not ISO code
-      drivingLicenseNumber: '',
-      licenseExpiry:        '',
-      phone:                lead.source === 'whatsapp' ? lead.sender_id.replace('whatsapp:', '').replace(/@.*$/, '') : '',
-      email:                lead.source === 'gmail'    ? lead.sender_id : '',
-      rentalIntent: {
-        detected: !!(extractedData.rentalIntent?.detected || extractedData.start_date || extractedData.end_date || extractedData.pickup_location || extractedData.return_location),
-        startDate:      extractedData.rentalIntent?.startDate || extractedData.start_date || null,
-        endDate:        extractedData.rentalIntent?.endDate   || extractedData.end_date   || null,
-        vehicleClass:   extractedData.rentalIntent?.vehicleClass || extractedData.requested_car || null,
-        pickupLocation: extractedData.pickup_location || null,
-        returnLocation: extractedData.return_location || null,
-      },
-      leadId:               lead.id,
-    }
-    // Mark as processed then navigate
+    const prefill = buildRentalPrefill(lead, extractedData)
     api.updateLeadStatus(lead.id, 'processed').catch(() => {})
     onNavigate('new-rental', { prefilledLead: prefill })
   }
