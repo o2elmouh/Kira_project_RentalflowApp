@@ -388,7 +388,7 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
 
     const { data: vehicle, error: vehErr } = await supabaseAdmin
       .from('vehicles')
-      .select('id, name, make, model')
+      .select('id, make, model')
       .eq('id', vehicleId)
       .eq('agency_id', agencyId)
       .maybeSingle()
@@ -396,7 +396,7 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
     if (vehErr) return res.status(500).json({ error: vehErr.message })
     if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' })
 
-    const vehicleName = vehicle.name || `${vehicle.make} ${vehicle.model}`.trim()
+    const vehicleName = `${vehicle.make} ${vehicle.model}`.trim()
     const phone = lead.sender_id.replace(/@.*$/, '').replace(/\D/g, '')
 
     let body = `Bonjour ! 🚗 Suite à votre demande, nous vous proposons une *${vehicleName}* pour *${priceTotal} MAD* au total.`

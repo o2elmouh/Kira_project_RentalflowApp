@@ -74,7 +74,11 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
                 {agencyName}
               </span>
               <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', opacity: 0.6 }}>
+<<<<<<< HEAD
                 v1.2.4
+=======
+                v1.1.15
+>>>>>>> 8859035 (fix(smart-quote): remove non-existent vehicles.name column from send-offer query)
               </span>
             </div>
           )}
