@@ -44,7 +44,9 @@ async function getWAVersion() {
 import { Boom } from '@hapi/boom'
 import QRCode from 'qrcode'
 import OpenAI, { toFile } from 'openai'
-import { handleInboundWhatsApp, handleQuoteReply, appendConversation } from './leads.js'
+import { handleInboundWhatsApp } from './leads.js'
+import { handleQuoteReply } from '../lib/quoteAnalysis.js'
+import { appendConversation } from '../lib/conversation.js'
 import { requireAuth } from '../middleware/auth.js'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 
@@ -406,7 +408,9 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
 
     await sendWhatsAppMessage({ agencyId, to: phone, body })
 
-    await appendConversation(leadId, { role: 'agent', type: 'offer', text: body, vehicleName, priceTotal })
+    // Log offer after confirmed send — fire-and-forget, must not block response
+    appendConversation(leadId, { role: 'agent', type: 'offer', text: body, vehicleName, priceTotal })
+      .catch(err => console.error('[WA/send-offer] conv log error:', err.message))
 
     const { error: updateErr } = await supabaseAdmin
       .from('pending_demands')

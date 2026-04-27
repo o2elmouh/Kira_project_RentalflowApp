@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import rateLimit from 'express-rate-limit'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
-import { appendConversation } from './leads.js'
+import { appendConversation } from '../lib/conversation.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -74,16 +74,17 @@ router.post('/send-offer', emailLimit, async (req, res) => {
     const subject = `Offre de location — ${vehicleName}`
     const html = `<p>Bonjour,</p><p>Suite à votre demande, nous vous proposons une <strong>${vehicleName}</strong> pour <strong>${priceTotal} MAD</strong> au total.</p><p>Répondez à cet email pour confirmer ou décliner l'offre.</p><p>Cordialement,<br/>RentaFlow</p>`
 
-    // Record agent offer in conversation history (before status update)
-    await appendConversation(leadId, { role: 'agent', type: 'offer', text: subject, vehicleName, priceTotal })
-
-    if (process.env.RESEND_API_KEY) {
+      if (process.env.RESEND_API_KEY) {
       const { Resend } = await import('resend')
       const resend = new Resend(process.env.RESEND_API_KEY)
       await resend.emails.send({ from: 'RentaFlow <noreply@rentaflow.ma>', to, subject, html })
     } else {
       console.log(`[Email/send-offer] No RESEND_API_KEY — would send to ${to}: ${subject}`)
     }
+
+    // Log offer only after confirmed send
+    appendConversation(leadId, { role: 'agent', type: 'offer', text: subject, vehicleName, priceTotal })
+      .catch(err => console.error('[email/send-offer] conv log error:', err.message))
 
     const { error: updateErr } = await supabaseAdmin
       .from('pending_demands')
