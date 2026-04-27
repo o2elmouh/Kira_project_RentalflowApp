@@ -3,6 +3,7 @@ import { requireAuth } from '../middleware/auth.js'
 import rateLimit from 'express-rate-limit'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { appendConversation } from '../lib/conversation.js'
+import { vehicleRowToApi } from '../lib/vehicleMapper.js'
 
 const router = Router()
 router.use(requireAuth)
