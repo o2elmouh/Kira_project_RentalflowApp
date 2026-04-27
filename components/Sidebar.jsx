@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, PlusCircle, Car, Users, FileText, Receipt, Settings, LogOut, RotateCcw, Calculator, Inbox, Globe } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Car, Users, FolderOpen, CalendarDays, Settings, LogOut, RotateCcw, Inbox, Globe } from 'lucide-react'
 import LanguageSelector from './LanguageSelector'
 
 const NAV_IDS = [
@@ -8,16 +8,15 @@ const NAV_IDS = [
   { id: 'restitution-quick', key: 'restitution',  icon: RotateCcw },
   { id: 'fleet',             key: 'fleet',        icon: Car },
   { id: 'clients',           key: 'clients',      icon: Users },
-  { id: 'contracts',         key: 'contracts',    icon: FileText },
-  { id: 'invoices',          key: 'invoices',     icon: Receipt },
-  { id: 'accounting',        key: 'accounting',   icon: Calculator },
+  { id: 'documents',          key: 'documents',    icon: FolderOpen },
+  { id: 'calendar',           key: 'calendar',     icon: CalendarDays },
   { id: 'basket',            key: 'basket',       icon: Inbox, premium: true },
   { id: 'network',           key: 'network',      icon: Globe },
   { id: 'settings',          key: 'settings',     icon: Settings },
 ]
 
 // Pages restricted to admin role only
-const ADMIN_ONLY_PAGES = ['accounting']
+const ADMIN_ONLY_PAGES = []
 
 export default function Sidebar({ active, onNav, user, profile, isAdmin = true, onSignOut }) {
   const { t } = useTranslation('common')

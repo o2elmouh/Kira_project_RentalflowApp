@@ -57,6 +57,11 @@
     "accounting": "المحاسبة",
     "basket": "سلة الملفات",
     "network": "الشبكة",
-    "settings": "الإعدادات"
+    "settings": "الإعدادات",
+    "documents": "الوثائق",
+    "documentsContracts": "العقود",
+    "documentsInvoices": "الفواتير",
+    "documentsAccounting": "المحاسبة",
+    "calendar": "التقويم"
   }
 }

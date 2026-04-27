@@ -33,8 +33,18 @@
     "pending": "Pending"
   },
   "months": [
-    "January","February","March","April","May","June",
-    "July","August","September","October","November","December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
   ],
   "nav": {
     "dashboard": "Dashboard",
@@ -46,7 +56,12 @@
     "invoices": "Invoices",
     "accounting": "Accounting",
     "basket": "Basket",
-    "settings": "Settings"
+    "settings": "Settings",
+    "documents": "Documents",
+    "documentsContracts": "Contracts",
+    "documentsInvoices": "Invoices",
+    "documentsAccounting": "Accounting",
+    "calendar": "Calendar"
   },
   "alerts": {
     "label": "Alerts",
