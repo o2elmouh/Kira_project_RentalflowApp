@@ -254,7 +254,19 @@ async function transcribeAudio(buffer) {
 
 async function sendWhatsAppMessage({ agencyId, to, body, mediaBuffer, mimetype, pdfBase64 }) {
   const entry = await getSession(agencyId)
-  if (entry.status !== 'open') throw new Error(`WhatsApp session not connected (status: ${entry.status})`)
+  if (entry.status !== 'open') {
+    // Wait up to 15s for session to become open — handles post-restart reconnect window
+    await new Promise((resolve, reject) => {
+      const deadline = Date.now() + 15_000
+      const check = setInterval(() => {
+        if (entry.status === 'open') { clearInterval(check); resolve() }
+        else if (Date.now() > deadline) {
+          clearInterval(check)
+          reject(new Error(`WhatsApp session not ready after 15s (status: ${entry.status})`))
+        }
+      }, 500)
+    })
+  }
 
   const jid = normaliseJid(to)
   if (!jid) throw new Error('Invalid phone number')
