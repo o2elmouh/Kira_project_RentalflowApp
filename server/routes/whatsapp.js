@@ -44,7 +44,7 @@ async function getWAVersion() {
 import { Boom } from '@hapi/boom'
 import QRCode from 'qrcode'
 import OpenAI, { toFile } from 'openai'
-import { handleInboundWhatsApp, handleQuoteReply } from './leads.js'
+import { handleInboundWhatsApp, handleQuoteReply, appendConversation } from './leads.js'
 import { requireAuth } from '../middleware/auth.js'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 
@@ -405,6 +405,8 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
     body += `\n\nÊtes-vous intéressé(e) ? Répondez *Oui* pour confirmer ou *Non* pour décliner.`
 
     await sendWhatsAppMessage({ agencyId, to: phone, body })
+
+    await appendConversation(leadId, { role: 'agent', type: 'offer', text: body, vehicleName, priceTotal })
 
     const { error: updateErr } = await supabaseAdmin
       .from('pending_demands')

@@ -608,12 +608,21 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
 }
 
 // ── Smart Quote: reply intent analysis ───────────────────
+
+// Fast keyword pre-check — unambiguous replies resolved without AI.
+const ACCEPT_RE = /^\s*(ok|okay|oui|wakha|wax|mwafaq|ça marche|d'accord|je prends|go|yep|yes|نعم|واخا|موافق|مواطق|ايه)\s*[!.,،]*\s*$/iu
+const REJECT_RE = /^\s*(non|no|la|laa|annuler|trop cher|pas intéressé|لا|ماشي|مش|مهتمش)\s*[!.,،]*\s*$/iu
+
 /**
- * Analyze a client's WhatsApp reply to decide if they accepted, rejected or asked
- * a question about the quote. Handles Moroccan Darija and French.
+ * Analyze a client's reply to a quote offer.
+ * Keyword pre-check runs first so simple affirmatives/negatives never reach the AI.
+ * Falls back to Claude Haiku for nuanced messages.
  * Returns: 'accepted' | 'rejected' | 'question'
  */
 export async function analyzeQuoteReply(text) {
+  const t = (text || '').trim()
+  if (ACCEPT_RE.test(t)) return 'accepted'
+  if (REJECT_RE.test(t)) return 'rejected'
   if (!process.env.ANTHROPIC_API_KEY) return 'question'
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   try {
@@ -637,6 +646,24 @@ Rules:
     console.error('[leads/analyzeQuoteReply] error:', err.message)
     return 'question'
   }
+}
+
+/**
+ * Append one event to a lead's conversation log.
+ * entry: { role: 'client'|'agent', type: 'message'|'offer', text, vehicleName?, priceTotal? }
+ */
+export async function appendConversation(leadId, entry) {
+  const ts = new Date().toISOString()
+  const { data } = await supabaseAdmin
+    .from('pending_demands')
+    .select('conversation')
+    .eq('id', leadId)
+    .maybeSingle()
+  const existing = Array.isArray(data?.conversation) ? data.conversation : []
+  await supabaseAdmin
+    .from('pending_demands')
+    .update({ conversation: [...existing, { ...entry, ts }] })
+    .eq('id', leadId)
 }
 
 /**
@@ -666,6 +693,9 @@ export async function handleQuoteReply(agencyId, senderJid, text) {
     if (!matched) return null
 
     const intent = await analyzeQuoteReply(text)
+
+    // Record client reply in conversation history
+    await appendConversation(matched.id, { role: 'client', type: 'message', text: text.slice(0, 1000) })
 
     // For 'question' intent: note the message but return null so handleInboundWhatsApp
     // still runs — new rental requests from offer_sent clients must not be swallowed.

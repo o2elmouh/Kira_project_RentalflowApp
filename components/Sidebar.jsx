@@ -75,10 +75,14 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
               </span>
               <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', opacity: 0.6 }}>
 <<<<<<< HEAD
+<<<<<<< HEAD
                 v1.2.4
 =======
                 v1.1.15
 >>>>>>> 8859035 (fix(smart-quote): remove non-existent vehicles.name column from send-offer query)
+=======
+                v1.1.16
+>>>>>>> 18efb8a (feat(leads): keyword-fast triage + conversation history for lead-to-rental flow)
               </span>
             </div>
           )}
