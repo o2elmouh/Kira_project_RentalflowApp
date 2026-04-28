@@ -59,58 +59,58 @@ function CarSVG() {
         .headlight { animation: shimmer 0.8s ease-in-out infinite; }
       `}</style>
 
-      {/* Car body */}
-      <rect x="18" y="28" width="124" height="22" rx="4" fill="var(--accent, #6366f1)" />
+      {/* Car body — Ink Black */}
+      <rect x="18" y="28" width="124" height="22" rx="4" fill="#141413" />
 
       {/* Cabin */}
-      <path d="M50 28 L62 10 L100 10 L114 28 Z" fill="#818cf8" />
+      <path d="M50 28 L62 10 L100 10 L114 28 Z" fill="#2a2a28" />
 
       {/* Window */}
-      <path d="M65 27 L72 14 L96 14 L106 27 Z" fill="#1e1b4b" opacity="0.8" />
-      <line x1="86" y1="14" x2="86" y2="27" stroke="#4f46e5" strokeWidth="1" />
+      <path d="M65 27 L72 14 L96 14 L106 27 Z" fill="#F3F0EE" opacity="0.85" />
+      <line x1="86" y1="14" x2="86" y2="27" stroke="#9A9A9A" strokeWidth="1" />
 
-      {/* Stripe */}
-      <rect x="18" y="36" width="124" height="3" rx="1" fill="white" opacity="0.15" />
+      {/* Stripe — canvas cream accent */}
+      <rect x="18" y="36" width="124" height="3" rx="1" fill="#F3F0EE" opacity="0.12" />
 
       {/* Front bumper */}
-      <rect x="136" y="34" width="8" height="10" rx="2" fill="#4f46e5" />
+      <rect x="136" y="34" width="8" height="10" rx="2" fill="#2a2a28" />
 
       {/* Rear bumper */}
-      <rect x="16" y="34" width="8" height="10" rx="2" fill="#4f46e5" />
+      <rect x="16" y="34" width="8" height="10" rx="2" fill="#2a2a28" />
 
       {/* Headlight */}
       <ellipse cx="143" cy="37" rx="4" ry="3" fill="#fde68a" className="headlight" />
       <ellipse cx="143" cy="37" rx="2" ry="1.5" fill="#fef3c7" className="headlight" />
 
-      {/* Tail light */}
-      <ellipse cx="19" cy="37" rx="3" ry="2.5" fill="#f87171" opacity="0.9" />
+      {/* Tail light — Signal Orange */}
+      <ellipse cx="19" cy="37" rx="3" ry="2.5" fill="#CF4500" opacity="0.9" />
 
       {/* Front wheel */}
       <g style={{ transformOrigin: '118px 50px', animation: 'spin 0.5s linear infinite' }}>
-        <circle cx="118" cy="50" r="12" fill="#1e1b4b" />
-        <circle cx="118" cy="50" r="8" fill="#374151" />
-        <circle cx="118" cy="50" r="3" fill="#6b7280" />
-        <line x1="118" y1="42" x2="118" y2="58" stroke="#6b7280" strokeWidth="1.5" />
-        <line x1="110" y1="50" x2="126" y2="50" stroke="#6b7280" strokeWidth="1.5" />
-        <line x1="112" y1="44" x2="124" y2="56" stroke="#6b7280" strokeWidth="1" />
-        <line x1="124" y1="44" x2="112" y2="56" stroke="#6b7280" strokeWidth="1" />
+        <circle cx="118" cy="50" r="12" fill="#141413" />
+        <circle cx="118" cy="50" r="8" fill="#2a2a28" />
+        <circle cx="118" cy="50" r="3" fill="#696969" />
+        <line x1="118" y1="42" x2="118" y2="58" stroke="#696969" strokeWidth="1.5" />
+        <line x1="110" y1="50" x2="126" y2="50" stroke="#696969" strokeWidth="1.5" />
+        <line x1="112" y1="44" x2="124" y2="56" stroke="#696969" strokeWidth="1" />
+        <line x1="124" y1="44" x2="112" y2="56" stroke="#696969" strokeWidth="1" />
       </g>
 
       {/* Rear wheel */}
       <g style={{ transformOrigin: '44px 50px', animation: 'spin 0.5s linear infinite' }}>
-        <circle cx="44" cy="50" r="12" fill="#1e1b4b" />
-        <circle cx="44" cy="50" r="8" fill="#374151" />
-        <circle cx="44" cy="50" r="3" fill="#6b7280" />
-        <line x1="44" y1="42" x2="44" y2="58" stroke="#6b7280" strokeWidth="1.5" />
-        <line x1="36" y1="50" x2="52" y2="50" stroke="#6b7280" strokeWidth="1.5" />
-        <line x1="38" y1="44" x2="50" y2="56" stroke="#6b7280" strokeWidth="1" />
-        <line x1="50" y1="44" x2="38" y2="56" stroke="#6b7280" strokeWidth="1" />
+        <circle cx="44" cy="50" r="12" fill="#141413" />
+        <circle cx="44" cy="50" r="8" fill="#2a2a28" />
+        <circle cx="44" cy="50" r="3" fill="#696969" />
+        <line x1="44" y1="42" x2="44" y2="58" stroke="#696969" strokeWidth="1.5" />
+        <line x1="36" y1="50" x2="52" y2="50" stroke="#696969" strokeWidth="1.5" />
+        <line x1="38" y1="44" x2="50" y2="56" stroke="#696969" strokeWidth="1" />
+        <line x1="50" y1="44" x2="38" y2="56" stroke="#696969" strokeWidth="1" />
       </g>
 
-      {/* Speed lines */}
-      <line x1="0" y1="32" x2="14" y2="32" stroke="var(--accent, #6366f1)" strokeWidth="2" opacity="0.5" strokeLinecap="round" />
-      <line x1="0" y1="38" x2="10" y2="38" stroke="var(--accent, #6366f1)" strokeWidth="1.5" opacity="0.35" strokeLinecap="round" />
-      <line x1="0" y1="44" x2="7" y2="44" stroke="var(--accent, #6366f1)" strokeWidth="1" opacity="0.2" strokeLinecap="round" />
+      {/* Speed lines — ink */}
+      <line x1="0" y1="32" x2="14" y2="32" stroke="#141413" strokeWidth="2" opacity="0.25" strokeLinecap="round" />
+      <line x1="0" y1="38" x2="10" y2="38" stroke="#141413" strokeWidth="1.5" opacity="0.18" strokeLinecap="round" />
+      <line x1="0" y1="44" x2="7" y2="44" stroke="#141413" strokeWidth="1" opacity="0.12" strokeLinecap="round" />
     </svg>
   )
 }

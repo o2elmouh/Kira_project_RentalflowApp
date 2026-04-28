@@ -80,7 +80,7 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
   const ctDate = vehicle.nextControleTech || ''
   const assurDate = vehicle.insuranceEnd || ''
 
-  const statusColor = vehicle.status === 'available' ? '#16a34a' : vehicle.status === 'rented' ? '#f59e0b' : '#6b7280'
+  const statusColor = vehicle.status === 'available' ? 'var(--green)' : vehicle.status === 'rented' ? 'var(--orange-light)' : 'var(--text-muted)'
   const statusLabel = vehicle.status === 'available' ? 'Disponible' : vehicle.status === 'rented' ? 'En location' : 'Maintenance'
 
   const saveDeadlines = () => {
@@ -123,7 +123,7 @@ export default function VehicleDetail({ vehicle, onClose, onSave, onEdit, onDele
             <button className="btn btn-ghost btn-sm" onClick={onEdit}><Edit2 size={13} /> Modifier</button>
           )}
           {onDelete && (
-            <button className="btn btn-ghost btn-sm" style={{ color: '#dc2626' }} onClick={onDelete}><Trash2 size={13} /></button>
+            <button className="btn btn-ghost btn-sm" style={{ color: 'var(--orange)' }} onClick={onDelete}><Trash2 size={13} /></button>
           )}
         </div>
       </div>

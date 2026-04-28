@@ -3,19 +3,18 @@ import { LayoutDashboard, PlusCircle, Car, Users, FolderOpen, CalendarDays, Sett
 import LanguageSelector from './LanguageSelector'
 
 const NAV_IDS = [
-  { id: 'dashboard',         key: 'dashboard',   icon: LayoutDashboard },
-  { id: 'new-rental',        key: 'newRental',    icon: PlusCircle },
-  { id: 'restitution-quick', key: 'restitution',  icon: RotateCcw },
-  { id: 'fleet',             key: 'fleet',        icon: Car },
-  { id: 'clients',           key: 'clients',      icon: Users },
-  { id: 'documents',          key: 'documents',    icon: FolderOpen },
-  { id: 'calendar',           key: 'calendar',     icon: CalendarDays },
-  { id: 'basket',            key: 'basket',       icon: Inbox, premium: true },
-  { id: 'network',           key: 'network',      icon: Globe },
-  { id: 'settings',          key: 'settings',     icon: Settings },
+  { id: 'dashboard',         key: 'dashboard',  icon: LayoutDashboard },
+  { id: 'new-rental',        key: 'newRental',   icon: PlusCircle },
+  { id: 'restitution-quick', key: 'restitution', icon: RotateCcw },
+  { id: 'fleet',             key: 'fleet',       icon: Car },
+  { id: 'clients',           key: 'clients',     icon: Users },
+  { id: 'documents',         key: 'documents',   icon: FolderOpen },
+  { id: 'calendar',          key: 'calendar',    icon: CalendarDays },
+  { id: 'basket',            key: 'basket',      icon: Inbox,  premium: true },
+  { id: 'network',           key: 'network',     icon: Globe },
+  { id: 'settings',          key: 'settings',    icon: Settings },
 ]
 
-// Pages restricted to admin role only
 const ADMIN_ONLY_PAGES = []
 
 export default function Sidebar({ active, onNav, user, profile, isAdmin = true, onSignOut }) {
@@ -27,29 +26,38 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
 
   return (
     <aside className="sidebar">
+      {/* Logo */}
       <div className="sidebar-logo">
         <span className="logo-icon">🚗</span>
         <span className="logo-text">RentaFlow</span>
       </div>
+
+      {/* Nav */}
       <nav className="sidebar-nav">
         {visibleNav.map(({ id, key, icon: Icon, premium }) => {
-          const isRestitution = id === 'restitution-quick'
-          const navTarget = isRestitution ? 'restitution-picker' : id
+          const navTarget = id === 'restitution-quick' ? 'restitution-picker' : id
+          const isActive  = active === id
           return (
             <button
               key={id}
-              className={`nav-item${active === id ? ' active' : ''}`}
+              className={`nav-item${isActive ? ' active' : ''}`}
               onClick={() => onNav(navTarget)}
-              style={isRestitution ? {
-                background: active === id ? undefined : 'rgba(251, 191, 36, 0.10)',
-                borderLeft: '2px solid rgba(251, 191, 36, 0.45)',
-                color: 'var(--text2)',
-              } : undefined}
             >
-              <Icon size={16} />
+              <Icon size={15} />
               <span>{t(`nav.${key}`)}</span>
               {premium && (
-                <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, background: 'var(--accent)', color: '#fff', borderRadius: 3, padding: '1px 4px', lineHeight: 1.4, letterSpacing: 0.5 }}>
+                <span style={{
+                  marginLeft: 'auto',
+                  fontSize: 9,
+                  fontWeight: 700,
+                  background: '#141413',
+                  color: '#F3F0EE',
+                  borderRadius: 999,
+                  padding: '1px 6px',
+                  lineHeight: 1.6,
+                  letterSpacing: 0.4,
+                  textTransform: 'uppercase',
+                }}>
                   PRO
                 </span>
               )}
@@ -58,43 +66,90 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
         })}
       </nav>
 
-      {/* Footer — always visible; sign-out section only when authenticated */}
-      <div style={{ padding: '12px 10px', borderTop: '1px solid var(--border)', marginTop: 'auto' }}>
-        <div style={{ marginBottom: user && onSignOut ? 8 : 0 }}>
-          <LanguageSelector />
-        </div>
+      {/* Footer */}
+      <div style={{
+        marginTop: 'auto',
+        borderTop: '1px solid var(--border)',
+        padding: '12px 12px 8px',
+      }}>
+        <LanguageSelector />
       </div>
 
       {user && onSignOut && (
-        <div style={{ padding: '12px 10px', borderTop: '1px solid var(--border)', marginTop: 'auto' }}>
+        <div style={{
+          borderTop: '1px solid var(--border)',
+          padding: '12px 12px 16px',
+        }}>
           {agencyName && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, paddingLeft: 8, paddingRight: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingLeft: 8,
+              paddingRight: 4,
+              marginBottom: 6,
+            }}>
+              <span style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: 'var(--text-secondary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                flex: 1,
+              }}>
                 {agencyName}
               </span>
-              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', opacity: 0.6 }}>
+              <span style={{
+                fontSize: 10,
+                color: 'var(--text-muted)',
+                fontFamily: 'DM Mono, monospace',
+              }}>
                 v1.3.1
               </span>
             </div>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 12, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            paddingLeft: 8,
+            marginBottom: 8,
+          }}>
+            <span style={{
+              fontSize: 12,
+              color: 'var(--ink)',
+              fontWeight: 500,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flex: 1,
+            }}>
               {displayName}
             </span>
             {profile?.role && (
               <span style={{
-                fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, flexShrink: 0,
-                background: profile.role === 'admin' ? '#ede7f6' : '#e8f5e9',
-                color:      profile.role === 'admin' ? '#6a1b9a' : '#388e3c',
-                textTransform: 'uppercase', letterSpacing: '0.5px',
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: 999,
+                flexShrink: 0,
+                textTransform: 'uppercase',
+                letterSpacing: '0.4px',
+                background: profile.role === 'admin' ? '#141413' : '#EAF4EE',
+                color:      profile.role === 'admin' ? '#F3F0EE' : '#2D7A47',
               }}>
                 {profile.role}
               </span>
             )}
           </div>
+
           <button
             className="nav-item"
-            style={{ width: '100%', color: 'var(--text3)' }}
+            style={{ width: '100%', color: 'var(--text-secondary)' }}
             onClick={onSignOut}
           >
             <LogOut size={14} />

@@ -124,7 +124,7 @@ export default function Fleet() {
     } catch (e) { console.error(e) }
   }
 
-  if (loading) return <div className="page-body"><p style={{ color: 'var(--text3)' }}>Chargement…</p></div>
+  if (loading) return <div className="page-body"><p style={{ color: 'var(--text-muted)' }}>Chargement…</p></div>
 
   return (
     <div>
@@ -132,7 +132,7 @@ export default function Fleet() {
         <div><h2>Parc automobile</h2><p>Gérez votre flotte de véhicules</p></div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {!detail && !editing && (
-            <button className="btn btn-primary" onClick={openAdd}><PlusCircle size={15} /> Ajouter</button>
+            <button className="btn-primary" onClick={openAdd} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 18px', borderRadius:'var(--r-btn)', background:'var(--ink)', color:'var(--canvas)', border:'none', fontWeight:600, fontSize:13, cursor:'pointer' }}><PlusCircle size={15} /> Ajouter</button>
           )}
         </div>
       </div>
@@ -201,18 +201,18 @@ export default function Fleet() {
                       <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                         {targetOilKm && (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: currentKm > targetOilKm ? '#dc2626' : '#111827' }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: currentKm > targetOilKm ? 'var(--red)' : 'var(--ink)' }}>
                               🛢️ {Number(targetOilKm).toLocaleString()} km
                             </span>
-                            <span style={{ fontSize: 10, color: '#2563eb' }}>{currentKm.toLocaleString()} km</span>
+                            <span style={{ fontSize: 10, color: 'var(--link-blue)' }}>{currentKm.toLocaleString()} km</span>
                           </div>
                         )}
                         {targetBeltKm && (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: currentKm > targetBeltKm ? '#dc2626' : '#111827' }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: currentKm > targetBeltKm ? 'var(--red)' : 'var(--ink)' }}>
                               ⚙️ {Number(targetBeltKm).toLocaleString()} km
                             </span>
-                            <span style={{ fontSize: 10, color: '#2563eb' }}>{currentKm.toLocaleString()} km</span>
+                            <span style={{ fontSize: 10, color: 'var(--link-blue)' }}>{currentKm.toLocaleString()} km</span>
                           </div>
                         )}
                       </div>
@@ -224,7 +224,7 @@ export default function Fleet() {
                   </div>
                   <div style={{ display: 'flex', gap: 5, marginTop: 10 }}>
                     <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); openEdit(v) }}><Edit2 size={12} /></button>
-                    <button className="btn btn-ghost btn-sm" style={{ color: '#dc2626' }} onClick={e => { e.stopPropagation(); remove(v.id) }}><Trash2 size={12} /></button>
+                    <button className="btn btn-ghost btn-sm" style={{ color: 'var(--orange)' }} onClick={e => { e.stopPropagation(); remove(v.id) }}><Trash2 size={12} /></button>
                   </div>
                 </div>
               )
@@ -233,7 +233,7 @@ export default function Fleet() {
         )}
 
         {fleet.length === 0 && (
-          <p style={{ color: 'var(--text3)', textAlign: 'center', marginTop: 40 }}>Aucun véhicule. Ajoutez-en un ci-dessus.</p>
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: 40 }}>Aucun véhicule. Ajoutez-en un ci-dessus.</p>
         )}
       </div>
     </div>

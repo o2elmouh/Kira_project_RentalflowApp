@@ -6,11 +6,19 @@
 3. **Verification:** Confirm imports, server status, and SQL signatures (`DROP FUNCTION IF EXISTS`) before finishing.
 4. **Process:** State plan → Get approval → Execute.
 5. **Ledger:** End sessions with a `Context Update` block to update this file.
-6. **Git:** Feature branches + structured commits (`feat:`, `fix:`, `chore:`).
-7. **Never push to staging without explicit user instruction.** Commit locally, then stop and wait. Only run `git push origin staging` when the user says "push to staging" or equivalent.
-8. **Testing:** Write and run unit tests for every bug fix or new feature using the existing Vitest suite before completion.
+6. **Git:** Commit directly on `staging`. Never use worktrees or feature branches — all work goes straight to staging.
+7. **Never push to staging without explicit user instruction.** Commit locally, then stop and wait. Only run `git push origin staging` when the user says "push to staging" or equivalent. After every push, read `components/Sidebar.jsx` and report the current version (e.g. "Staging is at v1.3.1").
+8. **Testing:** Write unit tests for every bug fix or feature. Run with `npm run test` (or `vitest run`). If tests fail, fix them before requesting approval to commit.
 9. **Regression Check (MANDATORY):** Before ANY modification — bug fix, new feature, refactor, or the slightest change — check for impacts and possible regressions. Read the affected files AND their dependents. Never touch code without understanding what already works and could break.
 10. **Efficiency:** If a file (like pdf.js) is too large to parse or a task stalls, stop immediately, suggest a modular split, and restart.
+
+---
+
+## Context Navigation (Graphify)
+- Do not read raw source files blindly.
+- Always query `graphify-out/graph.json` first to understand dependencies.
+- Read `graphify-out/GRAPH_REPORT.md` for architecture overview.
+- Only read raw `.jsx` or `.js` files when you have identified the exact file needing modification.
 
 ---
 
@@ -64,45 +72,28 @@
         ├── email.js      ← POST /email/contract (Resend placeholder)
         └── team.js       ← GET/POST/PATCH/DELETE /team
 ```
+## Code Conventions
+- **React:** Strictly use functional components and Hooks. No class components.
+- **Complexity:** Prefer early returns to avoid deep nesting. Keep components under 150 lines (split into smaller components if larger).
+- **Styling:** Use DESIGN.md to understand the design system.
+- **Dependencies:** DO NOT install new npm packages without asking for explicit permission first.
+- **i18n:** Never hardcode user-facing text. Always use the `t()` function from `react-i18next`.
+---
+
+## References (READ ONLY WHEN NEEDED)
+- Modifying DB or backend? Read [.claude/reference/schema.md](.claude/reference/schema.md) first.
+- Adding new UI, roles, or navigation? Read [.claude/reference/patterns.md](.claude/reference/patterns.md) first.
 
 ---
 
-## Key Patterns
-See [.claude/reference/patterns.md](.claude/reference/patterns.md) for auth flow, role system, i18n, data layer, and navigation patterns.
-
----
-
-## Environment Variables & Supabase Schema
-See [.claude/reference/schema.md](.claude/reference/schema.md) for all env vars (Vercel + Railway) and Supabase table definitions.
-
----
-
-## Current Task Status
-
-See [CHANGELOG.md](CHANGELOG.md) for completed work history.
-### Pending
-- Wire Resend email provider (`server/routes/email.js` — needs `RESEND_API_KEY`)
+## Current State
+See [.claude/STATUS.md](.claude/STATUS.md) for the active sprint, pending tasks, and the latest staging deployment version. Update that file after every successful push.
 
 ---
 
 ## GitHub
 Repo: `https://github.com/o2elmouh/Kira_project_RentalflowApp`
 Main branch: `main`
-Latest commit: `650ad26` — feat(network): RentalFlow Network feature (staging)
-
-## Versioning
-- Version is displayed in the Sidebar bottom-left, next to the agency name.
-- **Every push must bump the version** in `components/Sidebar.jsx` (the `v1.x.x` string).
-- **Increment rule:** patch (+0.0.1) for fixes/small changes, minor (+0.1.0) for new features.
-- **Every staging push must update the "Staging Deployments" log below** with the version, commit, and what was deployed — so the user can confirm what's live at the staging URL.
-
-## Staging Deployments
-| Version | Commit | What's in it |
-|---|---|---|
-| v1.2.3 | pending | Smart Quote: available-vehicles only, start/end date fields, notes field, channel-aware send button (Email vs WhatsApp), POST /email/send-offer via Resend |
-| v1.2.2 | `22a561a` | Fix Escalader: sets classification='lead' + status='pending' so escalated alerts appear in Leads tab |
-| v1.2.1 | `ea88635` | Fix triage pre-filter: add semaine/semaines/journée/week/weeks/woche to MEDIUM, renseigner/besoin/need to LOW |
-| v1.2.0 | `3533bbf` | Alerts Dashboard: orange widget on Dashboard, Leads/Alertes tabs in Basket, triage pipeline, DB migration `002_alerts_classification.sql` |
 
 ## API Usage Policy
 - **Never use the `ANTHROPIC_API_KEY` for development tasks, exploration, or testing within Claude Code sessions.** API calls bill against the project key directly and are not covered by the Claude subscription.

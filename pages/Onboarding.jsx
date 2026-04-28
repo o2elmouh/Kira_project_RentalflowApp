@@ -78,7 +78,7 @@ export default function OnboardingPage({ user, onDone }) {
           {[1, 2].map(s => (
             <div key={s} style={{
               height: 4, flex: 1, borderRadius: 4,
-              background: s <= step ? 'var(--accent)' : 'var(--border)',
+              background: s <= step ? 'var(--ink)' : 'var(--border)',
               transition: 'background 0.3s'
             }} />
           ))}
@@ -150,7 +150,7 @@ export default function OnboardingPage({ user, onDone }) {
         )}
       </form>
 
-      <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text3)', marginTop: 20 }}>
+      <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', marginTop: 20 }}>
         {t('loggedInAs', { email: user?.email })}{' '}
         <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}
           onClick={() => supabase.auth.signOut()}>

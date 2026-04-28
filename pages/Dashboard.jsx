@@ -12,8 +12,8 @@ function inMonth(dateStr, year, month) {
 }
 
 const ICON_COLORS = {
-  green:  '#4caf50',
-  pink:   '#cb0c9f',
+  green:  '#2D7A47',
+  pink:   '#141413',
   blue:   '#3860BE',
   orange: '#CF4500',
   dark:   '#141413',
