@@ -26,10 +26,18 @@ router.use(requireAuth)
 const whatsappLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 20, keyGenerator: r => r.ip })
 const paymentLimit  = rateLimit({ windowMs: 60 * 60 * 1000, max: 5,  keyGenerator: r => r.ip })
 
-// ── Status — Twilio is stateless, always connected ────────
+// ── Status/session stubs — Twilio is stateless, no QR or sessions needed ──
 
 router.get('/status', (req, res) => {
   res.json({ status: 'twilio', connected: true })
+})
+
+router.post('/connect', whatsappLimit, (req, res) => {
+  res.json({ status: 'twilio', connected: true })
+})
+
+router.post('/disconnect', whatsappLimit, (req, res) => {
+  res.json({ ok: true })
 })
 
 // ── Outbound routes ───────────────────────────────────────

@@ -1,86 +1,16 @@
 /**
- * Integrations tab — WhatsApp number + Gmail App Password
+ * Integrations tab — WhatsApp (Twilio) + Gmail App Password
  * (visible only on premium plan)
  */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { api } from '../../lib/api.js'
 
 export default function IntegrationsTab() {
-  // Gmail state
   const [gmailStatus, setGmailStatus] = useState(null)
   const [gmailAddress, setGmailAddress] = useState('')
   const [appPassword, setAppPassword] = useState('')
   const [gmailSaving, setGmailSaving] = useState(false)
   const [gmailMsg, setGmailMsg] = useState(null)
-
-  // WhatsApp — Baileys QR connection
-  const [waStatus, setWaStatus] = useState(null)   // null | 'connecting' | 'qr' | 'open' | 'closed'
-  const [waQr, setWaQr] = useState(null)
-  const [waLoading, setWaLoading] = useState(false)
-  const [waError, setWaError] = useState(null)
-  const pollRef = useRef(null)
-  const connectTimeoutRef = useRef(null)
-
-  function stopPoll() { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } }
-  function clearConnectTimeout() { if (connectTimeoutRef.current) { clearTimeout(connectTimeoutRef.current); connectTimeoutRef.current = null } }
-
-  async function fetchWaStatus() {
-    try {
-      const res = await api.getWhatsAppStatus()
-      setWaStatus(res.status)
-      setWaQr(res.qr || null)
-      if (res.status === 'open') { stopPoll(); clearConnectTimeout(); setWaError(null) }
-      if (res.status === 'closed') { stopPoll(); clearConnectTimeout() }
-      if (res.status === 'qr') clearConnectTimeout()
-    } catch { /* ignore */ }
-  }
-
-  useEffect(() => {
-    fetchWaStatus()
-    return () => { stopPoll(); clearConnectTimeout() }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  function startPoll() {
-    stopPoll()
-    pollRef.current = setInterval(fetchWaStatus, 3000)
-  }
-
-  function startConnectTimeout() {
-    clearConnectTimeout()
-    connectTimeoutRef.current = setTimeout(() => {
-      stopPoll()
-      setWaStatus(null)
-      setWaError('La connexion a pris trop de temps. Réessayez.')
-    }, 30000)
-  }
-
-  async function connectWa() {
-    setWaLoading(true)
-    setWaError(null)
-    try {
-      await api.connectWhatsApp()
-      setWaStatus('connecting')
-      startPoll()
-      startConnectTimeout()
-    } catch (err) {
-      setWaError(err.message)
-    } finally {
-      setWaLoading(false)
-    }
-  }
-
-  async function disconnectWa() {
-    if (!window.confirm('Déconnecter WhatsApp ?')) return
-    try {
-      await api.disconnectWhatsApp()
-      setWaStatus('closed')
-      setWaQr(null)
-      stopPoll()
-    } catch (err) {
-      alert(err.message)
-    }
-  }
 
   useEffect(() => {
     api.getGmailStatus()
@@ -128,7 +58,6 @@ export default function IntegrationsTab() {
     }
   }
 
-
   const fieldStyle = {
     width: '100%',
     background: 'var(--bg-secondary)',
@@ -169,53 +98,22 @@ export default function IntegrationsTab() {
         </span>
       </p>
 
-      {/* WhatsApp section */}
+      {/* WhatsApp — Twilio */}
       <div style={sectionStyle}>
         <h3 style={{ margin: '0 0 4px', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 20 }}>📱</span> WhatsApp
-          {waStatus === 'open' && (
-            <span style={{ fontSize: 11, background: 'rgba(34,197,94,0.15)', color: '#22c55e', borderRadius: 4, padding: '2px 7px', fontWeight: 600 }}>
-              Connecté
-            </span>
-          )}
-          {(waStatus === 'connecting' || waStatus === 'qr') && (
-            <span style={{ fontSize: 11, background: 'rgba(234,179,8,0.15)', color: '#eab308', borderRadius: 4, padding: '2px 7px', fontWeight: 600 }}>
-              {waStatus === 'qr' ? 'Scannez le QR' : 'Connexion…'}
-            </span>
-          )}
+          <span style={{ fontSize: 11, background: 'rgba(34,197,94,0.15)', color: '#22c55e', borderRadius: 4, padding: '2px 7px', fontWeight: 600 }}>
+            Connecté via Twilio
+          </span>
         </h3>
         <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4, marginBottom: 16 }}>
-          Connectez votre numéro WhatsApp en scannant le QR code avec l'application WhatsApp.
+          Les messages WhatsApp sont envoyés via l'API Twilio. Aucune configuration supplémentaire requise.
         </p>
-
-        {waStatus === 'qr' && waQr && (
-          <div style={{ marginBottom: 16, textAlign: 'center' }}>
-            <img src={waQr} alt="WhatsApp QR Code" style={{ width: 220, height: 220, borderRadius: 8, border: '1px solid var(--border)' }} />
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>
-              Ouvrez WhatsApp → Appareils connectés → Connecter un appareil
-            </p>
-          </div>
-        )}
-
-        {waStatus === 'open' ? (
-          <button
-            onClick={disconnectWa}
-            style={{ padding: '8px 20px', borderRadius: 8, background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
-          >
-            Déconnecter
-          </button>
-        ) : (
-          <button
-            onClick={connectWa}
-            disabled={waLoading || waStatus === 'qr'}
-            style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--accent)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
-          >
-            {waLoading ? 'Connexion en cours…' : waStatus === 'connecting' ? 'Connexion… (Réessayer)' : waStatus === 'qr' ? 'En attente du scan…' : 'Connecter WhatsApp'}
-          </button>
-        )}
-        {waError && (
-          <p style={{ marginTop: 10, fontSize: 13, color: '#ef4444' }}>{waError}</p>
-        )}
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', background: 'var(--bg-secondary)', borderRadius: 8, padding: '12px 16px', lineHeight: 1.7 }}>
+          <div>🔑 <strong style={{ color: 'var(--text-primary)' }}>TWILIO_ACCOUNT_SID</strong> — configuré sur Railway</div>
+          <div>🔑 <strong style={{ color: 'var(--text-primary)' }}>TWILIO_AUTH_TOKEN</strong> — configuré sur Railway</div>
+          <div>📞 <strong style={{ color: 'var(--text-primary)' }}>TWILIO_WHATSAPP_NUMBER</strong> — configuré sur Railway</div>
+        </div>
       </div>
 
       {/* Gmail section */}
