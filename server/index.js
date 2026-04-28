@@ -10,7 +10,7 @@ import agencyRouter from './routes/agency.js'
 import contractsRouter from './routes/contracts.js'
 import emailRouter from './routes/email.js'
 import teamRouter from './routes/team.js'
-import whatsappRouter, { autoReconnectSessions } from './routes/whatsapp.js'
+import whatsappRouter from './routes/whatsapp.js'
 import aiRouter from './routes/ai.js'
 // import telemetryRouter from './routes/telemetry.js' // disabled for v2
 import ocrRouter from './routes/ocr.js'
@@ -77,7 +77,6 @@ app.use((err, req, res, _next) => {
 })
 
 startGmailPoller()
-autoReconnectSessions()
 
 app.listen(PORT, () => {
   console.log(`✅ RentaFlow API running on port ${PORT}`)
