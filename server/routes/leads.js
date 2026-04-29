@@ -374,26 +374,18 @@ router.post('/webhook/whatsapp', async (req, res) => {
   const senderJid    = from.replace(/^whatsapp:/i, '')
   const toNormalized = normalizePhoneDigits(to.replace(/^whatsapp:/i, ''))
 
-  // Try to match agency by phone number stored in agencies.phone
+  // Match agency by their registered phone number (agencies.phone).
+  // Sandbox testing: set agencies.phone = +14155238886 for the agency under test.
+  // Production: each agency sets their real WhatsApp number.
   const { data: agencyRows } = await supabaseAdmin
     .from('agencies')
     .select('id, phone')
     .not('phone', 'is', null)
 
-  let agency = agencyRows?.find(a => normalizePhoneDigits(a.phone) === toNormalized) || null
-
-  // Fallback for Twilio sandbox (shared +1415... number) or single-deployment:
-  // If TWILIO_AGENCY_ID is set and To matches TWILIO_WHATSAPP_NUMBER env var, use it directly.
-  if (!agency) {
-    const envNumber = normalizePhoneDigits((process.env.TWILIO_WHATSAPP_NUMBER || '').replace(/^whatsapp:/i, ''))
-    if (process.env.TWILIO_AGENCY_ID && (toNormalized === envNumber || !envNumber)) {
-      agency = { id: process.env.TWILIO_AGENCY_ID }
-      console.log(`[pipeline:twilio] → agency resolved via TWILIO_AGENCY_ID fallback: ${agency.id}`)
-    }
-  }
+  const agency = agencyRows?.find(a => normalizePhoneDigits(a.phone) === toNormalized) || null
 
   if (!agency) {
-    console.error(`[pipeline:twilio] ✗ no agency for To=${to} — set TWILIO_AGENCY_ID in Railway or update agencies.phone`)
+    console.error(`[pipeline:twilio] ✗ no agency for To=${to} — update agencies.phone to match this number`)
     return
   }
   console.log(`[pipeline:twilio] → agency resolved: ${agency.id}`)
