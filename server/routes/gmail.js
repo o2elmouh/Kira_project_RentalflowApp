@@ -43,7 +43,13 @@ async function pollAgency(agency) {
     return
   }
 
-  const password = decrypt(agency.gmail_app_password)
+  let password
+  try {
+    password = decrypt(agency.gmail_app_password)
+  } catch (err) {
+    console.error(`[gmail] decrypt error for agency ${agency.id}:`, err.message, '— ENCRYPTION_KEY may have changed. Re-save credentials.')
+    return
+  }
 
   const config = {
     imap: {
@@ -57,10 +63,15 @@ async function pollAgency(agency) {
     },
   }
 
+  // Verify decrypt produced a usable password (not an encrypted blob)
+  if (!password || password.includes(':')) {
+    console.error(`[gmail] decrypt failed for agency ${agency.id} — ENCRYPTION_KEY mismatch or missing. Re-save credentials.`)
+    return
+  }
+
   let connection
   try {
     connection = await imapSimple.connect(config)
-    await connection.openBox('INBOX')
 
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000) // last 24h
     const results = await connection.search(
@@ -243,9 +254,13 @@ router.post('/poll', async (req, res) => {
   if (error || !agency) return res.status(500).json({ error: 'Agency not found' })
   if (!agency.gmail_address) return res.status(400).json({ error: 'Gmail not configured' })
 
-  // Run in background, respond immediately
-  pollAgency(agency).catch(err => console.error('[gmail/poll] error:', err.message))
-  res.json({ ok: true, message: 'Poll triggered' })
+  try {
+    await pollAgency(agency)
+    res.json({ ok: true, message: 'Poll completed' })
+  } catch (err) {
+    console.error('[gmail/poll] error:', err.message)
+    res.status(500).json({ error: err.message })
+  }
 })
 
 export default router

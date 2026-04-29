@@ -1,5 +1,6 @@
 /**
- * POST /leads/webhook/gmail     — Called by the Gmail poller when a new message arrives
+ * POST /leads/webhook/gmail      — Called by the Gmail poller when a new message arrives
+ * POST /leads/webhook/whatsapp   — Twilio inbound webhook (set in Twilio console)
  * GET  /leads                   — List pending demands for the authenticated agency
  * PATCH /leads/:id/status       — Update status (processed / ignored)
  * GET  /leads/:id               — Get single demand
@@ -340,6 +341,61 @@ router.get('/media', async (req, res) => {
     res.status(500).end()
   }
 })
+
+// ── POST /leads/webhook/whatsapp — Twilio inbound webhook ─
+// Twilio console config: each agency's Twilio number → "When a message comes in" → POST <RAILWAY_URL>/leads/webhook/whatsapp
+// Agency is resolved by matching the Twilio `To` number against agencies.phone.
+router.post('/webhook/whatsapp', async (req, res) => {
+  // Respond immediately so Twilio doesn't retry
+  res.set('Content-Type', 'text/xml')
+  res.send('<Response/>')
+
+  const from      = req.body.From || ''   // "whatsapp:+212XXXXXXXXX" (client)
+  const to        = req.body.To   || ''   // "whatsapp:+212XXXXXXXXX" (agency number)
+  const bodyText  = req.body.Body || ''
+  const numMedia  = parseInt(req.body.NumMedia || '0', 10)
+  const mediaUrl  = req.body.MediaUrl0 || null
+  const mediaMime = req.body.MediaContentType0 || 'image/jpeg'
+
+  if (!from || !to) return
+
+  const senderJid   = from.replace(/^whatsapp:/i, '')
+  const toNormalized = normalizePhoneDigits(to.replace(/^whatsapp:/i, ''))
+
+  // Look up which agency owns this WhatsApp number
+  const { data: agencies } = await supabaseAdmin
+    .from('agencies')
+    .select('id, phone')
+    .not('phone', 'is', null)
+
+  const agency = agencies?.find(a => normalizePhoneDigits(a.phone) === toNormalized)
+  if (!agency) {
+    console.error(`[leads/whatsapp-webhook] No agency found for number ${to}`)
+    return
+  }
+
+  let imageBuffer = null
+  if (numMedia > 0 && mediaUrl) {
+    try {
+      const creds = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64')
+      const mediaRes = await fetch(mediaUrl, { headers: { Authorization: `Basic ${creds}` } })
+      if (mediaRes.ok) imageBuffer = Buffer.from(await mediaRes.arrayBuffer())
+    } catch (err) {
+      console.error('[leads/whatsapp-webhook] media download error:', err.message)
+    }
+  }
+
+  handleInboundWhatsApp(agency.id, senderJid, imageBuffer, mediaMime, bodyText)
+    .catch(err => console.error('[leads/whatsapp-webhook] handler error:', err.message))
+})
+
+// Strips all non-digit chars and normalises Moroccan 06/07 → 212XXXXXXXXX
+function normalizePhoneDigits(phone) {
+  let p = (phone || '').replace(/[\s\-\(\)\+]/g, '')
+  if (p.startsWith('00')) p = p.slice(2)
+  if ((p.startsWith('06') || p.startsWith('07')) && p.length === 10) p = '212' + p.slice(1)
+  return p
+}
 
 // ── Authenticated routes (premium required) ───────────────
 router.use(requireAuth, requirePremium)
