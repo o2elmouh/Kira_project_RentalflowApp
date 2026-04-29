@@ -53,9 +53,10 @@ Rules:
  * Returns the matched leadId if handled, null if no offer_sent lead was found.
  */
 export async function handleQuoteReply(agencyId, senderJid, text) {
+  console.log(`[pipeline:reply] ← client reply | agency=${agencyId} | sender=${senderJid} | text="${(text || '').slice(0, 80)}"`)
   try {
     const digits9 = (senderJid || '').replace(/\D/g, '').slice(-9)
-    if (!digits9) return null
+    if (!digits9) { console.warn('[pipeline:reply] ✗ could not extract digits from senderJid'); return null }
 
     const { data: leads } = await supabaseAdmin
       .from('pending_demands')
@@ -68,20 +69,24 @@ export async function handleQuoteReply(agencyId, senderJid, text) {
     const matched = (leads || []).find(l =>
       (l.sender_id || '').replace(/\D/g, '').slice(-9) === digits9
     )
-    if (!matched) return null
+    if (!matched) {
+      console.log(`[pipeline:reply] → no offer_sent lead found for ${senderJid} — treating as new message`)
+      return null
+    }
+    console.log(`[pipeline:reply] → matched lead id=${matched.id}`)
 
     const intent = await analyzeQuoteReply(text)
+    console.log(`[pipeline:reply] → intent: ${intent} (keyword or AI)`)
 
-    // Always log the client reply — don't let a conv-log failure block status update
     appendConversation(matched.id, { role: 'client', type: 'message', text: text.slice(0, 1000) })
-      .catch(err => console.error('[quoteAnalysis/handleQuoteReply] conv log error:', err.message))
+      .catch(err => console.error('[pipeline:reply] conv log error:', err.message))
 
     if (intent === 'question') {
       await supabaseAdmin
         .from('pending_demands')
         .update({ last_client_note: text.slice(0, 500) })
         .eq('id', matched.id)
-      console.log(`[quoteAnalysis] lead ${matched.id} → question noted, passing through`)
+      console.log(`[pipeline:reply] → question noted on lead ${matched.id} — no status change`)
       return null
     }
 
@@ -90,10 +95,10 @@ export async function handleQuoteReply(agencyId, senderJid, text) {
       .from('pending_demands')
       .update({ status: newStatus, last_client_note: text.slice(0, 500) })
       .eq('id', matched.id)
-    console.log(`[quoteAnalysis] lead ${matched.id} → ${newStatus} (intent: ${intent})`)
+    console.log(`[pipeline:reply] ✓ lead ${matched.id} → ${newStatus}`)
     return matched.id
   } catch (err) {
-    console.error('[quoteAnalysis/handleQuoteReply] error:', err.message)
+    console.error('[pipeline:reply] ✗ error:', err.message)
     return null
   }
 }

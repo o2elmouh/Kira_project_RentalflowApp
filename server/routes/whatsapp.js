@@ -108,6 +108,8 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
   if (!agencyId || !leadId || !vehicleId || priceTotal == null)
     return res.status(400).json({ error: 'leadId, vehicleId and priceTotal are required' })
 
+  console.log(`[pipeline:offer] ← send-offer | agency=${agencyId} | lead=${leadId} | vehicle=${vehicleId} | price=${priceTotal} MAD`)
+
   try {
     const { data: lead, error: leadErr } = await supabaseAdmin
       .from('pending_demands')
@@ -130,8 +132,9 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
     if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' })
 
     const vehicleName = `${vehicle.brand} ${vehicle.model}`.trim()
-    // sender_id may be a JID ("212XXXXXXXXX@s.whatsapp.net") or a plain number
     const phone = lead.sender_id.replace(/@.*$/, '').replace(/\D/g, '')
+
+    console.log(`[pipeline:offer] → sending to ${phone} | vehicle="${vehicleName}" | ${startDate}→${endDate}`)
 
     let body = `Bonjour ! 🚗 Suite à votre demande, nous vous proposons une *${vehicleName}* pour *${priceTotal} MAD* au total.`
     if (startDate && endDate) body += `\n📅 Du *${startDate}* au *${endDate}*`
@@ -139,20 +142,22 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
     body += `\n\nÊtes-vous intéressé(e) ? Répondez *Oui* pour confirmer ou *Non* pour décliner.`
 
     await sendWhatsAppMessage(phone, body)
+    console.log(`[pipeline:offer] → Twilio message sent to ${phone}`)
 
     appendConversation(leadId, { role: 'agent', type: 'offer', text: body, vehicleName, priceTotal })
-      .catch(err => console.error('[WA/send-offer] conv log error:', err.message))
+      .catch(err => console.error('[pipeline:offer] conv log error:', err.message))
 
     const { error: updateErr } = await supabaseAdmin
       .from('pending_demands')
       .update({ status: 'offer_sent', offered_vehicle_id: vehicleId, offered_price_total: priceTotal })
       .eq('id', leadId)
 
-    if (updateErr) console.error('[WA/send-offer] update error:', updateErr.message)
+    if (updateErr) console.error('[pipeline:offer] ✗ status update error:', updateErr.message)
+    else console.log(`[pipeline:offer] ✓ lead ${leadId} → offer_sent`)
 
     res.json({ sent: true })
   } catch (err) {
-    console.error('[WA/send-offer]', err.message)
+    console.error('[pipeline:offer] ✗ error:', err.message)
     res.status(502).json({ error: err.message })
   }
 })

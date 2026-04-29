@@ -69,11 +69,17 @@ async function pollAgency(agency) {
     return
   }
 
+  console.log(`[pipeline:gmail] → poll started for ${agency.gmail_address}`)
+
   let connection
   try {
     connection = await imapSimple.connect(config)
+    console.log(`[pipeline:gmail] → IMAP connected to ${agency.gmail_address}`)
 
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000) // last 24h
+    await connection.openBox('INBOX')
+    console.log(`[pipeline:gmail] → mailbox INBOX opened`)
+
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
     const results = await connection.search(
       ['UNSEEN', ['SINCE', since.toDateString()]],
       { bodies: ['HEADER', 'TEXT', ''], markSeen: false }
@@ -81,21 +87,22 @@ async function pollAgency(agency) {
 
     const minUid = lastSeenUid.get(agency.id) || 0
     let maxUid = minUid
+    const newItems = results.filter(i => i.attributes.uid > minUid)
+    console.log(`[pipeline:gmail] → search: ${results.length} unseen in 24h, ${newItems.length} new (minUid=${minUid})`)
 
     for (const item of results) {
       const uid = item.attributes.uid
       if (uid <= minUid) continue
       if (uid > maxUid) maxUid = uid
 
-      const all    = item.parts.find(p => p.which === '')
+      const all = item.parts.find(p => p.which === '')
       if (!all) continue
 
       const parsed = await simpleParser(all.body)
-      const from   = parsed.from?.value?.[0]?.address || ''
+      const from    = parsed.from?.value?.[0]?.address || ''
       const subject = parsed.subject || ''
       const bodyText = parsed.text || parsed.html || ''
 
-      // Collect image attachments (base64)
       const attachments = []
       for (const att of (parsed.attachments || [])) {
         if (att.contentType?.startsWith('image/') && att.content) {
@@ -107,11 +114,12 @@ async function pollAgency(agency) {
         }
       }
 
-      if (!from) continue
+      if (!from) { console.warn(`[pipeline:gmail] → uid=${uid} skipped — no From address`); continue }
 
-      // Forward to leads webhook internally
+      console.log(`[pipeline:gmail] → processing uid=${uid} | from=${from} | subject="${subject}" | images=${attachments.length}`)
+
       try {
-        await fetch(
+        const webhookRes = await fetch(
           `http://localhost:${process.env.PORT || 3001}/leads/webhook/gmail`,
           {
             method:  'POST',
@@ -119,23 +127,24 @@ async function pollAgency(agency) {
             body:    JSON.stringify({ agencyId: agency.id, senderEmail: from, subject, bodyText, attachments }),
           }
         )
+        const webhookBody = await webhookRes.json().catch(() => ({}))
+        console.log(`[pipeline:gmail] → webhook response: ${JSON.stringify(webhookBody)}`)
       } catch (err) {
-        console.error('[gmail] internal webhook error:', err.message)
+        console.error(`[pipeline:gmail] ✗ internal webhook error for uid=${uid}:`, err.message)
       }
     }
 
     if (maxUid > minUid) lastSeenUid.set(agency.id, maxUid)
 
-    // Update last_poll_at (best-effort — column may not exist in older schemas)
     await supabaseAdmin
       .from('agencies')
       .update({ gmail_last_polled: new Date().toISOString() })
       .eq('id', agency.id)
-      .then(({ error }) => { if (error) console.warn('[gmail] gmail_last_polled update skipped:', error.message) })
+      .then(({ error }) => { if (error) console.warn('[pipeline:gmail] gmail_last_polled update skipped:', error.message) })
 
-    console.log(`[gmail] Polled ${agency.gmail_address} — ${results.length} messages, ${results.filter(i => i.attributes.uid > minUid).length} new`)
+    console.log(`[pipeline:gmail] ✓ poll done for ${agency.gmail_address} — ${newItems.length} processed`)
   } catch (err) {
-    console.error(`[gmail] Poll error for ${agency.gmail_address}:`, err.message)
+    console.error(`[pipeline:gmail] ✗ poll error for ${agency.gmail_address}:`, err.message)
   } finally {
     connection?.end()
   }

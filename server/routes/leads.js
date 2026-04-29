@@ -219,10 +219,11 @@ router.post('/webhook/gmail', async (req, res) => {
     return res.status(400).json({ error: 'agencyId and senderEmail required' })
   }
 
+  console.log(`[pipeline:gmail-wh] ← email | agency=${agencyId} | from=${senderEmail} | subject="${subject}" | images=${(attachments || []).length}`)
+
   let extractedData = null
   const mediaUrls = []
 
-  // Triage gate — language detection → keyword pre-filter → ambiguous handler
   const textForTriage = [subject, bodyText].filter(Boolean).join('\n\n')
   if (textForTriage) {
     const lang = detectLanguage(textForTriage)
@@ -233,13 +234,15 @@ router.post('/webhook/gmail', async (req, res) => {
     const textToFilter = translatedText ?? textForTriage
     const { result, matchedKeywords } = preFilter(textToFilter)
 
+    console.log(`[pipeline:gmail-wh] → triage | lang=${lang} | result=${result} | keywords=[${matchedKeywords.join(',')}]`)
+
     if (result === 'fail') {
-      console.log(`[leads/gmail] pre-filter dropped: no rental keywords (lang=${lang})`)
+      console.log(`[pipeline:gmail-wh] ✗ dropped — no rental keywords`)
       return res.json({ ok: true, dropped: true })
     }
 
     if (result === 'ambiguous') {
-      console.log(`[leads/gmail] pre-filter ambiguous: keywords=[${matchedKeywords.join(',')}]`)
+      console.log(`[pipeline:gmail-wh] → ambiguous — creating alert`)
       await handleAmbiguous({
         agencyId,
         senderId: senderEmail,
@@ -250,9 +253,6 @@ router.post('/webhook/gmail', async (req, res) => {
       })
       return res.json({ ok: true, alert: true })
     }
-
-    // result === 'pass' — continue to extraction below
-    console.log(`[leads/gmail] pre-filter pass: keywords=[${matchedKeywords.join(',')}]`)
   }
 
   const imageBlocks = (attachments || [])
@@ -260,14 +260,17 @@ router.post('/webhook/gmail', async (req, res) => {
     .map(a => ({ type: 'image', source: { type: 'base64', media_type: a.mimeType, data: a.base64 } }))
 
   if (imageBlocks.length && process.env.ANTHROPIC_API_KEY) {
+    console.log(`[pipeline:gmail-wh] → Claude extraction (${imageBlocks.length} images)`)
     try {
       extractedData = await extractWithClaude(imageBlocks, bodyText || subject)
+      console.log(`[pipeline:gmail-wh] → extraction result: classification=${extractedData?.classification} | confidence=${extractedData?.confidence}`)
     } catch (err) {
-      console.error('[leads/gmail] Claude extraction error:', err.message)
+      console.error('[pipeline:gmail-wh] ✗ Claude extraction error:', err.message)
     }
   }
 
   if (!extractedData && (bodyText || subject) && process.env.ANTHROPIC_API_KEY) {
+    console.log(`[pipeline:gmail-wh] → Claude classification (text)`)
     try {
       const textToClassify = [subject, bodyText].filter(Boolean).join('\n\n')
       const classification = await classifyTextMessage(textToClassify, 'no_contract')
@@ -278,9 +281,12 @@ router.post('/webhook/gmail', async (req, res) => {
           summary_for_agent: classification.summary_for_agent,
           ...classification.extracted_data,
         }
+        console.log(`[pipeline:gmail-wh] → classification: ${classification.classification} (${classification.confidence}) | summary="${(classification.summary_for_agent || '').slice(0, 60)}"`)
+      } else {
+        console.warn(`[pipeline:gmail-wh] → classification returned null`)
       }
     } catch (err) {
-      console.error('[leads/gmail] text classification error:', err.message)
+      console.error('[pipeline:gmail-wh] ✗ text classification error:', err.message)
     }
   }
 
@@ -291,20 +297,22 @@ router.post('/webhook/gmail', async (req, res) => {
   }
 
   const match = await findMatchingDemand(agencyId, senderEmail, extractedData)
+  console.log(`[pipeline:gmail-wh] → match: ${match ? `${match.type} (score=${match.score}) id=${match.demand.id}` : 'none — new lead'}`)
 
   if (match && match.type !== 'potential') {
-    const existing = match.demand
-    await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from('pending_demands')
       .update({
-        extracted_data: { ...(existing.extracted_data || {}), ...(extractedData || {}) },
-        media_urls: [...(existing.media_urls || []), ...mediaUrls],
+        extracted_data: { ...(match.demand.extracted_data || {}), ...(extractedData || {}) },
+        media_urls: [...(match.demand.media_urls || []), ...mediaUrls],
         confidence_scores: extractedData?.confidenceScores || null,
         match_score: match.score,
       })
-      .eq('id', existing.id)
+      .eq('id', match.demand.id)
+    if (error) console.error('[pipeline:gmail-wh] ✗ update error:', error.message)
+    else console.log(`[pipeline:gmail-wh] ✓ lead updated id=${match.demand.id}`)
   } else {
-    await supabaseAdmin.from('pending_demands').insert({
+    const { data: inserted, error } = await supabaseAdmin.from('pending_demands').insert({
       agency_id: agencyId,
       source: 'gmail',
       sender_id: senderEmail,
@@ -314,7 +322,9 @@ router.post('/webhook/gmail', async (req, res) => {
       media_urls: mediaUrls,
       match_score: match?.score || null,
       merged_with_id: match?.type === 'potential' ? match.demand.id : null,
-    })
+    }).select('id').maybeSingle()
+    if (error) console.error('[pipeline:gmail-wh] ✗ insert error:', error.message)
+    else console.log(`[pipeline:gmail-wh] ✓ lead inserted id=${inserted?.id}`)
   }
 
   res.json({ ok: true })
@@ -350,19 +360,20 @@ router.post('/webhook/whatsapp', async (req, res) => {
   res.set('Content-Type', 'text/xml')
   res.send('<Response/>')
 
-  const from      = req.body.From || ''   // "whatsapp:+212XXXXXXXXX" (client)
-  const to        = req.body.To   || ''   // "whatsapp:+212XXXXXXXXX" (agency number)
+  const from      = req.body.From || ''
+  const to        = req.body.To   || ''
   const bodyText  = req.body.Body || ''
   const numMedia  = parseInt(req.body.NumMedia || '0', 10)
   const mediaUrl  = req.body.MediaUrl0 || null
   const mediaMime = req.body.MediaContentType0 || 'image/jpeg'
 
-  if (!from || !to) return
+  console.log(`[pipeline:twilio] ← inbound | from=${from} | to=${to} | media=${numMedia} | text="${bodyText.slice(0, 80)}"`)
 
-  const senderJid   = from.replace(/^whatsapp:/i, '')
+  if (!from || !to) { console.warn('[pipeline:twilio] ✗ missing From/To — ignored'); return }
+
+  const senderJid    = from.replace(/^whatsapp:/i, '')
   const toNormalized = normalizePhoneDigits(to.replace(/^whatsapp:/i, ''))
 
-  // Look up which agency owns this WhatsApp number
   const { data: agencies } = await supabaseAdmin
     .from('agencies')
     .select('id, phone')
@@ -370,23 +381,29 @@ router.post('/webhook/whatsapp', async (req, res) => {
 
   const agency = agencies?.find(a => normalizePhoneDigits(a.phone) === toNormalized)
   if (!agency) {
-    console.error(`[leads/whatsapp-webhook] No agency found for number ${to}`)
+    console.error(`[pipeline:twilio] ✗ no agency found for number ${to} — ensure agencies.phone matches Twilio To`)
     return
   }
+  console.log(`[pipeline:twilio] → agency resolved: ${agency.id}`)
 
   let imageBuffer = null
   if (numMedia > 0 && mediaUrl) {
     try {
       const creds = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64')
       const mediaRes = await fetch(mediaUrl, { headers: { Authorization: `Basic ${creds}` } })
-      if (mediaRes.ok) imageBuffer = Buffer.from(await mediaRes.arrayBuffer())
+      if (mediaRes.ok) {
+        imageBuffer = Buffer.from(await mediaRes.arrayBuffer())
+        console.log(`[pipeline:twilio] → media downloaded (${imageBuffer.length} bytes, ${mediaMime})`)
+      } else {
+        console.warn(`[pipeline:twilio] → media download failed: HTTP ${mediaRes.status}`)
+      }
     } catch (err) {
-      console.error('[leads/whatsapp-webhook] media download error:', err.message)
+      console.error('[pipeline:twilio] ✗ media download error:', err.message)
     }
   }
 
   handleInboundWhatsApp(agency.id, senderJid, imageBuffer, mediaMime, bodyText)
-    .catch(err => console.error('[leads/whatsapp-webhook] handler error:', err.message))
+    .catch(err => console.error('[pipeline:twilio] ✗ handler error:', err.message))
 })
 
 // Strips all non-digit chars and normalises Moroccan 06/07 → 212XXXXXXXXX
@@ -559,9 +576,9 @@ async function classifyTextMessage(bodyText, clientStatus) {
  * @param {string}         bodyText    — text body or Whisper transcript
  */
 export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mimeType, bodyText) {
+  console.log(`[pipeline:wa] ← message | agency=${agencyId} | sender=${senderJid} | image=${!!imageBuffer} | text="${(bodyText || '').slice(0, 80)}"`)
   let extractedData = null
 
-  // Triage gate — language detection → keyword pre-filter → ambiguous handler
   if (bodyText?.trim()) {
     const lang = detectLanguage(bodyText)
     const CORE = new Set(['fra', 'ara', 'eng'])
@@ -571,13 +588,15 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
     const textToFilter = translatedText ?? bodyText
     const { result, matchedKeywords } = preFilter(textToFilter)
 
+    console.log(`[pipeline:wa] → triage | lang=${lang} | result=${result} | keywords=[${matchedKeywords.join(',')}]`)
+
     if (result === 'fail') {
-      console.log(`[leads/inbound-wa] pre-filter dropped: no rental keywords (lang=${lang})`)
+      console.log(`[pipeline:wa] ✗ dropped — no rental keywords`)
       return
     }
 
     if (result === 'ambiguous') {
-      console.log(`[leads/inbound-wa] pre-filter ambiguous: keywords=[${matchedKeywords.join(',')}]`)
+      console.log(`[pipeline:wa] → ambiguous — creating alert`)
       await handleAmbiguous({
         agencyId,
         senderId: senderJid,
@@ -588,19 +607,16 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       })
       return
     }
-
-    // result === 'pass' — continue to extraction below
-    console.log(`[leads/inbound-wa] pre-filter pass: keywords=[${matchedKeywords.join(',')}]`)
   }
 
   if (imageBuffer && process.env.ANTHROPIC_API_KEY) {
-    // Process & Purge — send buffer directly to Claude as base64, never stored
+    console.log(`[pipeline:wa] → Claude extraction (image, ${mimeType}, ${imageBuffer.length} bytes)`)
     try {
       const imageBlock = { type: 'image', source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: imageBuffer.toString('base64') } }
       extractedData = await extractWithClaude([imageBlock], bodyText)
-      // Document scan = always a new lead; also extract rental intent from caption if present
       if (extractedData) {
         extractedData.classification = 'new_lead'
+        console.log(`[pipeline:wa] → extraction result: classification=${extractedData.classification} | confidence=${extractedData.confidence}`)
         if (bodyText?.trim()) {
           try {
             const clientStatus = await getClientStatus(agencyId, senderJid)
@@ -612,14 +628,18 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
                 ...(captionClass.classification && { classification: captionClass.classification }),
                 ...(captionClass.summary_for_agent && { summary_for_agent: captionClass.summary_for_agent }),
               }
+              console.log(`[pipeline:wa] → caption merged: classification=${extractedData.classification} | summary="${(extractedData.summary_for_agent || '').slice(0, 60)}"`)
             }
           } catch (_) {}
         }
+      } else {
+        console.warn(`[pipeline:wa] → extraction returned null`)
       }
     } catch (err) {
-      console.error('[leads/inbound-wa] Claude error:', err.message)
+      console.error('[pipeline:wa] ✗ Claude extraction error:', err.message)
     }
   } else if (bodyText?.trim()) {
+    console.log(`[pipeline:wa] → Claude classification (text-only)`)
     try {
       const clientStatus = await getClientStatus(agencyId, senderJid)
       const classification = await classifyTextMessage(bodyText, clientStatus)
@@ -630,25 +650,30 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
           summary_for_agent: classification.summary_for_agent,
           ...classification.extracted_data,
         }
+        console.log(`[pipeline:wa] → classification: ${classification.classification} (${classification.confidence}) | summary="${(classification.summary_for_agent || '').slice(0, 60)}"`)
+      } else {
+        console.warn(`[pipeline:wa] → classification returned null`)
       }
     } catch (err) {
-      console.error('[leads/inbound-wa] classify error:', err.message)
+      console.error('[pipeline:wa] ✗ classify error:', err.message)
     }
   }
 
   const match = await findMatchingDemand(agencyId, senderJid, extractedData)
+  console.log(`[pipeline:wa] → match: ${match ? `${match.type} (score=${match.score}) id=${match.demand.id}` : 'none — new lead'}`)
 
   if (match && match.type !== 'potential') {
-    const existing = match.demand
-    await supabaseAdmin.from('pending_demands').update({
-      extracted_data: { ...(existing.extracted_data || {}), ...(extractedData || {}) },
-      media_urls: existing.media_urls || [],
+    const { error } = await supabaseAdmin.from('pending_demands').update({
+      extracted_data: { ...(match.demand.extracted_data || {}), ...(extractedData || {}) },
+      media_urls: match.demand.media_urls || [],
       confidence_scores: extractedData?.confidenceScores || null,
       match_score: match.score,
-      raw_payload: { ...existing.raw_payload, latestBody: bodyText },
-    }).eq('id', existing.id)
+      raw_payload: { ...match.demand.raw_payload, latestBody: bodyText },
+    }).eq('id', match.demand.id)
+    if (error) console.error('[pipeline:wa] ✗ update error:', error.message)
+    else console.log(`[pipeline:wa] ✓ lead updated id=${match.demand.id}`)
   } else {
-    const { error } = await supabaseAdmin.from('pending_demands').insert({
+    const { data: inserted, error } = await supabaseAdmin.from('pending_demands').insert({
       agency_id: agencyId,
       source: 'whatsapp',
       sender_id: senderJid,
@@ -658,8 +683,9 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       media_urls: [],
       match_score: match?.score || null,
       merged_with_id: match?.type === 'potential' ? match.demand.id : null,
-    })
-    if (error) console.error('[leads/inbound-wa] insert error:', error.message)
+    }).select('id').maybeSingle()
+    if (error) console.error('[pipeline:wa] ✗ insert error:', error.message)
+    else console.log(`[pipeline:wa] ✓ lead inserted id=${inserted?.id}`)
   }
 }
 
