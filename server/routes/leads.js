@@ -275,6 +275,11 @@ router.post('/webhook/gmail', async (req, res) => {
       const textToClassify = [subject, bodyText].filter(Boolean).join('\n\n')
       const classification = await classifyTextMessage(textToClassify, 'no_contract')
       if (classification) {
+        // Skip messages classified as "other" — not rental-related
+        if (classification.classification === 'other') {
+          console.log(`[pipeline:gmail-wh] ✗ rejected — classified as "other" (${classification.confidence})`)
+          return res.json({ ok: true, dropped: true })
+        }
         extractedData = {
           classification: classification.classification,
           confidence: classification.confidence,
@@ -650,6 +655,11 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       const clientStatus = await getClientStatus(agencyId, senderJid)
       const classification = await classifyTextMessage(bodyText, clientStatus)
       if (classification) {
+        // Skip messages classified as "other" — not rental-related
+        if (classification.classification === 'other') {
+          console.log(`[pipeline:wa] ✗ rejected — classified as "other" (${classification.confidence})`)
+          return
+        }
         extractedData = {
           classification: classification.classification,
           confidence: classification.confidence,
