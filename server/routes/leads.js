@@ -307,6 +307,7 @@ router.post('/webhook/gmail', async (req, res) => {
         media_urls: [...(match.demand.media_urls || []), ...mediaUrls],
         confidence_scores: extractedData?.confidenceScores || null,
         match_score: match.score,
+        ...(extractedData?.classification ? { classification: extractedData.classification } : {}),
       })
       .eq('id', match.demand.id)
     if (error) console.error('[pipeline:gmail-wh] ✗ update error:', error.message)
@@ -322,6 +323,7 @@ router.post('/webhook/gmail', async (req, res) => {
       media_urls: mediaUrls,
       match_score: match?.score || null,
       merged_with_id: match?.type === 'potential' ? match.demand.id : null,
+      classification: extractedData?.classification || null,
     }).select('id').maybeSingle()
     if (error) console.error('[pipeline:gmail-wh] ✗ insert error:', error.message)
     else console.log(`[pipeline:gmail-wh] ✓ lead inserted id=${inserted?.id}`)
@@ -446,7 +448,7 @@ router.get('/', async (req, res) => {
   if (classification) {
     query = query.eq('classification', classification).neq('status', 'ignored')
   } else {
-    query = query.eq('status', status).neq('classification', 'alert')
+    query = query.eq('status', status).or('classification.neq.alert,classification.is.null')
   }
 
   const { data, error } = await query
@@ -673,6 +675,7 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       confidence_scores: extractedData?.confidenceScores || null,
       match_score: match.score,
       raw_payload: { ...match.demand.raw_payload, latestBody: bodyText },
+      ...(extractedData?.classification ? { classification: extractedData.classification } : {}),
     }).eq('id', match.demand.id)
     if (error) console.error('[pipeline:wa] ✗ update error:', error.message)
     else console.log(`[pipeline:wa] ✓ lead updated id=${match.demand.id}`)
@@ -687,6 +690,7 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       media_urls: [],
       match_score: match?.score || null,
       merged_with_id: match?.type === 'potential' ? match.demand.id : null,
+      classification: extractedData?.classification || null,
     }).select('id').maybeSingle()
     if (error) console.error('[pipeline:wa] ✗ insert error:', error.message)
     else console.log(`[pipeline:wa] ✓ lead inserted id=${inserted?.id}`)
