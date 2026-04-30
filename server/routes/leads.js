@@ -225,6 +225,14 @@ router.post('/webhook/gmail', async (req, res) => {
   const mediaUrls = []
 
   const textForTriage = [subject, bodyText].filter(Boolean).join('\n\n')
+
+  // Pre-triage: if sender has an offer_sent lead, bypass keyword triage
+  const gmailOfferLead = await findOfferSentLeadByEmail(agencyId, senderEmail)
+  if (gmailOfferLead) {
+    await handleOfferResponse(agencyId, senderEmail, textForTriage, gmailOfferLead, 'gmail')
+    return res.json({ ok: true, offer_response: true })
+  }
+
   if (textForTriage) {
     const lang = detectLanguage(textForTriage)
     const CORE = new Set(['fra', 'ara', 'eng'])
@@ -578,6 +586,62 @@ async function classifyTextMessage(bodyText, clientStatus) {
   }
 }
 
+// ── Offer-response pre-triage helpers ────────────────────
+
+async function findOfferSentLeadByPhone(agencyId, senderJid) {
+  try {
+    const digits9 = (senderJid || '').replace(/\D/g, '').slice(-9)
+    if (!digits9) return null
+    const { data: leads } = await supabaseAdmin
+      .from('pending_demands')
+      .select('id, sender_id, raw_payload, extracted_data')
+      .eq('agency_id', agencyId)
+      .eq('status', 'offer_sent')
+      .order('created_at', { ascending: false })
+      .limit(20)
+    return (leads || []).find(l =>
+      (l.sender_id || '').replace(/\D/g, '').slice(-9) === digits9
+    ) || null
+  } catch (err) {
+    console.error('[leads/findOfferSentLeadByPhone] error:', err.message)
+    return null
+  }
+}
+
+async function findOfferSentLeadByEmail(agencyId, senderEmail) {
+  try {
+    const { data: leads } = await supabaseAdmin
+      .from('pending_demands')
+      .select('id, sender_id, raw_payload, extracted_data')
+      .eq('agency_id', agencyId)
+      .eq('status', 'offer_sent')
+      .eq('sender_id', senderEmail)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    return leads?.[0] || null
+  } catch (err) {
+    console.error('[leads/findOfferSentLeadByEmail] error:', err.message)
+    return null
+  }
+}
+
+async function handleOfferResponse(agencyId, senderId, text, lead, source) {
+  console.log(`[pipeline:${source}] → offer response | lead=${lead.id} | sender=${senderId}`)
+  const intent = text?.trim() ? await analyzeQuoteReply(text) : 'question'
+  const existingReplies = lead.raw_payload?.replies || []
+  const newReply = { text: (text || '').slice(0, 500), intent, timestamp: new Date().toISOString() }
+  const { error } = await supabaseAdmin
+    .from('pending_demands')
+    .update({
+      status: 'waiting',
+      last_client_note: (text || '').slice(0, 500),
+      raw_payload: { ...(lead.raw_payload || {}), replies: [...existingReplies, newReply] },
+    })
+    .eq('id', lead.id)
+  if (error) console.error(`[pipeline:${source}] ✗ offer response update error:`, error.message)
+  else console.log(`[pipeline:${source}] ✓ offer response | lead=${lead.id} → waiting | intent=${intent}`)
+}
+
 /**
  * Called directly by the Baileys inbound listener (no HTTP round-trip).
  * @param {string}         agencyId
@@ -589,6 +653,13 @@ async function classifyTextMessage(bodyText, clientStatus) {
 export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mimeType, bodyText) {
   console.log(`[pipeline:wa] ← message | agency=${agencyId} | sender=${senderJid} | image=${!!imageBuffer} | text="${(bodyText || '').slice(0, 80)}"`)
   let extractedData = null
+
+  // Pre-triage: if sender has an offer_sent lead, bypass keyword triage
+  const offerLead = await findOfferSentLeadByPhone(agencyId, senderJid)
+  if (offerLead) {
+    await handleOfferResponse(agencyId, senderJid, bodyText, offerLead, 'whatsapp')
+    return
+  }
 
   if (bodyText?.trim()) {
     const lang = detectLanguage(bodyText)
