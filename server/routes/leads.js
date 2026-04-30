@@ -635,9 +635,10 @@ async function handleOfferResponse(agencyId, senderId, text, lead, source) {
     .update({
       status: 'waiting',
       last_client_note: (text || '').slice(0, 500),
-      raw_payload: { ...(lead.raw_payload || {}), replies: [...existingReplies, newReply] },
+      raw_payload: { ...(lead.raw_payload || {}), replies: [...existingReplies, newReply].slice(-50) },
     })
     .eq('id', lead.id)
+    .eq('agency_id', agencyId)
   if (error) console.error(`[pipeline:${source}] ✗ offer response update error:`, error.message)
   else console.log(`[pipeline:${source}] ✓ offer response | lead=${lead.id} → waiting | intent=${intent}`)
 }

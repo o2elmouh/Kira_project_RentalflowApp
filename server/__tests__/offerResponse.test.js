@@ -57,7 +57,7 @@ mock.module('../lib/supabaseAdmin.js', {
       }),
       update: (payload) => {
         _updateCalls.push({ table, payload })
-        return { eq: () => Promise.resolve({ data: null, error: null }) }
+        return { eq: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }) }
       },
       insert: () => ({
         select: () => ({
