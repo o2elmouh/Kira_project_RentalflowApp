@@ -29,22 +29,16 @@ const KEYWORDS = {
   medium: [
     // French
     'voiture', 'véhicule', 'contrat', 'assurance', 'panne', 'accident', 'permis', 'kilométrage',
-    // French — rental duration (week/day = unambiguous rental intent)
+    // French — rental duration (specific enough to stay medium)
     'semaine', 'semaines', 'journée', 'journées',
     // Darija / Arabic
     'سيارة', 'طوموبيل', 'عقد', 'تأمين', 'رخصة', 'بنزين', 'حادث', 'بريكاج',
     // English
     'car', 'vehicle', 'contract', 'insurance', 'breakdown', 'accident', 'license', 'mileage', 'fuel',
-    // English — rental duration
-    'week', 'weeks', 'days',
     // Dutch
     'auto', 'contract', 'voertuig', 'verzekering', 'pech', 'ongeluk', 'rijbewijs',
-    // Dutch — duration
-    'week', 'weken',
     // German
     'auto', 'fahrzeug', 'vertrag', 'versicherung', 'panne', 'unfall', 'führerschein',
-    // German — duration
-    'woche', 'wochen',
   ],
   low: [
     // French
@@ -55,6 +49,9 @@ const KEYWORDS = {
     'price', 'rate', 'available', 'need',
     // Arabic
     'ثمن', 'سعر', 'متاح',
+    // Duration words — moved from medium: too generic as standalone words in any language
+    // ("heard in the last week", "delivered in 3 days", etc. appear in non-rental emails)
+    'week', 'weeks', 'days', 'weken', 'woche', 'wochen',
   ],
 }
 

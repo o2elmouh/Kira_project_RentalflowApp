@@ -16,12 +16,24 @@ describe('preFilter', () => {
   })
 
   // ── FAIL cases ───────────────────────────────────────────
-  it('fails a generic marketing newsletter (ngrok-style)', () => {
+  it('fails a generic marketing newsletter (ngrok short form)', () => {
     const email = `Seven new ngrok ideas need your vote
 Agent tool calls, MCP fan-out, multi-model routing.
 AI Gateway BYOK is now private by default. Your app sends an AI Gateway key
 and we attach your OpenAI, Anthropic, or other provider keys as they pass through.
 Stack up to 15 keys per provider for failover. Learn how BYOK works automatically.`
+    expect(preFilter(email).result).toBe('fail')
+  })
+
+  it('fails the full ngrok email including "in the last week" phrase', () => {
+    const email = `Seven new ngrok ideas need your vote
+Agent tool calls, MCP fan-out, multi-model routing. Here's what changed.
+AI Gateway BYOK is now private by default. Now, it always requires an AI Gateway key.
+Your app sends an AI Gateway key and we attach your OpenAI, Anthropic, or other provider keys.
+Stack up to 15 keys per provider for failover.
+At ngrok, we have this thing called product feedback interlock every Tuesday,
+where we talk through all the user feedback we've heard in the last week.
+I'll make sure yours lands there too. ~ Joel at ngrok`
     expect(preFilter(email).result).toBe('fail')
   })
 
