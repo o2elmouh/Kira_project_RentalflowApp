@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, PlusCircle, Car, Users, FolderOpen, CalendarDays, Settings, LogOut, RotateCcw, Inbox, Globe } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Car, Users, FolderOpen, CalendarDays, Settings, LogOut, RotateCcw, Inbox, Globe, Shield } from 'lucide-react'
 import LanguageSelector from './LanguageSelector'
 
 const NAV_IDS = [
@@ -73,6 +73,19 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
         padding: '12px 12px 8px',
       }}>
         <LanguageSelector />
+        <button
+          className="nav-item"
+          style={{
+            width: '100%',
+            color: 'var(--text-secondary)',
+            fontSize: 12,
+            marginTop: 8,
+          }}
+          onClick={() => onNav('privacy-policy')}
+        >
+          <Shield size={13} />
+          <span>{t('privacy.linkLabel')}</span>
+        </button>
       </div>
 
       {user && onSignOut && (
@@ -107,7 +120,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
                 color: 'var(--text-muted)',
                 fontFamily: 'DM Mono, monospace',
               }}>
-                v1.3.8
+                v1.4.0
               </span>
             </div>
           )}

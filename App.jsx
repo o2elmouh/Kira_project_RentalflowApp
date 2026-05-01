@@ -20,6 +20,7 @@ import Documents from './pages/Documents'
 import Calendar  from './pages/Calendar'
 import Basket from './pages/Basket'
 import Network from './pages/Network'
+import PrivacyPolicy from './pages/legal/PrivacyPolicy'
 
 const PREVIEW = new URLSearchParams(window.location.search).get('preview')
 const PAGE_PARAM = new URLSearchParams(window.location.search).get('page')
@@ -190,6 +191,7 @@ export default function App() {
         if (!isAdmin) { setTimeout(() => setPage('dashboard'), 0); return null }
         return <Settings />
       case 'network':  return <Network />
+      case 'privacy-policy': return <PrivacyPolicy onBack={() => setPage('dashboard')} />
       case 'basket':
         if (!isPremium) { setTimeout(() => setPage('dashboard'), 0); return null }
         return <Basket onNavigate={handleNav} initialTab={basketInitialTab} />

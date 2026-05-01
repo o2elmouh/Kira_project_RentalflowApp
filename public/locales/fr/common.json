@@ -63,5 +63,44 @@
     "documentsInvoices": "Factures",
     "documentsAccounting": "Comptabilité",
     "calendar": "Calendrier"
+  },
+  "privacy": {
+    "linkLabel": "Politique de confidentialité",
+    "scanNotice": "Conformément à la loi 09-08 sur la protection des données personnelles, les informations d'identité collectées sont utilisées uniquement pour l'établissement du contrat de location et conservées pendant la durée légale.",
+    "title": "Politique de confidentialité",
+    "subtitle": "Conforme à la loi marocaine 09-08 relative à la protection des personnes physiques à l'égard du traitement des données à caractère personnel.",
+    "controller": {
+      "title": "1. Responsable du traitement",
+      "body": "Le responsable du traitement des données personnelles est l'agence de location à laquelle vous avez communiqué vos informations. L'agence est tenue d'enregistrer ses traitements auprès de la Commission Nationale de contrôle de la protection des Données à caractère Personnel (CNDP)."
+    },
+    "collected": {
+      "title": "2. Données collectées",
+      "body": "Dans le cadre de l'établissement d'un contrat de location, nous collectons :\n• Identité : nom, prénom, date de naissance, nationalité\n• Documents d'identité : numéro de CIN ou de passeport, date d'expiration\n• Permis de conduire : numéro et date d'expiration\n• Coordonnées : adresse, téléphone, e-mail\n\nAucune donnée sensible (origine, opinions, religion, santé) n'est collectée."
+    },
+    "purpose": {
+      "title": "3. Finalités du traitement",
+      "body": "Vos données sont traitées exclusivement pour :\n• L'établissement et l'exécution du contrat de location\n• La vérification de l'identité et la validité des documents\n• Le respect des obligations légales (comptabilité, fiscalité, assurance)\n• La gestion des litiges et des sinistres éventuels"
+    },
+    "legal": {
+      "title": "4. Base légale",
+      "body": "Le traitement repose sur :\n• L'exécution du contrat de location auquel vous êtes partie\n• Le respect d'obligations légales (Code de commerce, Code général des impôts)\n• L'intérêt légitime de l'agence pour la prévention de la fraude"
+    },
+    "retention": {
+      "title": "5. Durée de conservation",
+      "body": "Vos données d'identité et de contrat sont conservées pendant 10 ans à compter de la clôture du contrat, conformément aux obligations comptables et fiscales marocaines. Au-delà de cette période, les données sont anonymisées ou supprimées."
+    },
+    "rights": {
+      "title": "6. Vos droits",
+      "body": "Conformément à la loi 09-08, vous disposez des droits suivants :\n• Droit d'accès : obtenir une copie de vos données\n• Droit de rectification : corriger des données inexactes\n• Droit d'opposition : refuser un traitement spécifique pour motif légitime\n• Droit à l'effacement : demander la suppression de vos données (sous réserve des obligations légales de conservation)\n\nL'agence répondra à votre demande dans un délai maximum de 10 jours."
+    },
+    "security": {
+      "title": "7. Sécurité des données",
+      "body": "Vos données sont stockées sur des serveurs sécurisés et l'accès est strictement limité au personnel autorisé de l'agence. Des mesures techniques (chiffrement, contrôle d'accès) et organisationnelles sont mises en œuvre pour protéger vos informations contre tout accès non autorisé."
+    },
+    "contact": {
+      "title": "8. Contact et recours",
+      "body": "Pour exercer vos droits ou pour toute question sur le traitement de vos données, contactez directement l'agence de location.\n\nEn cas de désaccord, vous pouvez saisir la CNDP :\n• Site web : www.cndp.ma\n• Adresse : Avenue Mehdi Ben Barka, Rabat"
+    },
+    "footer": "Cette politique peut être mise à jour à tout moment. La version la plus récente est toujours disponible dans l'application."
   }
 }

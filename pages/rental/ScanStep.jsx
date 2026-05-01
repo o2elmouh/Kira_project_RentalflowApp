@@ -1,10 +1,12 @@
 import { useRef, useEffect } from 'react'
-import { Camera, CheckCircle, AlertCircle, ArrowRight, X, PenLine } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Camera, CheckCircle, AlertCircle, ArrowRight, X, PenLine, Shield } from 'lucide-react'
 import { useScannerFlow } from '../../src/hooks/useScannerFlow'
 import ClientAlerts from './ClientAlerts'
 import StepButtons from './StepButtons'
 
 export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClient }) {
+  const { t } = useTranslation('common')
   const cinRef = useRef()
   const licRef = useRef()
 
@@ -78,6 +80,24 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
           </div>
         </div>
       )}
+
+      {/* Law 09-08 privacy notice */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10,
+        padding: '10px 14px',
+        marginBottom: 16,
+        background: 'var(--surface-2, #F7F5F2)',
+        border: '1px solid var(--border, #E5E1DA)',
+        borderRadius: 8,
+        fontSize: 12,
+        lineHeight: 1.5,
+        color: 'var(--text2, #5A564F)',
+      }}>
+        <Shield size={14} style={{ flexShrink: 0, marginTop: 2, color: 'var(--accent, #2D7A47)' }} />
+        <span>{t('privacy.scanNotice')}</span>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
         {/* CIN Scan */}
