@@ -69,6 +69,15 @@ export function detectLanguage(text) {
   return franc(text) ?? 'und'
 }
 
+// ── Word-boundary keyword matcher ─────────────────────────
+// Arabic/Darija has no word-boundary concept — use includes().
+// Latin keywords use \b to avoid matching substrings (e.g. 'auto' inside 'automatically').
+function matchesKeyword(lowerText, word) {
+  if (/[؀-ۿ]/.test(word)) return lowerText.includes(word)
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`\\b${escaped}\\b`, 'i').test(lowerText)
+}
+
 // ── preFilter ─────────────────────────────────────────────
 export function preFilter(text) {
   if (!text?.trim()) return { result: 'fail', matchedKeywords: [] }
@@ -77,13 +86,13 @@ export function preFilter(text) {
   const matched = { high: [], medium: [], low: [] }
 
   for (const word of KEYWORDS.high) {
-    if (lower.includes(word.toLowerCase())) matched.high.push(word)
+    if (matchesKeyword(lower, word)) matched.high.push(word)
   }
   for (const word of KEYWORDS.medium) {
-    if (lower.includes(word.toLowerCase())) matched.medium.push(word)
+    if (matchesKeyword(lower, word)) matched.medium.push(word)
   }
   for (const word of KEYWORDS.low) {
-    if (lower.includes(word.toLowerCase())) matched.low.push(word)
+    if (matchesKeyword(lower, word)) matched.low.push(word)
   }
 
   const allMatched = [...matched.high, ...matched.medium, ...matched.low]

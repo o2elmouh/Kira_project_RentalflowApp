@@ -101,7 +101,7 @@ async function pollAgency(agency) {
       const parsed = await simpleParser(all.body)
       const from    = parsed.from?.value?.[0]?.address || ''
       const subject = parsed.subject || ''
-      const bodyText = parsed.text || parsed.html || ''
+      const bodyText = parsed.text || (parsed.html ? parsed.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '') || ''
 
       const attachments = []
       for (const att of (parsed.attachments || [])) {
