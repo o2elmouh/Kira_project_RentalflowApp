@@ -18,6 +18,8 @@ import leadsRouter from './routes/leads.js'
 import gmailRouter, { startGmailPoller } from './routes/gmail.js'
 import networkRouter from './routes/network.js'
 import adminRouter from './routes/admin.js'
+import cron from 'node-cron'
+import { cleanupPendingDemands } from './scripts/cleanupPendingDemands.js'
 
 const app = express()
 app.set('trust proxy', 1)
@@ -80,6 +82,13 @@ app.use((err, req, res, _next) => {
 })
 
 startGmailPoller()
+
+// Daily at 03:00 UTC — Law 09-08 Phase 2 pending demands cleanup
+cron.schedule('0 3 * * *', () => {
+  cleanupPendingDemands()
+    .then(({ anonymized }) => console.log(`[cron] cleanup:pending — ${anonymized} anonymized`))
+    .catch(err => console.error('[cron] cleanup:pending failed:', err))
+})
 
 app.listen(PORT, () => {
   console.log(`✅ RentaFlow API running on port ${PORT}`)
