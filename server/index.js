@@ -17,6 +17,7 @@ import ocrRouter from './routes/ocr.js'
 import leadsRouter from './routes/leads.js'
 import gmailRouter, { startGmailPoller } from './routes/gmail.js'
 import networkRouter from './routes/network.js'
+import adminRouter from './routes/admin.js'
 
 const app = express()
 app.set('trust proxy', 1)
@@ -65,6 +66,7 @@ app.use('/ocr', ocrRouter)
 app.use('/leads', leadsRouter)
 app.use('/gmail', gmailRouter)
 app.use('/network', networkRouter)
+app.use('/admin', adminRouter)
 
 // ── 404 ───────────────────────────────────────────────────
 app.use((req, res) => {
