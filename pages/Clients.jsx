@@ -142,8 +142,8 @@ export default function Clients() {
       const cContracts = contracts.filter(ct => ct.clientId === c.id)
       const totalPaye = cContracts.reduce((s, ct) => s + (Number(ct.totalTTC) || 0), 0)
       return [
-        `${c.firstName} ${c.lastName}`,
-        c.cinNumber || '—',
+        c.anonymizedAt ? '[ANONYMIZED]' : `${c.firstName} ${c.lastName}`,
+        c.anonymizedAt ? '—' : (c.cinNumber || '—'),
         c.phone || '—',
         c.email || '—',
         c.nationality || '—',
@@ -223,8 +223,14 @@ export default function Clients() {
                           transition: 'background 0.15s',
                         }}
                       >
-                        <td style={{ padding: '11px 16px', fontWeight: 600, color: 'var(--ink)' }}>{c.firstName} {c.lastName}</td>
-                        <td style={{ padding: '11px 16px', fontFamily: 'DM Mono, monospace', fontSize: 12, color: 'var(--text-secondary)' }}>{c.cinNumber || '—'}</td>
+                        <td style={{ padding: '11px 16px', fontWeight: 600, color: 'var(--ink)' }}>
+                          {c.anonymizedAt
+                            ? <span style={{ color: 'var(--text2)', fontStyle: 'italic' }}>[Client anonymisé]</span>
+                            : `${c.firstName || ''} ${c.lastName || ''}`.trim()}
+                        </td>
+                        <td style={{ padding: '11px 16px', fontFamily: 'DM Mono, monospace', fontSize: 12, color: 'var(--text-secondary)' }}>
+                          {c.anonymizedAt ? '—' : (c.cinNumber || '—')}
+                        </td>
                         <td style={{ padding: '11px 16px', color: 'var(--text-primary)' }}>
                           {isEditing ? (
                             <input className="form-input" style={{ padding: '4px 8px', fontSize: 12, width: 130, borderRadius: 'var(--r-btn)' }} value={editData.phone} onChange={e => setEditData(p => ({ ...p, phone: e.target.value }))} />
