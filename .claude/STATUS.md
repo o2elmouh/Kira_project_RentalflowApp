@@ -6,7 +6,9 @@
 
 ## Pending Tasks
 - Wire Resend email provider (`server/routes/email.js` — needs `RESEND_API_KEY`)
-- **Law 09-08 compliance:** Phases 2–5 — see [.claude/PHASE_PLAN.md](PHASE_PLAN.md). Phase 1 shipped as v1.4.0.
+- Wire Resend email provider (`server/routes/email.js` — needs `RESEND_API_KEY`)
+- **Law 09-08 compliance:** Phases 4–5 remaining — see [.claude/PHASE_PLAN.md](PHASE_PLAN.md). Phases 1–3 shipped.
+- **Railway cron:** schedule `cleanup:pending` daily at 03:00 UTC in Railway dashboard (Phase 2)
 
 ---
 
@@ -21,6 +23,8 @@
 ## Staging Deployments
 | Version | Commit | What's in it |
 |---|---|---|
+| v1.5.0 | `ac80965` | Phase 3 / Law 09-08: right to erasure endpoint, audit_log table, Settings → Confidentialité tab (admin), Clients.jsx anonymization guards, FR+AR i18n |
+| v1.4.1 | `c864768` | Phase 2 / Law 09-08: pending demands cleanup script, anonymized_at migration, cleanup:pending npm script |
 | v1.4.0 | `a3a3dd5` | Phase 1 / Law 09-08 compliance: CNDP privacy notice on ScanStep, full PrivacyPolicy.jsx page (FR + AR), Sidebar footer link |
 | v1.3.1 | `6a86168` | Design system overhaul: Mastercard-inspired (Canvas Cream, Ink Black, pill radii, Sofia Sans, Signal Orange consent-only) — index.css full token rewrite + Sidebar + 7 pages |
 | v1.3.1 | `5b9d658` | Fix classifyTextMessage max_tokens 256→512 (JSON truncation bug causing SmartQuotePanel to never appear) |
