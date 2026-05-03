@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase.js'
 import { api } from '../../lib/api.js'
-import UserContext from '../../lib/UserContext.js'
+import { UserContext } from '../../lib/UserContext.js'
 
 export default function PrivacyTab() {
   const { t } = useTranslation('settings')
