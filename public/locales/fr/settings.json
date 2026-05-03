@@ -7,7 +7,8 @@
     "general": "Configuration générale",
     "team": "Équipe",
     "telematique": "Télématique",
-    "integrations": "Intégrations"
+    "integrations": "Intégrations",
+    "privacy": "Confidentialité"
   },
   "agency": {
     "generalInfo": "Informations générales",
@@ -82,5 +83,24 @@
       "comingSoon": "D'autres paramètres généraux seront ajoutés ici prochainement.",
       "kmNote": "ℹ️ La limite kilométrique est désormais configurable par véhicule dans la fiche de chaque voiture (onglet Flotte)."
     }
+  },
+  "privacy": {
+    "title": "Gestion des données personnelles",
+    "description": "Effacement des données client conformément à la loi 09-08 (droit à l'oubli). Cette action est irréversible.",
+    "adminOnly": "Accès réservé aux administrateurs.",
+    "loading": "Chargement...",
+    "empty": "Aucun client.",
+    "colName": "Client",
+    "colContact": "Contact",
+    "colStatus": "Statut",
+    "anonymized": "Anonymisé",
+    "active": "Actif",
+    "anonymizeBtn": "Anonymiser",
+    "modalTitle": "Confirmer l'anonymisation",
+    "modalDesc": "Vous allez anonymiser définitivement les données personnelles de {{name}}. Cette action est irréversible.",
+    "reasonPlaceholder": "Raison de la demande (ex: demande CNDP, droit à l'oubli du client...)",
+    "cancel": "Annuler",
+    "confirm": "Confirmer l'anonymisation",
+    "anonymizing": "En cours..."
   }
 }
