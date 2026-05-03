@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "start": "cd server && node index.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "cleanup:pending": "node server/scripts/cleanupPendingDemands.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
@@ -37,6 +38,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "jsdom": "^29.0.2",
+    "supertest": "^7.2.2",
     "typescript": "^6.0.2",
     "vite": "^5.3.1",
     "vitest": "^4.1.4"
