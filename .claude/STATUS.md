@@ -23,7 +23,7 @@
 ## Staging Deployments
 | Version | Commit | What's in it |
 |---|---|---|
-| v1.6.0 | pending | Bug bundle: (1) team invite role validation + agency join fix (data loss bug) + email timing logs, (2) language selector moved to merged Settings → Configuration générale (3 tabs collapsed), (3) DocumentExpiryAlert modal on ScanStep for expired CIN/license, (4) NewRental draft persistence + draft picker grid with "+ New Rental" card |
+| v1.6.0 | `eb4e85b` | Bug bundle: (1) team invite role validation + agency join fix (data loss bug) + email timing logs, (2) language selector moved to merged Settings → Configuration générale (3 tabs collapsed), (3) DocumentExpiryAlert modal on ScanStep for expired CIN/license, (4) NewRental draft persistence + draft picker grid with "+ New Rental" card |
 | v1.5.0 | `ac80965` | Phase 3 / Law 09-08: right to erasure endpoint, audit_log table, Settings → Confidentialité tab (admin), Clients.jsx anonymization guards, FR+AR i18n |
 | v1.4.1 | `c864768` | Phase 2 / Law 09-08: pending demands cleanup script, anonymized_at migration, cleanup:pending npm script |
 | v1.4.0 | `a3a3dd5` | Phase 1 / Law 09-08 compliance: CNDP privacy notice on ScanStep, full PrivacyPolicy.jsx page (FR + AR), Sidebar footer link |
