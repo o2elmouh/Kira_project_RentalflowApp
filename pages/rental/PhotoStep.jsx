@@ -148,7 +148,7 @@ export default function PhotoStep({ onNext, onBack, onSaveAndQuit, onCancel, ini
         }
         rightBtns={
           <>
-            <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onSaveAndQuit}>
+            <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={() => onSaveAndQuit(photos)}>
               💾 Sauvegarder & quitter
             </button>
             <button className="btn-ink" style={{ fontSize: 15 }} onClick={() => onNext(photos)}>

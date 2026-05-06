@@ -205,7 +205,7 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
         rightBtns={
           !finalized ? (
             <>
-              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onSaveAndQuit} disabled={saving}>
+              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={() => onSaveAndQuit()} disabled={saving}>
                 💾 Sauvegarder & quitter
               </button>
               <button className="btn-ink" style={{ fontSize: 15 }} disabled={saving} onClick={handleFinalize}>

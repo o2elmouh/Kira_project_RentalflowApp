@@ -266,7 +266,7 @@ export default function RentalStep({ client, onNext, onBack, onSaveAndQuit, onCa
         }
         rightBtns={
           <>
-            <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onSaveAndQuit}>
+            <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={() => onSaveAndQuit({ ...form, vehicle })}>
               💾 Sauvegarder & quitter
             </button>
             <button className="btn-ink" style={{ fontSize: 15 }} disabled={!canContinue} onClick={handleNext}>

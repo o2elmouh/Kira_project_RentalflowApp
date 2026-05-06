@@ -23,6 +23,7 @@
 ## Staging Deployments
 | Version | Commit | What's in it |
 |---|---|---|
+| v1.6.1 | pending | Fix(NewRental drafts): RentalStep/PhotoStep/ContractStep now pass their state to onSaveAndQuit (was passing the React click event); empty-draft check now inspects field values instead of object truthiness so empty stub objects no longer create phantom drafts |
 | v1.6.0 | `eb4e85b` | Bug bundle: (1) team invite role validation + agency join fix (data loss bug) + email timing logs, (2) language selector moved to merged Settings → Configuration générale (3 tabs collapsed), (3) DocumentExpiryAlert modal on ScanStep for expired CIN/license, (4) NewRental draft persistence + draft picker grid with "+ New Rental" card |
 | v1.5.0 | `ac80965` | Phase 3 / Law 09-08: right to erasure endpoint, audit_log table, Settings → Confidentialité tab (admin), Clients.jsx anonymization guards, FR+AR i18n |
 | v1.4.1 | `c864768` | Phase 2 / Law 09-08: pending demands cleanup script, anonymized_at migration, cleanup:pending npm script |

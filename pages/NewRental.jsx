@@ -47,6 +47,29 @@ export default function NewRental({ onDone, prefilledLead = null }) {
     if (patch.photos !== undefined) setPhotos(patch.photos)
   }
 
+  // A draft is "meaningful" if at least one identifying client field, a
+  // rental form (vehicle/dates), or any captured photo exists. We avoid
+  // persisting empty stub objects (e.g. fresh ScanStep state with all
+  // empty strings, or accidental click events from steps that didn't
+  // pass a payload).
+  const draftHasContent = (d) => {
+    if (!d) return false
+    const c = d.client
+    const hasClient = c && typeof c === 'object' && !c.nativeEvent && (
+      (c.firstName && c.firstName.trim()) ||
+      (c.lastName && c.lastName.trim()) ||
+      (c.cinNumber && c.cinNumber.trim()) ||
+      (c.drivingLicenseNumber && c.drivingLicenseNumber.trim())
+    )
+    const r = d.rental
+    const hasRental = r && typeof r === 'object' && !r.nativeEvent && (
+      r.vehicle || r.startDate || r.endDate || r.pickupLocation
+    )
+    const p = d.photos
+    const hasPhotos = p && typeof p === 'object' && Object.keys(p).length > 0
+    return Boolean(hasClient || hasRental || hasPhotos)
+  }
+
   // Persist current workflow state and exit to caller.
   const handleSaveAndQuit = (patch = {}) => {
     if (!agencyId) { onDone(); return }
@@ -57,17 +80,18 @@ export default function NewRental({ onDone, prefilledLead = null }) {
       rental: patch.rental  ?? rental,
       photos: patch.photos  ?? photos,
     }
-    const isEmpty = !merged.client && !merged.rental && (merged.step ?? 0) === 0
-    if (!isEmpty) saveDraft(agencyId, merged)
+    if (draftHasContent(merged)) saveDraft(agencyId, merged)
     onDone()
   }
 
   // Each step's onSaveAndQuit passes its latest local payload back.
+  // The step number stays at the current step so the user resumes
+  // exactly where they left off.
   const saveQuitFromStep = (key) => (payload) => {
-    if (key === 'client') return handleSaveAndQuit({ client: payload, step: Math.max(step, 0) })
-    if (key === 'rental') return handleSaveAndQuit({ rental: payload, step: Math.max(step, 1) })
-    if (key === 'photos') return handleSaveAndQuit({ photos: payload, step: Math.max(step, 2) })
-    return handleSaveAndQuit({})
+    if (key === 'client') return handleSaveAndQuit({ client: payload, step })
+    if (key === 'rental') return handleSaveAndQuit({ rental: payload, step })
+    if (key === 'photos') return handleSaveAndQuit({ photos: payload, step })
+    return handleSaveAndQuit({ step })
   }
 
   const handleResume = (id) => {
