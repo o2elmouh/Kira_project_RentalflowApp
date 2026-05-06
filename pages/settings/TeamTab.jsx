@@ -7,7 +7,7 @@ export default function TeamTab() {
   const [members, setMembers]   = useState([])
   const [loading, setLoading]   = useState(true)
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole]   = useState('agent')
+  const [inviteRole, setInviteRole]   = useState('staff')
   const [inviting, setInviting] = useState(false)
   const [feedback, setFeedback] = useState(null) // { type: 'success'|'error', msg }
 
@@ -93,7 +93,7 @@ export default function TeamTab() {
               value={inviteRole} onChange={e => setInviteRole(e.target.value)}
               className="form-input" style={{ width: 120 }}
             >
-              <option value="agent">Agent</option>
+              <option value="staff">Staff</option>
               <option value="admin">Admin</option>
             </select>
             <button className="btn btn-primary" disabled={inviting}>
@@ -135,11 +135,11 @@ export default function TeamTab() {
             </div>
             {isAdmin ? (
               <select
-                value={m.role || 'agent'}
+                value={m.role || 'staff'}
                 onChange={e => handleRoleChange(m.id, e.target.value)}
                 className="form-input" style={{ width: 110, fontSize: 12, padding: '4px 8px' }}
               >
-                <option value="agent">Agent</option>
+                <option value="staff">Staff</option>
                 <option value="admin">Admin</option>
               </select>
             ) : roleBadge(m.role)}

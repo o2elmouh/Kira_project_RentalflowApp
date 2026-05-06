@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import { seedFleetConfig } from '../lib/db'
@@ -24,6 +24,47 @@ export default function OnboardingPage({ user, onDone }) {
   const [rc, setRc]                 = useState('')
   const [error, setError]           = useState(null)
   const [loading, setLoading]       = useState(false)
+  const [joiningAgency, setJoiningAgency] = useState(false)
+
+  // ── Detect invited user (has agency_id in user_metadata) ─────────────
+  // When admin invites via supabaseAdmin.auth.admin.inviteUserByEmail,
+  // user_metadata contains { agency_id, role, invited_by }.
+  // For invited users we must NOT call onboard_new_agency (which would
+  // create a new agency and could orphan/overwrite the inviter's data).
+  // Instead we just upsert the profile to link them to the existing agency.
+  useEffect(() => {
+    const invitedAgencyId = user?.user_metadata?.agency_id
+    const invitedRole     = user?.user_metadata?.role
+    if (!invitedAgencyId || !user?.id) return
+
+    let cancelled = false
+    const joinExistingAgency = async () => {
+      setJoiningAgency(true)
+      try {
+        const { error: upsertErr } = await supabase
+          .from('profiles')
+          .upsert({
+            id:        user.id,
+            email:     user.email,
+            full_name: user.user_metadata?.full_name || user.email.split('@')[0],
+            agency_id: invitedAgencyId,
+            role:      invitedRole || 'staff',
+          }, { onConflict: 'id' })
+        if (upsertErr) throw upsertErr
+        if (!cancelled) {
+          if (typeof onDone === 'function') onDone(); else window.location.reload()
+        }
+      } catch (err) {
+        console.error('[Onboarding] failed to join existing agency:', err)
+        if (!cancelled) {
+          setError(err.message || 'Failed to join agency. Contact your administrator.')
+          setJoiningAgency(false)
+        }
+      }
+    }
+    joinExistingAgency()
+    return () => { cancelled = true }
+  }, [user?.id])
 
   const handleCreate = async (e) => {
     e.preventDefault()
@@ -60,6 +101,26 @@ export default function OnboardingPage({ user, onDone }) {
     if (!fullName.trim()) { setError(t('step1.errors.nameRequired')); return }
     setError(null)
     setStep(2)
+  }
+
+  // Invited user — show joining screen instead of new-agency form
+  if (joiningAgency) {
+    return (
+      <div className="auth-shell">
+        <div className="auth-brand">
+          <div className="auth-logo">RF</div>
+          <span>RentaFlow</span>
+        </div>
+        <div className="auth-form" style={{ textAlign: 'center', padding: 32 }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+          <h2>{t('joining.title', 'Connexion à votre agence...')}</h2>
+          <p className="auth-subtitle" style={{ marginTop: 8 }}>
+            {t('joining.subtitle', 'Vous rejoignez l\'agence qui vous a invité.')}
+          </p>
+          {error && <div className="auth-error" style={{ marginTop: 16 }}>{error}</div>}
+        </div>
+      </div>
+    )
   }
 
   return (

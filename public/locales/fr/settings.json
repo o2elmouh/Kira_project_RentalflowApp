@@ -2,6 +2,7 @@
   "title": "Paramètres",
   "subtitle": "Configuration de l'agence",
   "tabs": {
+    "configuration": "Configuration générale",
     "agency": "Agence",
     "fleetConfig": "Configuration parc",
     "general": "Configuration générale",
@@ -9,6 +10,16 @@
     "telematique": "Télématique",
     "integrations": "Intégrations",
     "privacy": "Confidentialité"
+  },
+  "sections": {
+    "language": "Langue",
+    "languageHint": "Choisissez la langue d'affichage de l'application.",
+    "agency": "Informations de l'agence",
+    "agencyHint": "Nom, ville, identifiants légaux (ICE, RC).",
+    "fleet": "Configuration du parc",
+    "fleetHint": "Marques et modèles disponibles dans votre flotte.",
+    "general": "Paramètres généraux",
+    "generalHint": "Options de location, signature et préférences générales."
   },
   "agency": {
     "generalInfo": "Informations générales",

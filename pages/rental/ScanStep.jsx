@@ -1,9 +1,11 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Camera, CheckCircle, AlertCircle, ArrowRight, X, PenLine, Shield } from 'lucide-react'
 import { useScannerFlow } from '../../src/hooks/useScannerFlow'
 import ClientAlerts from './ClientAlerts'
 import StepButtons from './StepButtons'
+import DocumentExpiryAlert from '../../components/DocumentExpiryAlert'
+import { checkClientDocumentExpiry } from '../../utils/documentValidation'
 
 export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClient }) {
   const { t } = useTranslation('common')
@@ -39,6 +41,18 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
 
   const allFilled = clientData.firstName && clientData.lastName &&
     clientData.cinNumber && clientData.drivingLicenseNumber
+
+  // ── Document expiry gate ─────────────────────────────────
+  const [expiredDoc, setExpiredDoc] = useState(null) // { type, expiry } | null
+
+  const handleContinue = () => {
+    const expiry = checkClientDocumentExpiry(clientData)
+    if (expiry) {
+      setExpiredDoc(expiry)
+      return
+    }
+    onNext(clientData)
+  }
 
   return (
     <div>
@@ -264,12 +278,25 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
             <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={() => onSaveAndQuit(clientData)}>
               💾 Sauvegarder & quitter
             </button>
-            <button className="btn-ink" style={{ fontSize: 15 }} disabled={!allFilled} onClick={() => onNext(clientData)}>
+            <button className="btn-ink" style={{ fontSize: 15 }} disabled={!allFilled} onClick={handleContinue}>
               Continuer <ArrowRight size={15} />
             </button>
           </>
         }
       />
+
+      {/* Document expiry alert — shown when CIN or license expiry is past */}
+      {expiredDoc && (
+        <DocumentExpiryAlert
+          documentType={expiredDoc.type}
+          expiryDate={expiredDoc.expiry}
+          onClose={() => setExpiredDoc(null)}
+          onContinue={() => {
+            setExpiredDoc(null)
+            onNext(clientData)
+          }}
+        />
+      )}
     </div>
   )
 }
