@@ -1,9 +1,19 @@
 import { useState, useRef, useEffect } from 'react'
-import { getContractForToken, saveClientSignature } from '../lib/signing'
+
+// Public signing page is reached without an authenticated session, so we
+// hit the backend directly using fetch. VITE_API_URL points at the Railway
+// backend in production; falls back to relative "" for local dev proxy.
+const API_BASE = import.meta.env.VITE_API_URL || ''
 
 function fmtDate(d) {
   if (!d) return '—'
   try { return new Date(d).toLocaleDateString('fr-MA') } catch { return d }
+}
+
+const ERROR_MAP = {
+  invalid_token:  'Ce lien de signature est invalide ou inexistant.',
+  already_signed: 'Ce contrat a déjà été signé. Aucune action requise.',
+  expired:        'Ce lien a expiré. Veuillez demander un nouveau lien à l\'agence.',
 }
 
 export default function SignContract({ token }) {
@@ -19,13 +29,27 @@ export default function SignContract({ token }) {
 
   useEffect(() => {
     if (!token) { setErrorMsg('Lien invalide.'); setState('error'); return }
-    getContractForToken(token).then(result => {
-      if (!result) { setErrorMsg('Ce lien de signature est invalide ou inexistant.'); setState('error'); return }
-      if (result.error === 'used') { setErrorMsg('Ce contrat a déjà été signé.'); setState('error'); return }
-      if (result.error === 'not_found') { setErrorMsg('Contrat introuvable.'); setState('error'); return }
-      setContract(result.contract)
-      setState('ready')
-    }).catch(() => { setErrorMsg('Une erreur est survenue.'); setState('error') })
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await fetch(`${API_BASE}/contracts/sign/${token}`)
+        const data = await r.json().catch(() => ({}))
+        if (cancelled) return
+        if (!r.ok) {
+          setErrorMsg(ERROR_MAP[data.error] || 'Erreur de chargement du contrat.')
+          setState('error')
+          return
+        }
+        setContract(data.contract)
+        setState('ready')
+      } catch (err) {
+        if (!cancelled) {
+          setErrorMsg('Erreur réseau. Vérifiez votre connexion.')
+          setState('error')
+        }
+      }
+    })()
+    return () => { cancelled = true }
   }, [token])
 
   // ── Canvas helpers (same pattern as Settings.jsx SignatureSection) ──
@@ -87,13 +111,30 @@ export default function SignContract({ token }) {
     const canvas = canvasRef.current
     if (!canvas) return
     setSubmitting(true)
+    setErrorMsg('')
     try {
-      const dataUrl = canvas.toDataURL('image/png')
-      await saveClientSignature(contract.id, token, dataUrl)
+      const signatureBase64 = canvas.toDataURL('image/png')
+      const r = await fetch(`${API_BASE}/contracts/sign/${token}/sign-native`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ signatureBase64 }),
+      })
+      const data = await r.json().catch(() => ({}))
+      if (!r.ok) {
+        // For known terminal errors (already_signed, expired) drop into
+        // the error state; transient errors stay on the ready screen so
+        // the user can retry without redrawing.
+        if (data.error === 'already_signed' || data.error === 'expired' || data.error === 'invalid_token') {
+          setErrorMsg(ERROR_MAP[data.error] || 'Erreur lors de la sauvegarde.')
+          setState('error')
+        } else {
+          setErrorMsg('Erreur lors de la sauvegarde de la signature. Réessayez.')
+        }
+        return
+      }
       setState('signed')
     } catch (err) {
-      setErrorMsg('Erreur lors de la sauvegarde de la signature.')
-      setState('error')
+      setErrorMsg('Erreur réseau lors de la sauvegarde.')
     } finally {
       setSubmitting(false)
     }

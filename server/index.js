@@ -7,7 +7,7 @@ import { mkdirSync } from 'fs'
 
 import healthRouter from './routes/health.js'
 import agencyRouter from './routes/agency.js'
-import contractsRouter from './routes/contracts.js'
+import contractsRouter, { publicContractsRouter } from './routes/contracts.js'
 import emailRouter from './routes/email.js'
 import teamRouter from './routes/team.js'
 import whatsappRouter from './routes/whatsapp.js'
@@ -58,6 +58,9 @@ app.use('/tmp_pdfs', express.static(TEMP_DIR))
 // ── Routes ────────────────────────────────────────────────
 app.use('/health', healthRouter)
 app.use('/agency', agencyRouter)
+// Public token-only signing endpoints MUST be mounted before the auth-gated
+// /contracts router so requireAuth doesn't reject the unauthenticated client.
+app.use('/contracts', publicContractsRouter)
 app.use('/contracts', contractsRouter)
 app.use('/email', emailRouter)
 app.use('/team', teamRouter)

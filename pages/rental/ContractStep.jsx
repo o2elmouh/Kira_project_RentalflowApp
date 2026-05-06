@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { CheckCircle, AlertCircle, Printer, Download, ArrowLeft, X, MessageSquare } from 'lucide-react'
 import { getAgency, saveClient, saveVehicle, saveContract, saveInvoice, getFleet } from '../../lib/db'
-import { generateContract, generateInvoice } from '../../utils/pdf'
+import { generateContract, generateInvoice, generateContractBuffer } from '../../utils/pdf'
 import { api } from '../../lib/api'
+import { supabase } from '../../lib/supabase'
 import { snapshotOnStart } from '../../utils/snapshots'
 import StepButtons from './StepButtons'
 
@@ -16,6 +17,13 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
   const [signing, setSigning]     = useState(false)
   const [signStatus, setSignStatus] = useState(null) // 'sent' | 'error' | null
 
+  // ── E-signature state ──────────────────────────────────────
+  // signature_status mirrors the DB column. Updated initially via the
+  // POST /send-whatsapp response and then via Supabase Realtime when the
+  // client signs on the public page.
+  const [signatureStatus, setSignatureStatus] = useState('unsigned') // 'unsigned' | 'pending' | 'signed'
+  const channelRef = useRef(null)
+
   useEffect(() => {
     let cancelled = false
     getAgency()
@@ -23,6 +31,39 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
       .catch(err => { console.error('[NewRental] getAgency', err) })
     return () => { cancelled = true }
   }, [])
+
+  // ── Subscribe to contract row updates once we have a contract id ────
+  // Triggered by the backend's UPDATE after /sign-native succeeds, this
+  // flips signatureStatus to 'signed' on the manager's screen instantly.
+  useEffect(() => {
+    if (!contract?.id) return
+
+    // Hydrate the initial status (the row was just inserted as 'unsigned').
+    setSignatureStatus(contract.signature_status || 'unsigned')
+
+    const channel = supabase
+      .channel(`contract-sign-${contract.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event:  'UPDATE',
+          schema: 'public',
+          table:  'contracts',
+          filter: `id=eq.${contract.id}`,
+        },
+        (payload) => {
+          const next = payload.new?.signature_status
+          if (next) setSignatureStatus(next)
+        }
+      )
+      .subscribe()
+    channelRef.current = channel
+
+    return () => {
+      supabase.removeChannel(channel)
+      channelRef.current = null
+    }
+  }, [contract?.id])
 
   const handleFinalize = async () => {
     if (saving || finalized) return
@@ -75,26 +116,37 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
   const downloadContract = async () => contract && await generateContract(contract, client, rental.vehicle, agency)
   const downloadInvoice  = async () => invoice  && await generateInvoice(invoice, contract, client, rental.vehicle, agency)
 
+  // ── Send the WhatsApp signing link to the client ──────────────────
+  // 1. Generate the unsigned contract PDF client-side (jsPDF, already used).
+  // 2. Upload to signed_contracts/<contract_id>/unsigned.pdf via Supabase JS.
+  // 3. POST /contracts/:id/send-whatsapp — backend mints a token, sets
+  //    signature_status='pending', and dispatches the WhatsApp link.
+  // 4. UI flips to "Lien envoyé" — Terminer remains disabled until the
+  //    Realtime subscription receives an UPDATE with signature_status='signed'.
   const handleSign = async () => {
     if (!contract || signing) return
+    if (!client.phone) { setSignStatus('error'); return }
     setSigning(true)
     setSignStatus(null)
     try {
-      const payload = {
-        contractId: contract.id,
-        contractNumber: contract.contractNumber,
-        clientName: `${client.firstName} ${client.lastName}`,
-        clientPhone: client.phone,
-        clientEmail: client.email,
-        vehicle: `${rental.vehicle.make} ${rental.vehicle.model}`,
-        startDate: rental.startDate,
-        endDate: rental.endDate,
-        totalTTC: rental.totalTTC,
-      }
-      await Promise.allSettled([
-        client.phone ? api.sendContractWhatsApp(payload) : Promise.resolve(),
-        client.email ? api.sendContractEmail(payload)    : Promise.resolve(),
-      ])
+      // 1. Build the unsigned PDF buffer
+      const buffer = await generateContractBuffer(contract, client, rental.vehicle, agency)
+
+      // 2. Upload to Supabase Storage
+      const path = `${contract.id}/unsigned.pdf`
+      const { error: upErr } = await supabase
+        .storage.from('signed_contracts')
+        .upload(path, new Blob([buffer], { type: 'application/pdf' }), {
+          contentType: 'application/pdf',
+          upsert: true,
+        })
+      if (upErr) throw upErr
+
+      // 3. Tell backend to dispatch the link
+      const resp = await api.sendContractSignLink(contract.id, `signed_contracts/${path}`)
+      if (!resp?.success) throw new Error(resp?.error || 'Échec de l\'envoi du lien de signature')
+
+      setSignatureStatus('pending')
       setSignStatus('sent')
     } catch (err) {
       console.error('[NewRental] handleSign', err)
@@ -176,16 +228,23 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
         </div>
       )}
 
-      {signStatus === 'sent' && (
+      {signStatus === 'sent' && signatureStatus === 'pending' && (
         <div className="alert alert-success mb-3" style={{ display: 'flex', gap: 8 }}>
           <CheckCircle size={14} />
-          <span>Contrat envoyé au client par WhatsApp{client.email ? ' et email' : ''}.</span>
+          <span>Lien de signature envoyé au client par WhatsApp. En attente de sa signature — le bouton « Terminer » sera activé automatiquement.</span>
         </div>
       )}
+      {signatureStatus === 'signed' && (
+        <div className="alert alert-success mb-3" style={{ display: 'flex', gap: 8 }}>
+          <CheckCircle size={14} />
+          <span>✓ Contrat signé par le client. Vous pouvez maintenant cliquer sur « Terminer ».</span>
+        </div>
+      )}
+
       {signStatus === 'error' && (
         <div className="alert alert-danger mb-3" style={{ display: 'flex', gap: 8 }}>
           <AlertCircle size={14} />
-          <span>Erreur d'envoi — vérifiez la configuration WhatsApp/email.</span>
+          <span>Erreur d'envoi — vérifiez le numéro WhatsApp du client et la configuration Twilio.</span>
         </div>
       )}
 
@@ -220,10 +279,39 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
               <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={downloadContract}>
                 <Printer size={14} /> Télécharger le contrat
               </button>
-              <button className="btn-ink" style={{ fontSize: 14 }} disabled={signing} onClick={handleSign}>
-                <MessageSquare size={14} /> {signing ? 'Envoi…' : 'Signer le contrat'}
+              <button
+                className="btn-ink"
+                style={{ fontSize: 14 }}
+                disabled={signing || signatureStatus === 'signed'}
+                onClick={handleSign}
+                title={
+                  signatureStatus === 'signed'
+                    ? 'Le contrat a déjà été signé'
+                    : signatureStatus === 'pending'
+                      ? 'Lien envoyé — cliquez pour renvoyer'
+                      : 'Envoyer le lien de signature au client par WhatsApp'
+                }
+              >
+                <MessageSquare size={14} />
+                {signing
+                  ? 'Envoi…'
+                  : signatureStatus === 'signed'
+                    ? '✓ Contrat signé'
+                    : signatureStatus === 'pending'
+                      ? 'Lien envoyé — renvoyer'
+                      : 'Signer le contrat'}
               </button>
-              <button className="btn-ink" style={{ fontSize: 15 }} onClick={onDone}>
+              <button
+                className="btn-ink"
+                style={{ fontSize: 15 }}
+                onClick={onDone}
+                disabled={signatureStatus !== 'signed'}
+                title={
+                  signatureStatus !== 'signed'
+                    ? 'En attente de la signature du client'
+                    : 'Finaliser et fermer'
+                }
+              >
                 <CheckCircle size={15} /> Terminer
               </button>
             </>
