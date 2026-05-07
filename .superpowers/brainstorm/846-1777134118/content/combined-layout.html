@@ -1,0 +1,114 @@
+<h2>Design combiné — Widget Dashboard + Boîte de réception restructurée</h2>
+<p class="subtitle">Validez la structure avant de passer aux détails</p>
+
+<div class="section">
+  <div class="label">1 · Widget Dashboard (cliquable → redirige vers onglet Alertes)</div>
+  <div class="mockup">
+    <div class="mockup-header">Dashboard — extrait des stats</div>
+    <div class="mockup-body" style="font-family:sans-serif;padding:16px">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
+        <div style="background:#FCFBFA;border-radius:12px;padding:12px;border:1px solid #eee">
+          <div style="font-size:10px;color:#696969">CONTRATS ACTIFS</div>
+          <div style="font-size:22px;font-weight:700">12</div>
+        </div>
+        <div style="background:#FCFBFA;border-radius:12px;padding:12px;border:1px solid #eee">
+          <div style="font-size:10px;color:#696969">LEADS EN ATTENTE</div>
+          <div style="font-size:22px;font-weight:700">5</div>
+        </div>
+        <div style="background:#FCFBFA;border-radius:12px;padding:12px;border:1px solid #eee">
+          <div style="font-size:10px;color:#696969">REVENUS CE MOIS</div>
+          <div style="font-size:22px;font-weight:700">24k</div>
+        </div>
+        <!-- Alert widget -->
+        <div style="background:#FEF0E8;border-radius:12px;padding:12px;border:1px solid #f9c6a0;cursor:pointer;position:relative">
+          <div style="font-size:10px;color:#CF4500;font-weight:700">⚠ ALERTES</div>
+          <div style="font-size:22px;font-weight:700;color:#CF4500">3</div>
+          <div style="font-size:10px;color:#CF4500;margin-top:4px">Cliquer pour voir →</div>
+          <div style="position:absolute;top:8px;right:8px;width:8px;height:8px;background:#CF4500;border-radius:50%"></div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:#CF4500;text-align:right;font-style:italic">↑ Ce widget redirige vers Boîte de réception › Alertes</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="label">2 · Boîte de réception — deux onglets</div>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">Onglet LEADS (existant, regroupé)</div>
+      <div class="mockup-body" style="font-family:sans-serif;padding:12px">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <div style="background:#141413;color:#F3F0EE;border-radius:20px;padding:5px 16px;font-size:11px;font-weight:700">Leads <span style="background:#F3F0EE;color:#141413;border-radius:10px;padding:1px 7px;margin-left:4px">5</span></div>
+          <div style="background:#FEF0E8;color:#CF4500;border-radius:20px;padding:5px 16px;font-size:11px;font-weight:700;border:1px solid #f9c6a0">⚠ Alertes <span style="background:#CF4500;color:#fff;border-radius:10px;padding:1px 7px;margin-left:4px">3</span></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+          <div style="background:#F3F0EE;border-radius:20px;padding:3px 10px;font-size:10px;color:#696969">Tous</div>
+          <div style="background:#141413;color:#fff;border-radius:20px;padding:3px 10px;font-size:10px">En attente</div>
+          <div style="background:#F3F0EE;border-radius:20px;padding:3px 10px;font-size:10px;color:#696969">Devis à préparer</div>
+          <div style="background:#F3F0EE;border-radius:20px;padding:3px 10px;font-size:10px;color:#696969">Offre envoyée</div>
+          <div style="background:#F3F0EE;border-radius:20px;padding:3px 10px;font-size:10px;color:#696969">Acceptés</div>
+        </div>
+        <div style="background:#fff;border-radius:8px;padding:10px;border:1px solid #eee;margin-bottom:6px">
+          <div style="font-size:9px;color:#22c55e;font-weight:700">NOUVEAU LEAD · WhatsApp</div>
+          <div style="font-size:12px;font-weight:600">Ahmed Benali</div>
+          <div style="font-size:11px;color:#555">Réservation voiture du 1er au 5 mai</div>
+        </div>
+        <div style="background:#fff;border-radius:8px;padding:10px;border:1px solid #eee">
+          <div style="font-size:9px;color:#3b82f6;font-weight:700">PROLONGATION · Gmail</div>
+          <div style="font-size:12px;font-weight:600">Sara Idrissi</div>
+          <div style="font-size:11px;color:#555">Extension contrat jusqu'au 10 mai</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mockup">
+      <div class="mockup-header">Onglet ALERTES (nouveau)</div>
+      <div class="mockup-body" style="font-family:sans-serif;padding:12px">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <div style="background:#F3F0EE;color:#696969;border-radius:20px;padding:5px 16px;font-size:11px;font-weight:700">Leads <span style="background:#fff;color:#696969;border-radius:10px;padding:1px 7px;margin-left:4px">5</span></div>
+          <div style="background:#CF4500;color:#fff;border-radius:20px;padding:5px 16px;font-size:11px;font-weight:700">⚠ Alertes <span style="background:#fff;color:#CF4500;border-radius:10px;padding:1px 7px;margin-left:4px">3</span></div>
+        </div>
+        <div style="background:#FEF0E8;border-radius:8px;padding:10px;border:1px solid #f9c6a0;margin-bottom:6px">
+          <div style="display:flex;justify-content:space-between">
+            <div style="font-size:9px;color:#CF4500;font-weight:700">GARAGE · WhatsApp</div>
+            <div style="font-size:9px;color:#999">il y a 5 min</div>
+          </div>
+          <div style="font-size:12px;font-weight:600;margin:3px 0">Garage Mohammed</div>
+          <div style="font-size:11px;color:#555;margin-bottom:8px">Demande statut réparation Dacia Duster plaque XY-234</div>
+          <div style="font-size:9px;color:#777;font-style:italic;margin-bottom:8px">Traduit de l'arabe</div>
+          <div style="display:flex;gap:6px">
+            <div style="background:#141413;color:#fff;border-radius:20px;padding:4px 12px;font-size:10px;font-weight:600">Escalader</div>
+            <div style="background:#fff;color:#696969;border-radius:20px;padding:4px 12px;font-size:10px;border:1px solid #ddd">Ignorer</div>
+          </div>
+        </div>
+        <div style="background:#FEF0E8;border-radius:8px;padding:10px;border:1px solid #f9c6a0">
+          <div style="display:flex;justify-content:space-between">
+            <div style="font-size:9px;color:#CF4500;font-weight:700">ASSURANCE · Gmail</div>
+            <div style="font-size:9px;color:#999">il y a 2h</div>
+          </div>
+          <div style="font-size:12px;font-weight:600;margin:3px 0">AXA Assurance</div>
+          <div style="font-size:11px;color:#555;margin-bottom:8px">Renouvellement contrat assurance flotte — échéance le 30 avril</div>
+          <div style="display:flex;gap:6px">
+            <div style="background:#141413;color:#fff;border-radius:20px;padding:4px 12px;font-size:10px;font-weight:600">Escalader</div>
+            <div style="background:#fff;color:#696969;border-radius:20px;padding:4px 12px;font-size:10px;border:1px solid #ddd">Ignorer</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="label">Actions sur une alerte</div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap">
+    <div style="background:#FCFBFA;border-radius:12px;padding:12px;flex:1;min-width:160px;border:1px solid #eee">
+      <div style="font-size:11px;font-weight:700;margin-bottom:4px">⬆ Escalader</div>
+      <div style="font-size:11px;color:#555">Marque comme lead normal — passe dans l'onglet Leads pour traitement standard</div>
+    </div>
+    <div style="background:#FCFBFA;border-radius:12px;padding:12px;flex:1;min-width:160px;border:1px solid #eee">
+      <div style="font-size:11px;font-weight:700;margin-bottom:4px">✕ Ignorer</div>
+      <div style="font-size:11px;color:#555">Marque comme ignoré — disparaît de la liste (status = 'ignored')</div>
+    </div>
+  </div>
+</div>

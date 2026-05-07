@@ -138,7 +138,7 @@ function LeadCard({ lead, onClick }) {
 
 // ── Main page ──────────────────────────────────────────────
 export default function Basket({ onNavigate, initialTab = null }) {
-  const { isPremium } = useContext(UserContext)
+  const { isPremium, isAdmin } = useContext(UserContext)
   const [activeTab, setActiveTab]   = useState(initialTab === 'alertes' ? 'alertes' : 'leads')
   const [statusFilter, setStatusFilter] = useState('pending')
   const [selectedLead, setSelectedLead] = useState(null)
@@ -152,7 +152,7 @@ export default function Basket({ onNavigate, initialTab = null }) {
   }
 
   // ── Upgrade wall ───────────────────────────────────────
-  if (!isPremium) {
+  if (!isPremium && !isAdmin) {
     return (
       <div style={{ padding: 40, textAlign: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>

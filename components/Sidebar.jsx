@@ -17,7 +17,7 @@ const NAV_IDS = [
   { id: 'settings',          key: 'settings',    icon: Settings },
 ]
 
-const ADMIN_ONLY_PAGES = []
+const ADMIN_ONLY_PAGES = ['settings']
 
 export default function Sidebar({ active, onNav, user, profile, isAdmin = true, onSignOut }) {
   const { t } = useTranslation('common')
@@ -182,7 +182,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
                 color: 'var(--text-muted)',
                 fontFamily: 'DM Mono, monospace',
               }}>
-                v1.8.0
+                v1.8.1
               </span>
             </div>
           )}

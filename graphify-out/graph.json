@@ -7857,8 +7857,8 @@
       "source_file": "pages\\Settings.jsx",
       "source_location": "L103",
       "weight": 1.0,
-      "_src": "settings_settings",
-      "_tgt": "usercontext_useuser",
+      "_src": "usercontext_useuser",
+      "_tgt": "settings_settings",
       "source": "usercontext_useuser",
       "target": "settings_settings"
     },

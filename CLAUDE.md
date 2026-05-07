@@ -13,13 +13,11 @@
 10. **Efficiency:** If a file (like pdf.js) is too large to parse or a task stalls, stop immediately, suggest a modular split, and restart.
 
 ---
-
-## Context Navigation (Graphify)
-- Do not read raw source files blindly.
-- Always query `graphify-out/graph.json` first to understand dependencies.
-- Read `graphify-out/GRAPH_REPORT.md` for architecture overview.
-- Only read raw `.jsx` or `.js` files when you have identified the exact file needing modification.
-
+## Context Navigation (Graphify) - STRICT ENFORCEMENT
+1. **No Global Searches:** You are STRICTLY FORBIDDEN from using `grep`, `find`, `rg`, or any other global search commands to "fish" for keywords, variable names, or files across the repository.
+2. **Graph-First Discovery:** Your ONLY allowed discovery mechanism is the graph. To understand data flow, dependencies, or file locations, you MUST query `graphify-out/graph.json` or read `graphify-out/GRAPH_REPORT.md`.
+3. **Trace, Don't Search:** If asked about data flow (e.g., "where does CIN data go?"), find the entry point node in the graph and trace its edges/connections. Do not search the codebase for the word "CIN".
+4. **Targeted Reading Only:** You may only use `cat` or read a raw `.jsx`/`.js` file AFTER you have identified the exact, specific file through the graph.
 ---
 
 ## Project Context & Stack
