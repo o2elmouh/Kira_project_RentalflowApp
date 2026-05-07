@@ -1,0 +1,63 @@
+{
+  "title": "Réservations",
+  "subtitle": "Vue d'ensemble des réservations omnicanales",
+  "empty": "Aucune réservation ne correspond aux filtres.",
+  "error": {
+    "fetch": "Échec du chargement"
+  },
+  "loading": {
+    "initial": "Chargement",
+    "refreshing": "Actualisation"
+  },
+  "columns": {
+    "source": "Canal",
+    "customer": "Client",
+    "car": "Véhicule",
+    "period": "Période",
+    "price": "Total",
+    "status": "Statut",
+    "actions": "Actions"
+  },
+  "actions": {
+    "view": "Détails"
+  },
+  "pagination": {
+    "showing": "Affichage {{from}}–{{to}} sur {{total}}"
+  },
+  "filters": {
+    "search": "Rechercher un client…",
+    "dateFrom": "Date de début",
+    "dateTo": "Date de fin",
+    "priceMin": "Prix min",
+    "priceMax": "Prix max",
+    "reset": "Réinitialiser"
+  },
+  "source": {
+    "all": "Tous les canaux",
+    "EMAIL": "Email",
+    "WHATSAPP": "WhatsApp",
+    "WEBSITE": "Site web",
+    "IN_PERSON": "En personne"
+  },
+  "status": {
+    "all": "Tous les statuts",
+    "PENDING": "En attente",
+    "CONFIRMED": "Confirmée",
+    "CANCELLED": "Annulée",
+    "COMPLETED": "Terminée"
+  },
+  "details": {
+    "title": "Détails de la réservation",
+    "loading": "Chargement",
+    "metadata": "Métadonnées source",
+    "close": "Fermer"
+  },
+  "fields": {
+    "customer": "Client",
+    "contact": "Contact",
+    "car": "Véhicule",
+    "period": "Période",
+    "price": "Prix total",
+    "created": "Créée le"
+  }
+}

@@ -18,6 +18,7 @@ import leadsRouter from './routes/leads.js'
 import gmailRouter, { startGmailPoller } from './routes/gmail.js'
 import networkRouter from './routes/network.js'
 import adminRouter from './routes/admin.js'
+import reservationsRouter from './routes/reservations.js'
 import cron from 'node-cron'
 import { cleanupPendingDemands } from './scripts/cleanupPendingDemands.js'
 
@@ -70,6 +71,7 @@ app.use('/ai', aiRouter)
 app.use('/ocr', ocrRouter)
 app.use('/leads', leadsRouter)
 app.use('/gmail', gmailRouter)
+app.use('/reservations', reservationsRouter)
 app.use('/network', networkRouter)
 app.use('/admin', adminRouter)
 

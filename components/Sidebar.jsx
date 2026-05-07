@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, PlusCircle, Car, Users, FolderOpen, CalendarDays, Settings, LogOut, RotateCcw, Inbox, Globe, Shield } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Car, Users, FolderOpen, CalendarDays, Settings, LogOut, RotateCcw, Inbox, Globe, Shield, ClipboardList } from 'lucide-react'
 import LanguageSelector from './LanguageSelector'
 import { supabase } from '../lib/supabase'
 
@@ -12,6 +12,7 @@ const NAV_IDS = [
   { id: 'clients',           key: 'clients',     icon: Users },
   { id: 'documents',         key: 'documents',   icon: FolderOpen },
   { id: 'calendar',          key: 'calendar',    icon: CalendarDays },
+  { id: 'reservations',      key: 'reservations', icon: ClipboardList },
   { id: 'basket',            key: 'basket',      icon: Inbox,  premium: true },
   { id: 'network',           key: 'network',     icon: Globe },
   { id: 'settings',          key: 'settings',    icon: Settings },
@@ -182,7 +183,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
                 color: 'var(--text-muted)',
                 fontFamily: 'DM Mono, monospace',
               }}>
-                v1.8.1
+                v1.9.0
               </span>
             </div>
           )}

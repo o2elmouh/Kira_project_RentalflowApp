@@ -62,7 +62,8 @@
     "documentsContracts": "Contrats",
     "documentsInvoices": "Factures",
     "documentsAccounting": "Comptabilité",
-    "calendar": "Calendrier"
+    "calendar": "Calendrier",
+    "reservations": "Réservations"
   },
   "privacy": {
     "linkLabel": "Politique de confidentialité",

@@ -21,6 +21,9 @@ import Calendar  from './pages/Calendar'
 import Basket from './pages/Basket'
 import Network from './pages/Network'
 import PrivacyPolicy from './pages/legal/PrivacyPolicy'
+import Reservations from './pages/Reservations'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from './src/lib/queryClient'
 
 const PREVIEW = new URLSearchParams(window.location.search).get('preview')
 const PAGE_PARAM = new URLSearchParams(window.location.search).get('page')
@@ -187,6 +190,7 @@ export default function App() {
       case 'clients': return <Clients />
       case 'fleet': return <Fleet />
       case 'calendar': return <Calendar />
+      case 'reservations': return <Reservations />
       case 'settings':
         // Settings is open to every authenticated user — Settings.jsx
         // itself filters which tabs are visible based on role.
@@ -237,18 +241,20 @@ export default function App() {
   )
 
   return (
-    <UserContext.Provider value={{ user, profile, role, isAdmin, isPremium }}>
-      <div className="app-shell">
-        <Sidebar
-          active={page}
-          onNav={setPage}
-          user={user}
-          profile={profile}
-          isAdmin={isAdmin}
-          onSignOut={() => supabase.auth.signOut()}
-        />
-        <main className="main">{renderPage()}</main>
-      </div>
-    </UserContext.Provider>
+    <QueryClientProvider client={queryClient}>
+      <UserContext.Provider value={{ user, profile, role, isAdmin, isPremium }}>
+        <div className="app-shell">
+          <Sidebar
+            active={page}
+            onNav={setPage}
+            user={user}
+            profile={profile}
+            isAdmin={isAdmin}
+            onSignOut={() => supabase.auth.signOut()}
+          />
+          <main className="main">{renderPage()}</main>
+        </div>
+      </UserContext.Provider>
+    </QueryClientProvider>
   )
 }

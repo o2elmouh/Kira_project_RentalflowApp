@@ -61,7 +61,8 @@
     "documentsContracts": "Contracts",
     "documentsInvoices": "Invoices",
     "documentsAccounting": "Accounting",
-    "calendar": "Calendar"
+    "calendar": "Calendar",
+    "reservations": "Reservations"
   },
   "alerts": {
     "label": "Alerts",

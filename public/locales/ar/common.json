@@ -62,7 +62,8 @@
     "documentsContracts": "العقود",
     "documentsInvoices": "الفواتير",
     "documentsAccounting": "المحاسبة",
-    "calendar": "التقويم"
+    "calendar": "التقويم",
+    "reservations": "الحجوزات"
   },
   "privacy": {
     "linkLabel": "سياسة الخصوصية",

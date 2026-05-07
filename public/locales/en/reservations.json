@@ -1,0 +1,63 @@
+{
+  "title": "Reservations",
+  "subtitle": "Omnichannel booking overview",
+  "empty": "No reservations match the filters.",
+  "error": {
+    "fetch": "Failed to load"
+  },
+  "loading": {
+    "initial": "Loading",
+    "refreshing": "Refreshing"
+  },
+  "columns": {
+    "source": "Source",
+    "customer": "Customer",
+    "car": "Car",
+    "period": "Period",
+    "price": "Total",
+    "status": "Status",
+    "actions": "Actions"
+  },
+  "actions": {
+    "view": "View"
+  },
+  "pagination": {
+    "showing": "Showing {{from}}–{{to}} of {{total}}"
+  },
+  "filters": {
+    "search": "Search customer…",
+    "dateFrom": "From date",
+    "dateTo": "To date",
+    "priceMin": "Min price",
+    "priceMax": "Max price",
+    "reset": "Reset"
+  },
+  "source": {
+    "all": "All channels",
+    "EMAIL": "Email",
+    "WHATSAPP": "WhatsApp",
+    "WEBSITE": "Website",
+    "IN_PERSON": "In person"
+  },
+  "status": {
+    "all": "All statuses",
+    "PENDING": "Pending",
+    "CONFIRMED": "Confirmed",
+    "CANCELLED": "Cancelled",
+    "COMPLETED": "Completed"
+  },
+  "details": {
+    "title": "Reservation details",
+    "loading": "Loading",
+    "metadata": "Source metadata",
+    "close": "Close"
+  },
+  "fields": {
+    "customer": "Customer",
+    "contact": "Contact",
+    "car": "Car",
+    "period": "Period",
+    "price": "Total price",
+    "created": "Created at"
+  }
+}

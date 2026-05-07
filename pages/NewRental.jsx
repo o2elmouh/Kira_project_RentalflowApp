@@ -9,6 +9,7 @@ import { useUser } from '../lib/UserContext'
 import {
   loadDrafts, saveDraft, getDraft, deleteDraft, getDraftLabel,
 } from '../lib/newRentalDraft'
+import { useCreateReservation } from '../src/hooks/useReservations'
 
 export default function NewRental({ onDone, prefilledLead = null }) {
   const { profile } = useUser()
@@ -22,6 +23,9 @@ export default function NewRental({ onDone, prefilledLead = null }) {
   const [drafts,  setDrafts]  = useState([])
   const [showPicker, setShowPicker] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+
+  // Booking Hub — reservation creation on wizard completion (Task 7)
+  const createReservation = useCreateReservation()
 
   // Load drafts once. If any exist (and no prefilled lead), show the picker.
   useEffect(() => {
@@ -130,6 +134,54 @@ export default function NewRental({ onDone, prefilledLead = null }) {
 
   const handleDone = () => {
     if (draftId && agencyId) deleteDraft(agencyId, draftId)
+
+    // ── Booking Hub: create the reservation row ──────────────
+    // Fire-and-forget so the wizard exits immediately. The query cache
+    // is invalidated on success and the row appears in the Reservations
+    // page on next render. Errors are logged but never block the UX.
+    try {
+      const sourceFromLead = prefilledLead?.source?.toLowerCase()
+      const source_channel =
+        sourceFromLead === 'whatsapp' ? 'WHATSAPP' :
+        sourceFromLead === 'gmail' || sourceFromLead === 'email' ? 'EMAIL' :
+        'IN_PERSON'
+
+      const customer_name    = `${client?.firstName || ''} ${client?.lastName || ''}`.trim() || 'Client'
+      const customer_contact = client?.phone || client?.email || client?.cinNumber || '—'
+      const car_model =
+        rental?.vehicle?.label ||
+        [rental?.vehicle?.make, rental?.vehicle?.model].filter(Boolean).join(' ') ||
+        'Véhicule'
+
+      const start_date = rental?.startDate ? new Date(rental.startDate).toISOString() : new Date().toISOString()
+      const end_date   = rental?.endDate   ? new Date(rental.endDate).toISOString()   : new Date(Date.now() + 86_400_000).toISOString()
+      const total_price = Number(rental?.totalPrice ?? rental?.total ?? 0)
+
+      createReservation.mutate({
+        client_id:        client?.id || null,
+        customer_name,
+        customer_contact,
+        vehicle_id:       rental?.vehicle?.id || null,
+        car_model,
+        start_date,
+        end_date,
+        total_price,
+        currency:         'MAD',
+        source_channel,
+        status:           'CONFIRMED',
+        source_metadata: {
+          lead_id:        prefilledLead?.leadId || prefilledLead?.id || null,
+          original_lead:  prefilledLead?.id ? { id: prefilledLead.id, source: prefilledLead.source } : null,
+          created_via:    'new_rental_wizard',
+          pickup_location: rental?.pickupLocation || null,
+          return_location: rental?.returnLocation || null,
+        },
+        lead_id: prefilledLead?.leadId || prefilledLead?.id || null,
+      })
+    } catch (err) {
+      console.error('[NewRental] Failed to create reservation:', err)
+    }
+
     onDone()
   }
 
