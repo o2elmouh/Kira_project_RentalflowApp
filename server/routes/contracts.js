@@ -108,14 +108,16 @@ router.post('/:id/extend', async (req, res, next) => {
 
 // POST /contracts/:id/send-whatsapp
 // Manager sends the signing link to the client via WhatsApp.
-// Body: { unsigned_pdf_path: string }  // path inside `signed_contracts` bucket
-//   Frontend uploads the unsigned PDF first, then calls this endpoint.
+// Body: { pdf_base64: 'data:application/pdf;base64,...' OR raw base64 }
+//   The frontend generates the unsigned PDF (jsPDF) and posts it here;
+//   the backend uploads it to storage with service_role (bypasses RLS),
+//   mints a token, and dispatches the WhatsApp link.
 router.post('/:id/send-whatsapp', async (req, res, next) => {
   try {
     const { id } = req.params
-    const { unsigned_pdf_path } = req.body
-    if (!unsigned_pdf_path) {
-      return res.status(400).json({ error: 'unsigned_pdf_path is required' })
+    const { pdf_base64 } = req.body
+    if (!pdf_base64 || typeof pdf_base64 !== 'string') {
+      return res.status(400).json({ error: 'pdf_base64 is required' })
     }
 
     // Fetch contract + client phone in one round trip
@@ -130,6 +132,31 @@ router.post('/:id/send-whatsapp', async (req, res, next) => {
     const phone = contract.clients?.phone
     if (!phone) return res.status(400).json({ error: 'Client has no phone number on file' })
 
+    // Strip the optional data:...;base64, prefix and decode.
+    const base64Data = pdf_base64.includes(',') ? pdf_base64.split(',')[1] : pdf_base64
+    let pdfBuffer
+    try {
+      pdfBuffer = Buffer.from(base64Data, 'base64')
+    } catch (decodeErr) {
+      return res.status(400).json({ error: 'pdf_base64 is not valid base64' })
+    }
+    if (pdfBuffer.length === 0) {
+      return res.status(400).json({ error: 'pdf_base64 decoded to empty buffer' })
+    }
+
+    // Upload unsigned PDF to private bucket using service_role (bypasses RLS).
+    const unsignedObjectPath = `${id}/unsigned.pdf`
+    const { error: upErr } = await supabaseAdmin
+      .storage.from('signed_contracts')
+      .upload(unsignedObjectPath, pdfBuffer, {
+        contentType: 'application/pdf',
+        upsert: true,
+      })
+    if (upErr) {
+      console.error('[contracts] unsigned PDF upload failed:', upErr.message)
+      return res.status(500).json({ error: 'pdf_upload_failed', detail: upErr.message })
+    }
+
     // Mint a fresh token (replaces any previous token on retry)
     const token = crypto.randomUUID()
     const expiresAt = new Date(Date.now() + SIGN_TOKEN_TTL_HOURS * 3600_000).toISOString()
@@ -140,7 +167,7 @@ router.post('/:id/send-whatsapp', async (req, res, next) => {
         signature_status:        'pending',
         signing_token:           token,
         signing_token_expires_at: expiresAt,
-        unsigned_pdf_path,
+        unsigned_pdf_path:       `signed_contracts/${unsignedObjectPath}`,
       })
       .eq('id', id)
     if (updateErr) return next(updateErr)

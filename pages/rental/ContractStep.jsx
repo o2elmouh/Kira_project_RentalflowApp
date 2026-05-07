@@ -117,11 +117,12 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
   const downloadInvoice  = async () => invoice  && await generateInvoice(invoice, contract, client, rental.vehicle, agency)
 
   // ── Send the WhatsApp signing link to the client ──────────────────
-  // 1. Generate the unsigned contract PDF client-side (jsPDF, already used).
-  // 2. Upload to signed_contracts/<contract_id>/unsigned.pdf via Supabase JS.
-  // 3. POST /contracts/:id/send-whatsapp — backend mints a token, sets
+  // 1. Generate the unsigned contract PDF client-side (jsPDF).
+  // 2. POST /contracts/:id/send-whatsapp with the PDF as base64 — the
+  //    backend uploads it to signed_contracts/ via service_role
+  //    (bypassing storage RLS), mints a token, sets
   //    signature_status='pending', and dispatches the WhatsApp link.
-  // 4. UI flips to "Lien envoyé" — Terminer remains disabled until the
+  // 3. UI flips to "Lien envoyé" — Terminer remains disabled until the
   //    Realtime subscription receives an UPDATE with signature_status='signed'.
   const handleSign = async () => {
     if (!contract || signing) return
@@ -132,18 +133,14 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
       // 1. Build the unsigned PDF buffer
       const buffer = await generateContractBuffer(contract, client, rental.vehicle, agency)
 
-      // 2. Upload to Supabase Storage
-      const path = `${contract.id}/unsigned.pdf`
-      const { error: upErr } = await supabase
-        .storage.from('signed_contracts')
-        .upload(path, new Blob([buffer], { type: 'application/pdf' }), {
-          contentType: 'application/pdf',
-          upsert: true,
-        })
-      if (upErr) throw upErr
+      // 2. Convert to base64 (browser-safe — handles binary cleanly)
+      const bytes = new Uint8Array(buffer)
+      let binary = ''
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+      const pdfBase64 = btoa(binary)
 
-      // 3. Tell backend to dispatch the link
-      const resp = await api.sendContractSignLink(contract.id, `signed_contracts/${path}`)
+      // 3. Tell backend to upload + dispatch the link
+      const resp = await api.sendContractSignLink(contract.id, pdfBase64)
       if (!resp?.success) throw new Error(resp?.error || 'Échec de l\'envoi du lien de signature')
 
       setSignatureStatus('pending')
