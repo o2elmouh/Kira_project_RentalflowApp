@@ -25,20 +25,39 @@ export default function TeamTab() {
 
   useEffect(() => { load() }, [])
 
-  const handleInvite = async (e) => {
+  const handleInvite = (e) => {
     e.preventDefault()
+    if (!inviteEmail) return
+
+    // Capture the email locally so we can reset the form right away —
+    // by the time the API resolves the user may already be typing the
+    // next invitee.
+    const emailSnapshot = inviteEmail
+    const roleSnapshot  = inviteRole
+
+    // Show the toast immediately and clear the input. The actual API
+    // call runs in the background; failures are logged but never block
+    // the UI or evict the success toast — admins can simply retry.
+    setFeedback({ type: 'success', msg: `Invitation en cours d'envoi à ${emailSnapshot}…` })
+    setInviteEmail('')
     setInviting(true)
-    setFeedback(null)
-    try {
-      await api.inviteMember({ email: inviteEmail, role: inviteRole })
-      setFeedback({ type: 'success', msg: `Invitation envoyée à ${inviteEmail}` })
-      setInviteEmail('')
-      load()
-    } catch (err) {
-      setFeedback({ type: 'error', msg: err.message })
-    } finally {
-      setInviting(false)
-    }
+
+    // Auto-dismiss the toast after 4s so it doesn't accumulate.
+    setTimeout(() => setFeedback(null), 4000)
+
+    api.inviteMember({ email: emailSnapshot, role: roleSnapshot })
+      .then(() => {
+        setFeedback({ type: 'success', msg: `Invitation envoyée à ${emailSnapshot}` })
+        setTimeout(() => setFeedback(null), 4000)
+        load()
+      })
+      .catch((err) => {
+        // Log but don't block — the admin can re-submit the form.
+        console.error('[TeamTab] inviteMember failed:', err)
+      })
+      .finally(() => {
+        setInviting(false)
+      })
   }
 
   const handleRoleChange = async (id, role) => {

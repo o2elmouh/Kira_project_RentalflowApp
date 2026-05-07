@@ -26,16 +26,45 @@ export default function OnboardingPage({ user, onDone }) {
   const [loading, setLoading]       = useState(false)
   const [joiningAgency, setJoiningAgency] = useState(false)
 
+  // Invited users land here authenticated via magic link without a
+  // password set. We block the silent agency join behind a password
+  // setup form so they leave with a credential they can re-use.
+  const isInvitedUser = !!user?.user_metadata?.agency_id
+  const [passwordSet, setPasswordSet] = useState(false)
+  const [staffPwd, setStaffPwd]             = useState('')
+  const [staffPwdConfirm, setStaffPwdConfirm] = useState('')
+  const [staffPwdLoading, setStaffPwdLoading] = useState(false)
+
+  const handleStaffPasswordSubmit = async (e) => {
+    e.preventDefault()
+    setError(null)
+    if (staffPwd !== staffPwdConfirm) { setError(t('errors.passwordMismatch', 'Les mots de passe ne correspondent pas')); return }
+    if (staffPwd.length < 8) { setError(t('errors.passwordTooShort', 'Le mot de passe doit faire au moins 8 caractères')); return }
+    setStaffPwdLoading(true)
+    try {
+      const { error: updErr } = await supabase.auth.updateUser({ password: staffPwd })
+      if (updErr) throw updErr
+      setPasswordSet(true) // unblocks the joinExistingAgency effect below
+    } catch (err) {
+      console.error('[Onboarding] staff password setup failed:', err)
+      setError(err.message || t('errors.generic', 'Une erreur est survenue.'))
+    } finally {
+      setStaffPwdLoading(false)
+    }
+  }
+
   // ── Detect invited user (has agency_id in user_metadata) ─────────────
   // When admin invites via supabaseAdmin.auth.admin.inviteUserByEmail,
   // user_metadata contains { agency_id, role, invited_by }.
   // For invited users we must NOT call onboard_new_agency (which would
   // create a new agency and could orphan/overwrite the inviter's data).
   // Instead we just upsert the profile to link them to the existing agency.
+  // Gated behind passwordSet so the user always sets a credential first.
   useEffect(() => {
     const invitedAgencyId = user?.user_metadata?.agency_id
     const invitedRole     = user?.user_metadata?.role
     if (!invitedAgencyId || !user?.id) return
+    if (!passwordSet) return // wait for staff to set their password
 
     let cancelled = false
     const joinExistingAgency = async () => {
@@ -64,7 +93,7 @@ export default function OnboardingPage({ user, onDone }) {
     }
     joinExistingAgency()
     return () => { cancelled = true }
-  }, [user?.id])
+  }, [user?.id, passwordSet])
 
   const handleCreate = async (e) => {
     e.preventDefault()
@@ -101,6 +130,74 @@ export default function OnboardingPage({ user, onDone }) {
     if (!fullName.trim()) { setError(t('step1.errors.nameRequired')); return }
     setError(null)
     setStep(2)
+  }
+
+  // ── Invited user, password not yet set ─────────────────────────────
+  // Block until they create a password they can re-use to log back in.
+  // Once submitted, the joinExistingAgency effect re-runs and silently
+  // links them to the inviting agency.
+  if (isInvitedUser && !passwordSet) {
+    return (
+      <div className="auth-shell">
+        <div className="auth-brand">
+          <div className="auth-logo">RF</div>
+          <span>RentaFlow</span>
+        </div>
+        <div style={{ marginBottom: 16, width: '100%', maxWidth: 300 }}>
+          <LanguageSelector />
+        </div>
+        <form onSubmit={handleStaffPasswordSubmit} className="auth-form">
+          <h2>{t('staffSetup.title', 'Finalisez votre compte')}</h2>
+          <p className="auth-subtitle">
+            {t('staffSetup.subtitle', "Vous avez été invité à rejoindre une agence sur RentaFlow. Choisissez un mot de passe pour pouvoir vous reconnecter.")}
+          </p>
+
+          {error && <div className="auth-error">{error}</div>}
+
+          <Field label={t('staffSetup.email', 'Email')}>
+            <input className="form-input" type="email" value={user?.email || ''} disabled />
+          </Field>
+
+          <Field label={t('staffSetup.password', 'Mot de passe')}>
+            <input
+              className="form-input"
+              type="password"
+              placeholder={t('staffSetup.passwordPlaceholder', 'Minimum 8 caractères')}
+              value={staffPwd}
+              onChange={e => setStaffPwd(e.target.value)}
+              required
+              autoFocus
+              minLength={8}
+            />
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6, lineHeight: 1.6 }}>
+              <div>{staffPwd.length >= 8 ? '✓' : '○'} {t('staffSetup.rule1', 'Au moins 8 caractères')}</div>
+              <div>{/[A-Z]/.test(staffPwd) ? '✓' : '○'} {t('staffSetup.rule2', 'Une lettre majuscule')}</div>
+              <div>{/[0-9]/.test(staffPwd) ? '✓' : '○'} {t('staffSetup.rule3', 'Un chiffre')}</div>
+            </div>
+          </Field>
+
+          <Field label={t('staffSetup.confirmPassword', 'Confirmer le mot de passe')}>
+            <input
+              className="form-input"
+              type="password"
+              placeholder={t('staffSetup.passwordPlaceholder', 'Minimum 8 caractères')}
+              value={staffPwdConfirm}
+              onChange={e => setStaffPwdConfirm(e.target.value)}
+              required
+              minLength={8}
+            />
+          </Field>
+
+          <div className="auth-actions">
+            <button className="btn btn-primary" style={{ width: '100%' }} disabled={staffPwdLoading}>
+              {staffPwdLoading
+                ? t('staffSetup.submitting', 'Création…')
+                : t('staffSetup.submit', 'Créer mon compte')}
+            </button>
+          </div>
+        </form>
+      </div>
+    )
   }
 
   // Invited user — show joining screen instead of new-agency form

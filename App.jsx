@@ -188,7 +188,8 @@ export default function App() {
       case 'fleet': return <Fleet />
       case 'calendar': return <Calendar />
       case 'settings':
-        if (!isAdmin) { setTimeout(() => setPage('dashboard'), 0); return null }
+        // Settings is open to every authenticated user — Settings.jsx
+        // itself filters which tabs are visible based on role.
         return <Settings />
       case 'network':  return <Network />
       case 'privacy-policy': return <PrivacyPolicy onBack={() => setPage('dashboard')} />

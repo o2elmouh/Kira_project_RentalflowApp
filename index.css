@@ -783,3 +783,8 @@ body {
 [dir="rtl"] body                     { font-family: 'Segoe UI', 'Arial', sans-serif }
 [dir="rtl"] .text-mono,
 [dir="rtl"] .vehicle-plate           { direction: ltr; text-align: right }
+
+/* Sidebar nav items flip horizontally so the icon sits on the right
+   edge — matches the natural Arabic reading order. */
+[dir="rtl"] .nav-item                { flex-direction: row-reverse }
+[dir="rtl"] .sidebar-nav             { direction: rtl }

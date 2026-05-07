@@ -5,7 +5,47 @@ import { useScannerFlow } from '../../src/hooks/useScannerFlow'
 import ClientAlerts from './ClientAlerts'
 import StepButtons from './StepButtons'
 import DocumentExpiryAlert from '../../components/DocumentExpiryAlert'
+import DocumentMismatchModal from '../../components/DocumentMismatchModal'
 import { checkClientDocumentExpiry } from '../../utils/documentValidation'
+
+// ── Identity-mismatch detector ────────────────────────────────────────
+// Normalises a name down to a comparable token: lowercase, no diacritics,
+// no punctuation, no whitespace. Lets us spot OCR-level orthographic
+// drift (e.g. "El Mouhib" vs "El-Mouhib") without false positives.
+const normalizeName = (s) =>
+  (s || '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+
+// Compare CIN-side identity (firstName + lastName) to the licence-side
+// identity. Returns { mismatch: boolean, reason?: string } so the caller
+// can decide whether to surface the modal.
+function detectIdentityMismatch(cinExtracted, licenseExtracted) {
+  if (!cinExtracted || !licenseExtracted) return { mismatch: false }
+
+  const cinFirst = normalizeName(cinExtracted.firstName)
+  const cinLast  = normalizeName(cinExtracted.lastName)
+  const licFirst = normalizeName(licenseExtracted.firstName)
+  const licLast  = normalizeName(licenseExtracted.lastName)
+
+  // If either side has no name at all, we can't reliably compare — skip.
+  if (!cinFirst || !cinLast || !licFirst || !licLast) return { mismatch: false }
+
+  const firstMatches = cinFirst === licFirst
+  const lastMatches  = cinLast === licLast
+  if (firstMatches && lastMatches) return { mismatch: false }
+
+  if (!firstMatches && !lastMatches) {
+    return { mismatch: true, reason: "Le prénom et le nom diffèrent entre la pièce d'identité et le permis de conduire." }
+  }
+  if (!firstMatches) {
+    return { mismatch: true, reason: "Le prénom diffère entre la pièce d'identité et le permis de conduire." }
+  }
+  return { mismatch: true, reason: "Le nom de famille diffère entre la pièce d'identité et le permis de conduire." }
+}
 
 export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClient }) {
   const { t } = useTranslation('common')
@@ -45,7 +85,27 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
   // ── Document expiry gate ─────────────────────────────────
   const [expiredDoc, setExpiredDoc] = useState(null) // { type, expiry } | null
 
+  // ── Identity-mismatch gate ───────────────────────────────
+  // After both scans land, the names extracted from the CIN/passport
+  // and the driving licence are compared. If they disagree we trap
+  // the operator with a confirmation modal so they don't accidentally
+  // create a rental for the wrong person. The flag is sticky once
+  // dismissed (acknowledgedMismatch) so re-renders don't re-trigger
+  // the modal on the same scans.
+  const [mismatch, setMismatch] = useState(null) // { reason } | null
+  const [acknowledgedMismatch, setAcknowledgedMismatch] = useState(false)
+
+  useEffect(() => {
+    if (!extracted.cin || !extracted.license) return
+    if (acknowledgedMismatch) return
+    const result = detectIdentityMismatch(extracted.cin, extracted.license)
+    if (result.mismatch) setMismatch({ reason: result.reason })
+  }, [extracted.cin, extracted.license, acknowledgedMismatch])
+
   const handleContinue = () => {
+    // If a mismatch has been detected and not yet acknowledged, surface
+    // it before checking expiry — operator must explicitly resolve it.
+    if (mismatch && !acknowledgedMismatch) return
     const expiry = checkClientDocumentExpiry(clientData)
     if (expiry) {
       setExpiredDoc(expiry)
@@ -294,6 +354,35 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
           onContinue={() => {
             setExpiredDoc(null)
             onNext(clientData)
+          }}
+        />
+      )}
+
+      {/* Document-mismatch modal — shown when CIN and license names diverge.
+          Cancel resets both scans so the operator can re-scan; Continue
+          marks the warning acknowledged and lets handleContinue proceed. */}
+      {mismatch && !acknowledgedMismatch && (
+        <DocumentMismatchModal
+          cinLabel={extracted.cin?.docType === 'passport' ? 'Passport' : 'CIN'}
+          cinName={`${extracted.cin?.firstName || ''} ${extracted.cin?.lastName || ''}`.trim()}
+          licenseLabel="Permis"
+          licenseName={`${extracted.license?.firstName || ''} ${extracted.license?.lastName || ''}`.trim()}
+          reason={mismatch.reason}
+          onCancel={() => {
+            // Reset all client identity fields so the operator re-scans
+            // both documents from a clean slate.
+            setMismatch(null)
+            setAcknowledgedMismatch(false)
+            updateField('firstName', '')
+            updateField('lastName', '')
+            updateField('cinNumber', '')
+            updateField('cinExpiry', '')
+            updateField('drivingLicenseNumber', '')
+            updateField('licenseExpiry', '')
+          }}
+          onContinue={() => {
+            setAcknowledgedMismatch(true)
+            setMismatch(null)
           }}
         />
       )}

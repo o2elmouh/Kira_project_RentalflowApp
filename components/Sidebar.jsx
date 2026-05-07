@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LayoutDashboard, PlusCircle, Car, Users, FolderOpen, CalendarDays, Settings, LogOut, RotateCcw, Inbox, Globe, Shield } from 'lucide-react'
 import LanguageSelector from './LanguageSelector'
+import { supabase } from '../lib/supabase'
 
 const NAV_IDS = [
   { id: 'dashboard',         key: 'dashboard',  icon: LayoutDashboard },
@@ -24,6 +26,44 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
 
   const visibleNav = NAV_IDS.filter(({ id }) => isAdmin || !ADMIN_ONLY_PAGES.includes(id))
 
+  // ── Unread Basket count ──────────────────────────────────
+  // Counts leads in the agency's "pending" pool — i.e. brand-new
+  // requests that nobody has triaged yet — and exposes the number as
+  // a small badge on the Basket nav item. Both staff and admin see
+  // the same count because they all work the same agency inbox.
+  // The Realtime subscription keeps the badge live without polling.
+  const agencyId = profile?.agency_id
+  const [basketUnread, setBasketUnread] = useState(0)
+
+  useEffect(() => {
+    if (!agencyId) return
+    let cancelled = false
+
+    const refresh = async () => {
+      const { count } = await supabase
+        .from('leads')
+        .select('id', { count: 'exact', head: true })
+        .eq('agency_id', agencyId)
+        .eq('status', 'pending')
+      if (!cancelled) setBasketUnread(count || 0)
+    }
+    refresh()
+
+    const channel = supabase
+      .channel(`sidebar-basket-${agencyId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'leads', filter: `agency_id=eq.${agencyId}` },
+        () => { refresh() }
+      )
+      .subscribe()
+
+    return () => {
+      cancelled = true
+      supabase.removeChannel(channel)
+    }
+  }, [agencyId])
+
   return (
     <aside className="sidebar">
       {/* Logo */}
@@ -45,9 +85,31 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
             >
               <Icon size={15} />
               <span>{t(`nav.${key}`)}</span>
+              {/* Live unread-count badge — only on Basket, only when > 0.
+                  Pushed to the trailing edge with marginLeft:auto so it
+                  sits next to (or replaces) the static PRO badge. */}
+              {id === 'basket' && basketUnread > 0 && (
+                <span
+                  title={`${basketUnread} demande(s) en attente`}
+                  style={{
+                    marginLeft: 'auto',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background: '#CF4500',
+                    color: '#F3F0EE',
+                    borderRadius: 999,
+                    padding: '2px 7px',
+                    minWidth: 18,
+                    textAlign: 'center',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {basketUnread > 99 ? '99+' : basketUnread}
+                </span>
+              )}
               {premium && (
                 <span style={{
-                  marginLeft: 'auto',
+                  marginLeft: id === 'basket' && basketUnread > 0 ? 6 : 'auto',
                   fontSize: 9,
                   fontWeight: 700,
                   background: '#141413',
@@ -120,7 +182,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
                 color: 'var(--text-muted)',
                 fontFamily: 'DM Mono, monospace',
               }}>
-                v1.7.1
+                v1.8.0
               </span>
             </div>
           )}
