@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS reservations (
   source_metadata   jsonb NOT NULL DEFAULT '{}',
 
   -- Optional links to upstream (lead) and downstream (contract) records
-  lead_id           uuid REFERENCES leads(id) ON DELETE SET NULL,
+  lead_id           uuid REFERENCES pending_demands(id) ON DELETE SET NULL,
   contract_id       uuid REFERENCES contracts(id) ON DELETE SET NULL,
 
   created_at        timestamptz NOT NULL DEFAULT now(),
@@ -109,6 +109,6 @@ CREATE POLICY "agency_isolation_delete" ON reservations
   );
 
 -- 7. Comments for documentation
-COMMENT ON TABLE reservations IS 'Omnichannel bookings — sits between leads (Basket) and contracts (e-signature). Source-channel-aware.';
+COMMENT ON TABLE reservations IS 'Omnichannel bookings — sits between pending_demands (Basket) and contracts (e-signature). Source-channel-aware.';
 COMMENT ON COLUMN reservations.source_metadata IS 'Channel-specific raw payload: { email_subject?, whatsapp_number?, website_session_id?, walk_in_notes? }';
 COMMENT ON COLUMN reservations.source_channel IS 'EMAIL = inbound webhook; WHATSAPP = lead from WA; WEBSITE = direct from public site; IN_PERSON = walk-in';

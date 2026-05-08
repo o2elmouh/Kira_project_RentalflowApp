@@ -170,13 +170,13 @@ export default function NewRental({ onDone, prefilledLead = null }) {
         source_channel,
         status:           'CONFIRMED',
         source_metadata: {
-          lead_id:        prefilledLead?.leadId || prefilledLead?.id || null,
-          original_lead:  prefilledLead?.id ? { id: prefilledLead.id, source: prefilledLead.source } : null,
+          pending_demand_id: prefilledLead?.leadId || prefilledLead?.id || null,
+          original_lead:     prefilledLead?.id ? { id: prefilledLead.id, source: prefilledLead.source } : null,
           created_via:    'new_rental_wizard',
           pickup_location: rental?.pickupLocation || null,
           return_location: rental?.returnLocation || null,
         },
-        lead_id: prefilledLead?.leadId || prefilledLead?.id || null,
+        lead_id: prefilledLead?.leadId || prefilledLead?.id || null,  // FK → pending_demands
       })
     } catch (err) {
       console.error('[NewRental] Failed to create reservation:', err)
