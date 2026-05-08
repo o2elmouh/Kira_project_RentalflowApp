@@ -21,6 +21,7 @@ import adminRouter from './routes/admin.js'
 import reservationsRouter from './routes/reservations.js'
 import cron from 'node-cron'
 import { cleanupPendingDemands } from './scripts/cleanupPendingDemands.js'
+import { purgeSignedPdfs } from './scripts/purgeSignedPdfs.js'
 
 const app = express()
 app.set('trust proxy', 1)
@@ -93,6 +94,13 @@ cron.schedule('0 3 * * *', () => {
   cleanupPendingDemands()
     .then(({ anonymized }) => console.log(`[cron] cleanup:pending — ${anonymized} anonymized`))
     .catch(err => console.error('[cron] cleanup:pending failed:', err))
+})
+
+// Daily at 04:00 UTC — purge signed contract PDFs older than 30 days
+cron.schedule('0 4 * * *', () => {
+  purgeSignedPdfs()
+    .then(({ purged }) => console.log(`[cron] purge:signed-pdfs — ${purged} removed`))
+    .catch(err => console.error('[cron] purge:signed-pdfs failed:', err))
 })
 
 app.listen(PORT, () => {

@@ -5,7 +5,38 @@ import { requireAuth } from '../middleware/auth.js'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { sendWhatsAppMessage } from '../lib/twilioClient.js'
 
-const SIGN_TOKEN_TTL_HOURS = 72
+const SIGN_TOKEN_TTL_HOURS = 24
+
+/**
+ * If the agency has uploaded a custom contract template PDF, append its pages
+ * after the auto-generated contract PDF. Returns the merged buffer.
+ * Falls back to the auto buffer on any fetch/parse error (non-fatal).
+ */
+async function appendAgencyTemplate(autoBuffer, agencyId) {
+  if (!agencyId) return autoBuffer
+  try {
+    const { data: ag } = await supabaseAdmin
+      .from('agencies')
+      .select('contract_template_url')
+      .eq('id', agencyId)
+      .maybeSingle()
+    const url = ag?.contract_template_url
+    if (!url) return autoBuffer
+
+    const resp = await fetch(url)
+    if (!resp.ok) return autoBuffer
+    const tplBytes = new Uint8Array(await resp.arrayBuffer())
+
+    const merged = await PDFDocument.load(autoBuffer)
+    const tpl    = await PDFDocument.load(tplBytes)
+    const pages  = await merged.copyPages(tpl, tpl.getPageIndices())
+    pages.forEach(p => merged.addPage(p))
+    return Buffer.from(await merged.save())
+  } catch (err) {
+    console.warn('[contracts] template append failed (non-fatal):', err.message)
+    return autoBuffer
+  }
+}
 
 const router = Router()
 router.use(requireAuth)
@@ -144,11 +175,14 @@ router.post('/:id/send-whatsapp', async (req, res, next) => {
       return res.status(400).json({ error: 'pdf_base64 decoded to empty buffer' })
     }
 
+    // If agency has a custom template, merge it after the auto-generated PDF.
+    const finalBuffer = await appendAgencyTemplate(pdfBuffer, contract.agency_id)
+
     // Upload unsigned PDF to private bucket using service_role (bypasses RLS).
     const unsignedObjectPath = `${id}/unsigned.pdf`
     const { error: upErr } = await supabaseAdmin
       .storage.from('signed_contracts')
-      .upload(unsignedObjectPath, pdfBuffer, {
+      .upload(unsignedObjectPath, finalBuffer, {
         contentType: 'application/pdf',
         upsert: true,
       })
@@ -191,6 +225,90 @@ router.post('/:id/send-whatsapp', async (req, res, next) => {
         error: 'WhatsApp delivery failed. Token saved — click again to retry.',
         sign_url: signUrl,
       })
+    }
+
+    res.json({ success: true, sign_url: signUrl, expires_at: expiresAt })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /contracts/:id/send-email
+// Same flow as /send-whatsapp but dispatches the signing link by email (Resend).
+// Body: { pdf_base64 }
+router.post('/:id/send-email', async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { pdf_base64 } = req.body
+    if (!pdf_base64 || typeof pdf_base64 !== 'string') {
+      return res.status(400).json({ error: 'pdf_base64 is required' })
+    }
+
+    const { data: contract, error } = await supabaseAdmin
+      .from('contracts')
+      .select('id, agency_id, client_id, contract_number, clients(email, first_name, last_name)')
+      .eq('id', id)
+      .single()
+    if (error || !contract) return res.status(404).json({ error: 'Contract not found' })
+    if (contract.agency_id !== req.user.agency_id) return res.status(403).json({ error: 'Forbidden' })
+
+    const email = contract.clients?.email
+    if (!email) return res.status(400).json({ error: 'Client has no email on file' })
+
+    const base64Data = pdf_base64.includes(',') ? pdf_base64.split(',')[1] : pdf_base64
+    const pdfBuffer = Buffer.from(base64Data, 'base64')
+    if (pdfBuffer.length === 0) return res.status(400).json({ error: 'pdf_base64 decoded to empty buffer' })
+
+    const finalBuffer = await appendAgencyTemplate(pdfBuffer, contract.agency_id)
+
+    const unsignedObjectPath = `${id}/unsigned.pdf`
+    const { error: upErr } = await supabaseAdmin
+      .storage.from('signed_contracts')
+      .upload(unsignedObjectPath, finalBuffer, { contentType: 'application/pdf', upsert: true })
+    if (upErr) return res.status(500).json({ error: 'pdf_upload_failed', detail: upErr.message })
+
+    const token = crypto.randomUUID()
+    const expiresAt = new Date(Date.now() + SIGN_TOKEN_TTL_HOURS * 3600_000).toISOString()
+
+    const { error: updateErr } = await supabaseAdmin
+      .from('contracts')
+      .update({
+        signature_status:        'pending',
+        signing_token:           token,
+        signing_token_expires_at: expiresAt,
+        unsigned_pdf_path:       `signed_contracts/${unsignedObjectPath}`,
+      })
+      .eq('id', id)
+    if (updateErr) return next(updateErr)
+
+    const baseUrl = process.env.FRONTEND_URL || 'https://app.rentaflow.local'
+    const signUrl = `${baseUrl}/?sign=${token}`
+    const fullName = `${contract.clients.first_name || ''} ${contract.clients.last_name || ''}`.trim()
+
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const { Resend } = await import('resend')
+        const resend = new Resend(process.env.RESEND_API_KEY)
+        await resend.emails.send({
+          from: 'RentaFlow <noreply@rentaflow.ma>',
+          to: email,
+          subject: `Signature de votre contrat ${contract.contract_number}`,
+          html: `
+            <p>Bonjour ${fullName || ''},</p>
+            <p>Votre contrat de location <strong>${contract.contract_number}</strong> est prêt à être signé.</p>
+            <p><a href="${signUrl}" style="display:inline-block;padding:10px 16px;background:#1c1a16;color:#fff;border-radius:6px;text-decoration:none">Signer le contrat</a></p>
+            <p style="color:#666;font-size:13px">Ou ouvrez ce lien : <a href="${signUrl}">${signUrl}</a><br/>Lien valable ${SIGN_TOKEN_TTL_HOURS}h.</p>
+          `,
+        })
+      } catch (mailErr) {
+        console.error('[contracts] email send failed:', mailErr.message)
+        return res.status(502).json({
+          error: 'Email delivery failed. Token saved — click again to retry.',
+          sign_url: signUrl,
+        })
+      }
+    } else {
+      console.log(`[contracts] No RESEND_API_KEY — would email ${email}: ${signUrl}`)
     }
 
     res.json({ success: true, sign_url: signUrl, expires_at: expiresAt })

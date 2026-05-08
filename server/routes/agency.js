@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import multer from 'multer'
 import { requireAuth, requireAdmin } from '../middleware/auth.js'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 
@@ -59,6 +60,59 @@ router.patch('/', requireAdmin, async (req, res, next) => {
   } catch (err) {
     next(err)
   }
+})
+
+// ── Contract template upload (admin only) ─────────────────────
+// Each agency may upload a custom contract PDF template; signing flow stamps
+// onto this template instead of the auto-generated one. Stored in the
+// `agency-templates` private bucket. 5 MB cap, PDF only.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits:  { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => cb(null, file.mimetype === 'application/pdf'),
+})
+
+router.post('/contract-template', requireAdmin, upload.single('template'), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No PDF file received (field name: "template")' })
+    const agencyId = req.user.agency_id
+    if (!agencyId) return res.status(400).json({ error: 'No agency on profile' })
+
+    const path = `${agencyId}/contract.pdf`
+    const { error: upErr } = await supabaseAdmin
+      .storage.from('agency-templates')
+      .upload(path, req.file.buffer, { contentType: 'application/pdf', upsert: true })
+    if (upErr) return res.status(500).json({ error: 'upload_failed', detail: upErr.message })
+
+    const { data: urlData } = await supabaseAdmin
+      .storage.from('agency-templates')
+      .createSignedUrl(path, 365 * 24 * 3600) // 1 year — refreshed on save
+    const url = urlData?.signedUrl
+
+    const { error: updErr } = await supabaseAdmin
+      .from('agencies')
+      .update({ contract_template_url: url })
+      .eq('id', agencyId)
+    if (updErr) return next(updErr)
+
+    res.json({ contract_template_url: url })
+  } catch (err) { next(err) }
+})
+
+router.delete('/contract-template', requireAdmin, async (req, res, next) => {
+  try {
+    const agencyId = req.user.agency_id
+    if (!agencyId) return res.status(400).json({ error: 'No agency on profile' })
+
+    await supabaseAdmin.storage.from('agency-templates').remove([`${agencyId}/contract.pdf`])
+    const { error: updErr } = await supabaseAdmin
+      .from('agencies')
+      .update({ contract_template_url: null })
+      .eq('id', agencyId)
+    if (updErr) return next(updErr)
+
+    res.json({ ok: true })
+  } catch (err) { next(err) }
 })
 
 export default router

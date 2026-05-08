@@ -11,7 +11,7 @@ import {
 } from '../lib/newRentalDraft'
 import { useCreateReservation } from '../src/hooks/useReservations'
 
-export default function NewRental({ onDone, prefilledLead = null }) {
+export default function NewRental({ onDone, onSigned, prefilledLead = null }) {
   const { profile } = useUser()
   const agencyId = profile?.agency_id
 
@@ -337,7 +337,7 @@ export default function NewRental({ onDone, prefilledLead = null }) {
         {step === 0 && <ScanStep   initialClient={prefilledLead || client} onNext={c => advance({ client: c, step: 1 })} onSaveAndQuit={saveQuitFromStep('client')} onCancel={() => setShowCancelConfirm(true)} />}
         {step === 1 && <RentalStep client={client} initialRental={rental || rentalPrefill} onNext={r => advance({ rental: r, step: 2 })} onBack={() => advance({ step: 0 })} onSaveAndQuit={saveQuitFromStep('rental')} onCancel={() => setShowCancelConfirm(true)} />}
         {step === 2 && <PhotoStep  initialPhotos={photos} onNext={p => advance({ photos: p, step: 3 })} onBack={() => advance({ step: 1 })} onSaveAndQuit={saveQuitFromStep('photos')} onCancel={() => setShowCancelConfirm(true)} />}
-        {step === 3 && <ContractStep client={client} rental={rental} photos={photos} onDone={handleDone} onBack={() => advance({ step: 2 })} onSaveAndQuit={saveQuitFromStep()} onCancel={() => setShowCancelConfirm(true)} />}
+        {step === 3 && <ContractStep client={client} rental={rental} photos={photos} onDone={handleDone} onBack={() => advance({ step: 2 })} onEditDetails={() => advance({ step: 1 })} onSigned={onSigned} onSaveAndQuit={saveQuitFromStep()} onCancel={() => setShowCancelConfirm(true)} />}
       </div>
 
       {/* ── Cancel Confirmation Modal ────────────────────────── */}

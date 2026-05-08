@@ -15,6 +15,7 @@ import AuthPage, { PasswordResetForm } from './pages/Auth'
 import OnboardingPage from './pages/Onboarding'
 import WelcomeScreen from './pages/WelcomeScreen'
 import SignContract from './pages/SignContract'
+import ContractSuccess from './pages/ContractSuccess'
 import Accounting from './pages/Accounting'
 import Documents from './pages/Documents'
 import Calendar  from './pages/Calendar'
@@ -34,6 +35,7 @@ export default function App() {
   const [restitutionContract, setRestitutionContract] = useState(null)
   const [prefilledLead, setPrefilledLead] = useState(null)
   const [basketInitialTab, setBasketInitialTab] = useState(null)
+  const [successContractId, setSuccessContractId] = useState(null)
   const [authState, setAuthState] = useState('loading')
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -177,8 +179,15 @@ export default function App() {
       case 'dashboard': return <Dashboard onNav={handleNav} />
       case 'new-rental': return <NewRental
         onDone={() => { setPrefilledLead(null); setPage('dashboard') }}
+        onSigned={(id) => { setPrefilledLead(null); setSuccessContractId(id); setPage('contract-success') }}
         prefilledLead={prefilledLead}
       />
+      case 'contract-success':
+        if (!successContractId) { setTimeout(() => setPage('dashboard'), 0); return null }
+        return <ContractSuccess
+          contractId={successContractId}
+          onDone={() => { setSuccessContractId(null); setPage('dashboard') }}
+        />
       case 'documents':
         return <Documents onRestitution={handleRestitution} isAdmin={isAdmin} />
       case 'contracts':

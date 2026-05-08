@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { CheckCircle, AlertCircle, Printer, Download, ArrowLeft, X, MessageSquare } from 'lucide-react'
+import { CheckCircle, AlertCircle, Printer, Download, ArrowLeft, X, MessageSquare, Mail, Edit2 } from 'lucide-react'
 import { getAgency, saveClient, saveVehicle, saveContract, saveInvoice, getFleet } from '../../lib/db'
 import { generateContract, generateInvoice, generateContractBuffer } from '../../utils/pdf'
 import { api } from '../../lib/api'
@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase'
 import { snapshotOnStart } from '../../utils/snapshots'
 import StepButtons from './StepButtons'
 
-export default function ContractStep({ client, rental, photos, onDone, onBack, onSaveAndQuit, onCancel }) {
+export default function ContractStep({ client, rental, photos, onDone, onBack, onEditDetails, onSigned, onSaveAndQuit, onCancel }) {
   const [agency, setAgency]       = useState({})
   const [finalized, setFinalized] = useState(false)
   const [contract, setContract]   = useState(null)
@@ -54,6 +54,7 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
         (payload) => {
           const next = payload.new?.signature_status
           if (next) setSignatureStatus(next)
+          if (next === 'signed' && onSigned) onSigned(contract.id)
         }
       )
       .subscribe()
@@ -124,23 +125,25 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
   //    signature_status='pending', and dispatches the WhatsApp link.
   // 3. UI flips to "Lien envoyé" — Terminer remains disabled until the
   //    Realtime subscription receives an UPDATE with signature_status='signed'.
-  const handleSign = async () => {
+  const [signChannel, setSignChannel] = useState(null) // 'whatsapp' | 'email'
+
+  const handleSign = async (channel) => {
     if (!contract || signing) return
-    if (!client.phone) { setSignStatus('error'); return }
+    if (channel === 'whatsapp' && !client.phone) { setSignChannel('whatsapp'); setSignStatus('error'); return }
+    if (channel === 'email'    && !client.email) { setSignChannel('email');    setSignStatus('error'); return }
     setSigning(true)
     setSignStatus(null)
+    setSignChannel(channel)
     try {
-      // 1. Build the unsigned PDF buffer
       const buffer = await generateContractBuffer(contract, client, rental.vehicle, agency)
-
-      // 2. Convert to base64 (browser-safe — handles binary cleanly)
       const bytes = new Uint8Array(buffer)
       let binary = ''
       for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
       const pdfBase64 = btoa(binary)
 
-      // 3. Tell backend to upload + dispatch the link
-      const resp = await api.sendContractSignLink(contract.id, pdfBase64)
+      const resp = channel === 'email'
+        ? await api.sendContractSignLinkEmail(contract.id, pdfBase64)
+        : await api.sendContractSignLink(contract.id, pdfBase64)
       if (!resp?.success) throw new Error(resp?.error || 'Échec de l\'envoi du lien de signature')
 
       setSignatureStatus('pending')
@@ -228,7 +231,7 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
       {signStatus === 'sent' && signatureStatus === 'pending' && (
         <div className="alert alert-success mb-3" style={{ display: 'flex', gap: 8 }}>
           <CheckCircle size={14} />
-          <span>Lien de signature envoyé au client par WhatsApp. En attente de sa signature — le bouton « Terminer » sera activé automatiquement.</span>
+          <span>Lien de signature envoyé au client par {signChannel === 'email' ? 'email' : 'WhatsApp'}. En attente de sa signature…</span>
         </div>
       )}
       {signatureStatus === 'signed' && (
@@ -241,7 +244,11 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
       {signStatus === 'error' && (
         <div className="alert alert-danger mb-3" style={{ display: 'flex', gap: 8 }}>
           <AlertCircle size={14} />
-          <span>Erreur d'envoi — vérifiez le numéro WhatsApp du client et la configuration Twilio.</span>
+          <span>
+            {signChannel === 'email'
+              ? 'Erreur d’envoi par email — vérifiez l’adresse email du client et la configuration Resend.'
+              : 'Erreur d’envoi par WhatsApp — vérifiez le numéro et la configuration Twilio.'}
+          </span>
         </div>
       )}
 
@@ -249,8 +256,11 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
         leftBtns={
           !finalized ? (
             <>
-              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onBack} disabled={saving}>
-                <ArrowLeft size={15} /> Retour
+              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onEditDetails || onBack} disabled={saving} title="Modifier les détails de la location">
+                <Edit2 size={14} /> Modifier les détails
+              </button>
+              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onBack} disabled={saving} title="Modifier les photos / documents">
+                <Edit2 size={14} /> Modifier les documents
               </button>
               <button className="btn-outline-ink" style={{ fontSize: 14, color: '#CF4500', borderColor: '#CF4500' }} disabled={saving} onClick={onCancel}>
                 <X size={15} /> Annuler la location
@@ -279,24 +289,42 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
               <button
                 className="btn-ink"
                 style={{ fontSize: 14 }}
-                disabled={signing || signatureStatus === 'signed'}
-                onClick={handleSign}
+                disabled={signing || signatureStatus === 'signed' || !client.email}
+                onClick={() => handleSign('email')}
                 title={
-                  signatureStatus === 'signed'
-                    ? 'Le contrat a déjà été signé'
-                    : signatureStatus === 'pending'
-                      ? 'Lien envoyé — cliquez pour renvoyer'
-                      : 'Envoyer le lien de signature au client par WhatsApp'
+                  !client.email
+                    ? 'Email client manquant'
+                    : signatureStatus === 'signed'
+                      ? 'Le contrat a déjà été signé'
+                      : 'Envoyer le lien par email'
+                }
+              >
+                <Mail size={14} />
+                {signing && signChannel === 'email'
+                  ? 'Envoi…'
+                  : signatureStatus === 'signed'
+                    ? '✓ Signé'
+                    : 'Signature par email'}
+              </button>
+              <button
+                className="btn-ink"
+                style={{ fontSize: 14 }}
+                disabled={signing || signatureStatus === 'signed' || !client.phone}
+                onClick={() => handleSign('whatsapp')}
+                title={
+                  !client.phone
+                    ? 'Téléphone client manquant'
+                    : signatureStatus === 'signed'
+                      ? 'Le contrat a déjà été signé'
+                      : 'Envoyer le lien par WhatsApp'
                 }
               >
                 <MessageSquare size={14} />
-                {signing
+                {signing && signChannel === 'whatsapp'
                   ? 'Envoi…'
                   : signatureStatus === 'signed'
-                    ? '✓ Contrat signé'
-                    : signatureStatus === 'pending'
-                      ? 'Lien envoyé — renvoyer'
-                      : 'Signer le contrat'}
+                    ? '✓ Signé'
+                    : 'Signature par WhatsApp'}
               </button>
               <button
                 className="btn-ink"
