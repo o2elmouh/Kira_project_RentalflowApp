@@ -240,6 +240,7 @@ router.post('/:id/send-email', async (req, res, next) => {
   try {
     const { id } = req.params
     const { pdf_base64 } = req.body
+    console.log(`[contracts/send-email] hit for contract=${id} byUser=${req.user?.id}`)
     if (!pdf_base64 || typeof pdf_base64 !== 'string') {
       return res.status(400).json({ error: 'pdf_base64 is required' })
     }
@@ -289,7 +290,7 @@ router.post('/:id/send-email', async (req, res, next) => {
       try {
         const { Resend } = await import('resend')
         const resend = new Resend(process.env.RESEND_API_KEY)
-        await resend.emails.send({
+        const result = await resend.emails.send({
           from: 'RentaFlow <noreply@rentaflow.ma>',
           to: email,
           subject: `Signature de votre contrat ${contract.contract_number}`,
@@ -300,15 +301,23 @@ router.post('/:id/send-email', async (req, res, next) => {
             <p style="color:#666;font-size:13px">Ou ouvrez ce lien : <a href="${signUrl}">${signUrl}</a><br/>Lien valable ${SIGN_TOKEN_TTL_HOURS}h.</p>
           `,
         })
+        if (result?.error) {
+          console.error('[contracts/send-email] Resend returned error:', JSON.stringify(result.error))
+          return res.status(502).json({
+            error: `Email delivery rejected: ${result.error.message || 'unknown'}`,
+            sign_url: signUrl,
+          })
+        }
+        console.log(`[contracts/send-email] sent to=${email} resendId=${result?.data?.id || 'n/a'}`)
       } catch (mailErr) {
-        console.error('[contracts] email send failed:', mailErr.message)
+        console.error('[contracts/send-email] threw:', mailErr.message)
         return res.status(502).json({
           error: 'Email delivery failed. Token saved — click again to retry.',
           sign_url: signUrl,
         })
       }
     } else {
-      console.log(`[contracts] No RESEND_API_KEY — would email ${email}: ${signUrl}`)
+      console.log(`[contracts/send-email] No RESEND_API_KEY — would email ${email}: ${signUrl}`)
     }
 
     res.json({ success: true, sign_url: signUrl, expires_at: expiresAt })
