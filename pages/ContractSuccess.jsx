@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle, Download, Printer, Home, AlertCircle } from 'lucide-react'
-import { getContracts, getClients, getFleet } from '../lib/db'
+import { getContractById, getClient, getVehicle } from '../lib/db'
+import { api } from '../lib/api'
 
 export default function ContractSuccess({ contractId, onDone }) {
   const [contract, setContract] = useState(null)
@@ -8,20 +9,23 @@ export default function ContractSuccess({ contractId, onDone }) {
   const [vehicle, setVehicle]   = useState(null)
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState(null)
+  const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
-        const [contracts, clients, fleet] = await Promise.all([
-          getContracts(), getClients(), getFleet(),
-        ])
+        const c = await getContractById(contractId)
         if (cancelled) return
-        const c = contracts.find(x => x.id === contractId)
         if (!c) { setError('Contrat introuvable.'); return }
         setContract(c)
-        setClient(clients.find(x => x.id === c.clientId) || null)
-        setVehicle(fleet.find(x => x.id === c.vehicleId) || null)
+        const [cl, v] = await Promise.all([
+          c.clientId  ? getClient(c.clientId) : null,
+          c.vehicleId ? getVehicle(c.vehicleId) : null,
+        ])
+        if (cancelled) return
+        setClient(cl)
+        setVehicle(v)
       } catch (err) {
         if (!cancelled) setError(err.message || 'Erreur de chargement.')
       } finally {
@@ -31,17 +35,34 @@ export default function ContractSuccess({ contractId, onDone }) {
     return () => { cancelled = true }
   }, [contractId])
 
-  const signedPdfUrl = contract?.signedPdfUrl || contract?.signed_pdf_url || null
-
-  const downloadSignedPdf = () => {
-    if (signedPdfUrl) window.open(signedPdfUrl, '_blank', 'noopener')
+  // Mints a fresh 60s signed URL on demand — no long-lived URLs in the DB.
+  const fetchSignedUrl = async () => {
+    const { url } = await api.getSignedPdfUrl(contractId)
+    return url
   }
 
-  const handlePrint = () => {
-    if (!signedPdfUrl) return
-    const w = window.open(signedPdfUrl, '_blank', 'noopener')
-    if (w) {
-      w.addEventListener('load', () => { try { w.print() } catch {} })
+  const downloadSignedPdf = async () => {
+    setDownloading(true)
+    try {
+      const url = await fetchSignedUrl()
+      window.open(url, '_blank', 'noopener')
+    } catch (err) {
+      alert('Impossible de récupérer le PDF: ' + err.message)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  const handlePrint = async () => {
+    setDownloading(true)
+    try {
+      const url = await fetchSignedUrl()
+      const w = window.open(url, '_blank', 'noopener')
+      if (w) w.addEventListener('load', () => { try { w.print() } catch {} })
+    } catch (err) {
+      alert('Impossible d’imprimer: ' + err.message)
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -58,6 +79,8 @@ export default function ContractSuccess({ contractId, onDone }) {
       </div>
     )
   }
+
+  const hasSignedPdf = Boolean(contract?.signedPdfPath || contract?.signed_pdf_path)
 
   return (
     <div className="page-body" style={{ padding: 40, maxWidth: 700, margin: '0 auto', textAlign: 'center' }}>
@@ -77,15 +100,15 @@ export default function ContractSuccess({ contractId, onDone }) {
       </div>
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', margin: '24px 0' }}>
-        <button className="btn-ink" style={{ fontSize: 14 }} disabled={!signedPdfUrl} onClick={downloadSignedPdf}>
-          <Download size={15} /> Télécharger le PDF signé
+        <button className="btn-ink" style={{ fontSize: 14 }} disabled={!hasSignedPdf || downloading} onClick={downloadSignedPdf}>
+          <Download size={15} /> {downloading ? 'Préparation…' : 'Télécharger le PDF signé'}
         </button>
-        <button className="btn-outline-ink" style={{ fontSize: 14 }} disabled={!signedPdfUrl} onClick={handlePrint}>
+        <button className="btn-outline-ink" style={{ fontSize: 14 }} disabled={!hasSignedPdf || downloading} onClick={handlePrint}>
           <Printer size={15} /> Imprimer
         </button>
       </div>
 
-      {!signedPdfUrl && (
+      {!hasSignedPdf && (
         <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16 }}>
           Le PDF signé est en cours de génération — réessayez dans un instant.
         </p>

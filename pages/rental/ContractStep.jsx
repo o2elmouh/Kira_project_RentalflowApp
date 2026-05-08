@@ -35,12 +35,16 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
   // ── Subscribe to contract row updates once we have a contract id ────
   // Triggered by the backend's UPDATE after /sign-native succeeds, this
   // flips signatureStatus to 'signed' on the manager's screen instantly.
+  // `firedRef` guards against unmount races: if onSigned triggers a page
+  // change in App.jsx, the cleanup function unmounts this component while
+  // a second postgres_changes payload may still be in flight.
   useEffect(() => {
     if (!contract?.id) return
 
-    // Hydrate the initial status (the row was just inserted as 'unsigned').
     setSignatureStatus(contract.signature_status || 'unsigned')
 
+    let mounted = true
+    let firedSigned = false
     const channel = supabase
       .channel(`contract-sign-${contract.id}`)
       .on(
@@ -52,19 +56,24 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
           filter: `id=eq.${contract.id}`,
         },
         (payload) => {
+          if (!mounted) return
           const next = payload.new?.signature_status
           if (next) setSignatureStatus(next)
-          if (next === 'signed' && onSigned) onSigned(contract.id)
+          if (next === 'signed' && !firedSigned) {
+            firedSigned = true
+            if (onSigned) onSigned(contract.id)
+          }
         }
       )
       .subscribe()
     channelRef.current = channel
 
     return () => {
+      mounted = false
       supabase.removeChannel(channel)
       channelRef.current = null
     }
-  }, [contract?.id])
+  }, [contract?.id, onSigned])
 
   const handleFinalize = async () => {
     if (saving || finalized) return
