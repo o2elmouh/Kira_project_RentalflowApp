@@ -40,17 +40,22 @@ router.post('/:id/close', async (req, res, next) => {
     if (contract.agency_id !== profile.agency_id) return res.status(403).json({ error: 'Forbidden' })
     if (contract.status !== 'active') return res.status(400).json({ error: 'Contract is not active' })
 
-    // Close contract + update vehicle status in a transaction-like sequence
+    // Close contract + update vehicle status in a transaction-like sequence.
+    // Real DB columns (cf. lib/db.js contractToDb mapper):
+    //   mileage_end (not return_km), fuel_level_end (not return_fuel_level),
+    //   actual_return_date (not closed_at). `damages` is not a column —
+    //   damage notes go into `notes` if needed; structured damages live in
+    //   restitution photos/snapshots, not on the contract row.
     const [closeResult, vehicleResult] = await Promise.all([
       supabaseAdmin
         .from('contracts')
         .update({
-          status: 'closed',
-          return_km: returnKm,
-          return_fuel_level: returnFuelLevel,
-          damages: damages || null,
-          extra_fees: extraFees || 0,
-          closed_at: new Date().toISOString(),
+          status:              'closed',
+          mileage_end:         returnKm,
+          fuel_level_end:      returnFuelLevel,
+          notes:               damages || null,
+          extra_fees:          extraFees || 0,
+          actual_return_date:  new Date().toISOString(),
         })
         .eq('id', id)
         .select()
@@ -122,7 +127,7 @@ router.post('/:id/extend', async (req, res, next) => {
       return res.status(403).json({ error: 'Forbidden' })
     }
 
-    const oldEnd  = new Date(contract.end_date)
+    const oldEnd  = new Date(contract.return_date)
     const newEnd  = new Date(newEndDate)
     const extraDays = Math.round((newEnd - oldEnd) / 86400000)
     if (extraDays <= 0) return res.status(400).json({ error: 'New end date must be after current end date' })
@@ -132,7 +137,7 @@ router.post('/:id/extend', async (req, res, next) => {
     const { data, error } = await supabaseAdmin
       .from('contracts')
       .update({
-        end_date: newEndDate,
+        return_date: newEndDate,
         total_amount: (contract.total_amount || 0) + extraAmount,
       })
       .eq('id', id)
