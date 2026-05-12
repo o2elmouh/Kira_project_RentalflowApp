@@ -1,86 +1,97 @@
-import { useState, useEffect, useRef } from 'react'
-import { CheckCircle, AlertCircle, Printer, Download, ArrowLeft, X, MessageSquare, Mail, Edit2 } from 'lucide-react'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { CheckCircle, AlertCircle, ArrowLeft, X, Edit3, FileSignature } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { getAgency, saveClient, saveVehicle, saveContract, saveInvoice, getFleet } from '../../lib/db'
-import { generateContract, generateInvoice, generateContractBuffer } from '../../utils/pdf'
+import { generateContractBuffer } from '../../utils/pdf'
 import { api } from '../../lib/api'
 import { supabase } from '../../lib/supabase'
 import { snapshotOnStart } from '../../utils/snapshots'
 import StepButtons from './StepButtons'
+import SignChannelModal from './review/SignChannelModal'
+import AwaitingSignatureBanner from './review/AwaitingSignatureBanner'
 
-export default function ContractStep({ client, rental, photos, onDone, onBack, onEditDetails, onSigned, onSaveAndQuit, onCancel }) {
+// Phases derived from contract row state — not stored as separate state.
+const Phase = Object.freeze({
+  REVIEW:             'REVIEW',
+  AWAITING_SIGNATURE: 'AWAITING_SIGNATURE',
+  SIGNED_ONLINE:      'SIGNED_ONLINE',
+})
+
+function derivePhase(contract) {
+  if (!contract) return Phase.REVIEW
+  if (contract.signature_status === 'signed') return Phase.SIGNED_ONLINE
+  if (contract.signature_status === 'pending') return Phase.AWAITING_SIGNATURE
+  return Phase.REVIEW
+}
+
+export default function ContractStep({
+  client, rental, photos,
+  onDone, onBack, onSaveAndQuit, onCancel,
+  onEditStep1, onEditStep2,
+  onFinalized,
+}) {
+  const { t } = useTranslation('contracts')
   const [agency, setAgency]       = useState({})
-  const [finalized, setFinalized] = useState(false)
   const [contract, setContract]   = useState(null)
-  const [invoice, setInvoice]     = useState(null)
-  const [saving, setSaving]       = useState(false)
-  const [saveError, setSaveError] = useState(null)
-  const [signing, setSigning]     = useState(false)
-  const [signStatus, setSignStatus] = useState(null) // 'sent' | 'error' | null
+  const [, setInvoice]            = useState(null)
 
-  // ── E-signature state ──────────────────────────────────────
-  // signature_status mirrors the DB column. Updated initially via the
-  // POST /send-whatsapp response and then via Supabase Realtime when the
-  // client signs on the public page.
-  const [signatureStatus, setSignatureStatus] = useState('unsigned') // 'unsigned' | 'pending' | 'signed'
+  const [persisting, setPersisting] = useState(false)         // creating DB row
+  const [finalizing, setFinalizing] = useState(false)         // calling /finalize
+  const [error, setError]           = useState(null)
+
+  const [signModalOpen,   setSignModalOpen]   = useState(false)
+  const [sendingChannel,  setSendingChannel]  = useState(null) // 'email' | 'whatsapp' | null
+  const [lastSentChannel, setLastSentChannel] = useState(null)
+  const [lastSentAt,      setLastSentAt]      = useState(null)
+
   const channelRef = useRef(null)
 
+  const phase = useMemo(() => derivePhase(contract), [contract])
+
+  const canSignViaEmail    = Boolean(client?.email)
+  const canSignViaWhatsApp = Boolean(client?.phone)
+  const canSignAtAll       = canSignViaEmail || canSignViaWhatsApp
+  const showEditButtons    = phase === Phase.REVIEW
+
+  // ── Load agency once ───────────────────────────────────────
   useEffect(() => {
     let cancelled = false
     getAgency()
       .then(data => { if (!cancelled) setAgency(data || {}) })
-      .catch(err => { console.error('[NewRental] getAgency', err) })
+      .catch(err => { console.error('[ContractStep] getAgency', err) })
     return () => { cancelled = true }
   }, [])
 
-  // ── Subscribe to contract row updates once we have a contract id ────
-  // Triggered by the backend's UPDATE after /sign-native succeeds, this
-  // flips signatureStatus to 'signed' on the manager's screen instantly.
-  // `firedRef` guards against unmount races: if onSigned triggers a page
-  // change in App.jsx, the cleanup function unmounts this component while
-  // a second postgres_changes payload may still be in flight.
+  // ── Realtime — updates phase inline; agent must still click Finaliser ──
+  // Per user spec: "Si le client signe en ligne… celle-ci apparaît
+  // automatiquement sur le contrat affiché à l'écran" (no auto-navigation).
   useEffect(() => {
     if (!contract?.id) return
-
-    setSignatureStatus(contract.signature_status || 'unsigned')
-
     let mounted = true
-    let firedSigned = false
     const channel = supabase
       .channel(`contract-sign-${contract.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event:  'UPDATE',
-          schema: 'public',
-          table:  'contracts',
-          filter: `id=eq.${contract.id}`,
-        },
-        (payload) => {
-          if (!mounted) return
-          const next = payload.new?.signature_status
-          if (next) setSignatureStatus(next)
-          if (next === 'signed' && !firedSigned) {
-            firedSigned = true
-            if (onSigned) onSigned(contract.id)
-          }
-        }
-      )
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'contracts', filter: `id=eq.${contract.id}`,
+      }, (payload) => {
+        if (!mounted || !payload.new) return
+        setContract((prev) => ({ ...prev, ...payload.new }))
+      })
       .subscribe()
     channelRef.current = channel
-
     return () => {
       mounted = false
       supabase.removeChannel(channel)
       channelRef.current = null
     }
-  }, [contract?.id, onSigned])
+  }, [contract?.id])
 
-  const handleFinalize = async () => {
-    if (saving || finalized) return
-    setSaving(true)
-    setSaveError(null)
+  // ── Ensure the contract row exists (idempotent) ────────────
+  const ensureContract = async () => {
+    if (contract) return contract
+    if (persisting) return null
+    setPersisting(true)
+    setError(null)
     try {
-      // 1. Save client + contract
       const savedClient = await saveClient(client)
       const c = await saveContract({
         clientId: savedClient.id,
@@ -95,7 +106,6 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
       const v = fleet.find(veh => veh.id === rental.vehicle?.id || veh.id === rental.vehicleId)
       if (v) await saveVehicle({ ...v, status: 'rented' })
 
-      // 2. Save invoice
       const inv = await saveInvoice({
         contractId: c.id,
         contractNumber: c.contractNumber,
@@ -110,67 +120,150 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
         endDate: rental.endDate,
         status: 'paid',
       })
-
       setContract(c)
       setInvoice(inv)
-      setFinalized(true)
-      try { await snapshotOnStart(c) } catch (e) { console.warn('[NewRental] snapshotOnStart failed:', e) }
+      try { await snapshotOnStart(c) } catch (e) { console.warn('[ContractStep] snapshotOnStart failed:', e) }
+      return c
     } catch (err) {
-      console.error('[NewRental] handleFinalize', err)
-      setSaveError(err.message || 'Une erreur est survenue.')
+      console.error('[ContractStep] ensureContract', err)
+      setError(err.message || t('review.errors.prepareFailed'))
+      return null
     } finally {
-      setSaving(false)
+      setPersisting(false)
     }
   }
 
-  const downloadContract = async () => contract && await generateContract(contract, client, rental.vehicle, agency)
-  const downloadInvoice  = async () => invoice  && await generateInvoice(invoice, contract, client, rental.vehicle, agency)
-
-  // ── Send the WhatsApp signing link to the client ──────────────────
-  // 1. Generate the unsigned contract PDF client-side (jsPDF).
-  // 2. POST /contracts/:id/send-whatsapp with the PDF as base64 — the
-  //    backend uploads it to signed_contracts/ via service_role
-  //    (bypassing storage RLS), mints a token, sets
-  //    signature_status='pending', and dispatches the WhatsApp link.
-  // 3. UI flips to "Lien envoyé" — Terminer remains disabled until the
-  //    Realtime subscription receives an UPDATE with signature_status='signed'.
-  const [signChannel, setSignChannel] = useState(null) // 'whatsapp' | 'email'
-
-  const handleSign = async (channel) => {
-    if (!contract || signing) return
-    if (channel === 'whatsapp' && !client.phone) { setSignChannel('whatsapp'); setSignStatus('error'); return }
-    if (channel === 'email'    && !client.email) { setSignChannel('email');    setSignStatus('error'); return }
-    setSigning(true)
-    setSignStatus(null)
-    setSignChannel(channel)
+  // ── Send signature link via email or whatsapp ──────────────
+  const handlePickChannel = async (channel) => {
+    if (sendingChannel) return
+    setSendingChannel(channel)
+    setError(null)
     try {
-      const buffer = await generateContractBuffer(contract, client, rental.vehicle, agency)
-      const bytes = new Uint8Array(buffer)
-      let binary = ''
+      const c = await ensureContract()
+      if (!c) throw new Error(t('review.errors.prepareFailed'))
+
+      const buffer = await generateContractBuffer(c, client, rental.vehicle, agency)
+      const bytes  = new Uint8Array(buffer)
+      let binary   = ''
       for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
       const pdfBase64 = btoa(binary)
 
       const resp = channel === 'email'
-        ? await api.sendContractSignLinkEmail(contract.id, pdfBase64)
-        : await api.sendContractSignLink(contract.id, pdfBase64)
-      if (!resp?.success) throw new Error(resp?.error || 'Échec de l\'envoi du lien de signature')
+        ? await api.sendContractSignLinkEmail(c.id, pdfBase64)
+        : await api.sendContractSignLink(c.id, pdfBase64)
 
-      setSignatureStatus('pending')
-      setSignStatus('sent')
+      if (!resp?.success) throw new Error(resp?.error || t('review.errors.sendFailed'))
+
+      setContract((prev) => ({ ...(prev || c), signature_status: 'pending' }))
+      setLastSentChannel(channel)
+      setLastSentAt(new Date().toISOString())
+      setSignModalOpen(false)
     } catch (err) {
-      console.error('[NewRental] handleSign', err)
-      setSignStatus('error')
+      console.error('[ContractStep] handlePickChannel', err)
+      setError(err.message || t('review.errors.sendFailed'))
     } finally {
-      setSigning(false)
+      setSendingChannel(null)
+    }
+  }
+
+  // ── Finalize: lock the case. status stays 'active', sets finalized_at.
+  // Online signature is optional — manual in-agency signing is supported.
+  const handleFinalize = async () => {
+    if (finalizing) return
+    setFinalizing(true)
+    setError(null)
+    try {
+      const c = await ensureContract()
+      if (!c) throw new Error(t('review.errors.prepareFailed'))
+      try {
+        await api.finalizeContract(c.id)
+      } catch (finErr) {
+        // Endpoint may be unavailable in older deploys — don't block the wizard.
+        console.warn('[ContractStep] finalize non-blocking:', finErr.message)
+      }
+      // Navigate to success screen via App-level routing.
+      if (onFinalized) onFinalized(c.id)
+      else onDone()
+    } catch (err) {
+      console.error('[ContractStep] handleFinalize', err)
+      setError(err.message || t('review.errors.finalizeFailed'))
+    } finally {
+      setFinalizing(false)
     }
   }
 
   return (
     <div>
+      {/* ── Edit buttons — visible only in REVIEW ─────────── */}
+      {showEditButtons && (
+        <div style={{
+          display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16,
+          fontFamily: "'Sofia Sans', 'Inter', sans-serif",
+        }}>
+          <button
+            className="btn-outline-ink"
+            style={{ fontSize: 13 }}
+            onClick={onEditStep1}
+            disabled={persisting || sendingChannel || finalizing}
+          >
+            <Edit3 size={14} /> {t('review.editClient')}
+          </button>
+          <button
+            className="btn-outline-ink"
+            style={{ fontSize: 13 }}
+            onClick={onEditStep2}
+            disabled={persisting || sendingChannel || finalizing}
+          >
+            <Edit3 size={14} /> {t('review.editVehicle')}
+          </button>
+        </div>
+      )}
+
+      {/* ── Awaiting-signature banner ─────────────────────── */}
+      {phase === Phase.AWAITING_SIGNATURE && (
+        <AwaitingSignatureBanner
+          channel={lastSentChannel}
+          sentAt={lastSentAt}
+          resending={Boolean(sendingChannel)}
+          onResend={() => setSignModalOpen(true)}
+        />
+      )}
+
+      {/* ── Signed-online success banner ───────────────────── */}
+      {phase === Phase.SIGNED_ONLINE && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '14px 18px', borderRadius: 16,
+          background: '#D1FAE5', border: '1px solid #22C55E',
+          marginBottom: 16,
+          fontFamily: "'Sofia Sans', 'Inter', sans-serif",
+        }}>
+          <CheckCircle size={20} color="#065F46" />
+          <div style={{ fontSize: 14, color: '#065F46' }}>
+            {t('review.signedOnline')}
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="alert alert-danger mb-3" style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* ── Contract preview ───────────────────────────────── */}
       <div className="card mb-4">
         <div className="card-header">
           <h3>Aperçu du contrat</h3>
-          {finalized && <span className="badge badge-green"><CheckCircle size={11} /> Finalisé</span>}
+          {phase === Phase.SIGNED_ONLINE && (
+            <span className="badge badge-green"><CheckCircle size={11} /> {t('review.badges.signed')}</span>
+          )}
+          {phase === Phase.AWAITING_SIGNATURE && (
+            <span className="badge" style={{ background: '#FEF3C7', color: '#92400E', border: '1px solid #F59E0B' }}>
+              {t('review.badges.awaiting')}
+            </span>
+          )}
         </div>
         <div className="card-body">
           <div className="contract-preview">
@@ -215,142 +308,100 @@ export default function ContractStep({ client, rental, photos, onDone, onBack, o
             <div className="contract-clause">• Protection des données (Loi 09-08 — CNDP) : Les données collectées sont traitées par {agency.name} dans le cadre exclusif de la location et conservées 5 ans. Le locataire dispose d'un droit d'accès, de rectification et d'opposition.</div>
             <div className="contract-clause">• En cas de litige, les tribunaux de {agency.city || 'Casablanca'} seront seuls compétents.</div>
 
-            <div style={{ marginTop: 24, display:'flex', justifyContent:'space-between' }}>
-              <div style={{ textAlign:'center' }}>
-                <div style={{ fontSize:13, fontWeight:600, marginBottom:4, minHeight:20 }}>{agency.signature || agency.name || ''}</div>
-                <div style={{ borderTop:'1px solid #999', width:160, marginBottom:4 }} />
-                <div style={{ fontSize:11, color:'#666' }}>Signature du loueur</div>
+            <div style={{ marginTop: 24, display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, minHeight: 20 }}>
+                  {agency.signature || agency.name || ''}
+                </div>
+                <div style={{ borderTop: '1px solid #999', width: 160, marginBottom: 4 }} />
+                <div style={{ fontSize: 11, color: '#666' }}>Signature du loueur</div>
               </div>
-              <div style={{ textAlign:'center' }}>
-                <div style={{ borderTop:'1px solid #999', width:160, marginBottom:4 }} />
-                <div style={{ fontSize:11, color:'#666' }}>Signature du locataire (Lu et approuvé)</div>
+              <div style={{ textAlign: 'center' }}>
+                {phase === Phase.SIGNED_ONLINE ? (
+                  <div style={{
+                    width: 160, height: 50, marginBottom: 4,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#065F46', fontSize: 11, fontStyle: 'italic',
+                  }}>
+                    {t('review.signature.electronic')}
+                  </div>
+                ) : (
+                  <div style={{ width: 160, height: 50, marginBottom: 4 }} />
+                )}
+                <div style={{ borderTop: '1px solid #999', width: 160, marginBottom: 4 }} />
+                <div style={{ fontSize: 11, color: '#666' }}>
+                  Signature du locataire {phase !== Phase.SIGNED_ONLINE && '(Lu et approuvé)'}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {saveError && (
-        <div className="alert alert-danger mb-3" style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-          <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-          <span>{saveError}</span>
-        </div>
-      )}
-
-      {signStatus === 'sent' && signatureStatus === 'pending' && (
-        <div className="alert alert-success mb-3" style={{ display: 'flex', gap: 8 }}>
-          <CheckCircle size={14} />
-          <span>Lien de signature envoyé au client par {signChannel === 'email' ? 'email' : 'WhatsApp'}. En attente de sa signature…</span>
-        </div>
-      )}
-      {signatureStatus === 'signed' && (
-        <div className="alert alert-success mb-3" style={{ display: 'flex', gap: 8 }}>
-          <CheckCircle size={14} />
-          <span>✓ Contrat signé par le client. Vous pouvez maintenant cliquer sur « Terminer ».</span>
-        </div>
-      )}
-
-      {signStatus === 'error' && (
-        <div className="alert alert-danger mb-3" style={{ display: 'flex', gap: 8 }}>
-          <AlertCircle size={14} />
-          <span>
-            {signChannel === 'email'
-              ? 'Erreur d’envoi par email — vérifiez l’adresse email du client et la configuration Resend.'
-              : 'Erreur d’envoi par WhatsApp — vérifiez le numéro et la configuration Twilio.'}
-          </span>
-        </div>
-      )}
-
+      {/* ── Footer actions ─────────────────────────────────── */}
       <StepButtons
         leftBtns={
-          !finalized ? (
-            <>
-              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onEditDetails || onBack} disabled={saving} title="Modifier les détails de la location">
-                <Edit2 size={14} /> Modifier les détails
-              </button>
-              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onBack} disabled={saving} title="Modifier les photos / documents">
-                <Edit2 size={14} /> Modifier les documents
-              </button>
-              <button className="btn-outline-ink" style={{ fontSize: 14, color: '#CF4500', borderColor: '#CF4500' }} disabled={saving} onClick={onCancel}>
-                <X size={15} /> Annuler la location
-              </button>
-            </>
-          ) : null
+          <>
+            <button
+              className="btn-outline-ink"
+              style={{ fontSize: 14 }}
+              onClick={onBack}
+              disabled={persisting || sendingChannel || finalizing}
+            >
+              <ArrowLeft size={15} /> Retour
+            </button>
+            <button
+              className="btn-outline-ink"
+              style={{ fontSize: 14, color: '#CF4500', borderColor: '#CF4500' }}
+              disabled={persisting || sendingChannel || finalizing}
+              onClick={onCancel}
+            >
+              <X size={15} /> Annuler la location
+            </button>
+          </>
         }
         rightBtns={
-          !finalized ? (
-            <>
-              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={() => onSaveAndQuit()} disabled={saving}>
-                💾 Sauvegarder & quitter
-              </button>
-              <button className="btn-ink" style={{ fontSize: 15 }} disabled={saving} onClick={handleFinalize}>
-                {saving ? 'Finalisation…' : <><CheckCircle size={15} /> Finaliser le contrat</>}
-              </button>
-            </>
-          ) : (
-            <>
-              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={downloadInvoice}>
-                <Download size={14} /> Télécharger l'invoice
-              </button>
-              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={downloadContract}>
-                <Printer size={14} /> Télécharger le contrat
-              </button>
-              <button
-                className="btn-ink"
-                style={{ fontSize: 14 }}
-                disabled={signing || signatureStatus === 'signed' || !client.email}
-                onClick={() => handleSign('email')}
-                title={
-                  !client.email
-                    ? 'Email client manquant'
-                    : signatureStatus === 'signed'
-                      ? 'Le contrat a déjà été signé'
-                      : 'Envoyer le lien par email'
-                }
-              >
-                <Mail size={14} />
-                {signing && signChannel === 'email'
-                  ? 'Envoi…'
-                  : signatureStatus === 'signed'
-                    ? '✓ Signé'
-                    : 'Signature par email'}
-              </button>
-              <button
-                className="btn-ink"
-                style={{ fontSize: 14 }}
-                disabled={signing || signatureStatus === 'signed' || !client.phone}
-                onClick={() => handleSign('whatsapp')}
-                title={
-                  !client.phone
-                    ? 'Téléphone client manquant'
-                    : signatureStatus === 'signed'
-                      ? 'Le contrat a déjà été signé'
-                      : 'Envoyer le lien par WhatsApp'
-                }
-              >
-                <MessageSquare size={14} />
-                {signing && signChannel === 'whatsapp'
-                  ? 'Envoi…'
-                  : signatureStatus === 'signed'
-                    ? '✓ Signé'
-                    : 'Signature par WhatsApp'}
-              </button>
-              <button
-                className="btn-ink"
-                style={{ fontSize: 15 }}
-                onClick={onDone}
-                disabled={signatureStatus !== 'signed'}
-                title={
-                  signatureStatus !== 'signed'
-                    ? 'En attente de la signature du client'
-                    : 'Finaliser et fermer'
-                }
-              >
-                <CheckCircle size={15} /> Terminer
-              </button>
-            </>
-          )
+          <>
+            <button
+              className="btn-outline-ink"
+              style={{ fontSize: 14 }}
+              onClick={() => onSaveAndQuit()}
+              disabled={persisting || sendingChannel || finalizing}
+            >
+              💾 Sauvegarder & quitter
+            </button>
+
+            <button
+              className="btn-outline-ink"
+              style={{ fontSize: 14 }}
+              disabled={!canSignAtAll || persisting || finalizing || phase === Phase.SIGNED_ONLINE}
+              onClick={() => setSignModalOpen(true)}
+              title={!canSignAtAll ? t('review.errors.noContact') : ''}
+            >
+              <FileSignature size={15} />
+              {phase === Phase.AWAITING_SIGNATURE ? t('review.resendLink') : t('review.signContract')}
+            </button>
+
+            <button
+              className="btn-ink"
+              style={{ fontSize: 15 }}
+              onClick={handleFinalize}
+              disabled={persisting || finalizing}
+            >
+              <CheckCircle size={15} />
+              {finalizing ? t('review.finalizing') : t('review.finalize')}
+            </button>
+          </>
         }
+      />
+
+      <SignChannelModal
+        open={signModalOpen}
+        onClose={() => setSignModalOpen(false)}
+        onPick={handlePickChannel}
+        hasEmail={canSignViaEmail}
+        hasPhone={canSignViaWhatsApp}
+        sendingChannel={sendingChannel}
       />
     </div>
   )

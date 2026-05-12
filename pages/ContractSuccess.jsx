@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle, Download, Printer, Home, AlertCircle } from 'lucide-react'
+import { CheckCircle, Download, Printer, Home, AlertCircle, Send } from 'lucide-react'
 import { getContractById, getClient, getVehicle } from '../lib/db'
+import { generateContractBuffer } from '../utils/pdf'
+import { getAgency } from '../lib/db'
 import { api } from '../lib/api'
+import PostFinalSendModal from './rental/review/PostFinalSendModal'
 
 export default function ContractSuccess({ contractId, onDone }) {
   const [contract, setContract] = useState(null)
@@ -10,6 +13,8 @@ export default function ContractSuccess({ contractId, onDone }) {
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState(null)
   const [downloading, setDownloading] = useState(false)
+  const [sendOpen, setSendOpen] = useState(false)
+  const [agency, setAgency]   = useState({})
 
   useEffect(() => {
     let cancelled = false
@@ -26,6 +31,7 @@ export default function ContractSuccess({ contractId, onDone }) {
         if (cancelled) return
         setClient(cl)
         setVehicle(v)
+        try { setAgency(await getAgency() || {}) } catch (_) {}
       } catch (err) {
         if (!cancelled) setError(err.message || 'Erreur de chargement.')
       } finally {
@@ -51,6 +57,23 @@ export default function ContractSuccess({ contractId, onDone }) {
     } finally {
       setDownloading(false)
     }
+  }
+
+  // Send the finalized contract via email or whatsapp.
+  // Falls back to a freshly-generated PDF if the signed one isn't available yet.
+  const sendFinalContract = async ({ channel, recipient }) => {
+    let pdfBase64 = ''
+    try {
+      const buffer = await generateContractBuffer(contract, client, vehicle, agency)
+      const bytes = new Uint8Array(buffer)
+      let binary = ''
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+      pdfBase64 = btoa(binary)
+    } catch (err) {
+      console.warn('[ContractSuccess] could not regenerate PDF:', err.message)
+    }
+    const resp = await api.sendFinalContract(contractId, { channel, recipient, pdf_base64: pdfBase64 })
+    if (!resp?.success) throw new Error(resp?.error || "Échec de l'envoi")
   }
 
   const handlePrint = async () => {
@@ -101,12 +124,23 @@ export default function ContractSuccess({ contractId, onDone }) {
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', margin: '24px 0' }}>
         <button className="btn-ink" style={{ fontSize: 14 }} disabled={!hasSignedPdf || downloading} onClick={downloadSignedPdf}>
-          <Download size={15} /> {downloading ? 'Préparation…' : 'Télécharger le PDF signé'}
+          <Download size={15} /> {downloading ? 'Préparation…' : 'Télécharger le contrat'}
         </button>
         <button className="btn-outline-ink" style={{ fontSize: 14 }} disabled={!hasSignedPdf || downloading} onClick={handlePrint}>
-          <Printer size={15} /> Imprimer
+          <Printer size={15} /> Imprimer le contrat
+        </button>
+        <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={() => setSendOpen(true)}>
+          <Send size={15} /> Envoyer le contrat
         </button>
       </div>
+
+      <PostFinalSendModal
+        open={sendOpen}
+        onClose={() => setSendOpen(false)}
+        onSend={sendFinalContract}
+        defaultEmail={client?.email}
+        defaultPhone={client?.phone}
+      />
 
       {!hasSignedPdf && (
         <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16 }}>

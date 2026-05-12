@@ -53,5 +53,75 @@
     "dailyRateSuffix": "MAD/day",
     "summary": "Extension: {{days}} day(s) · +{{amount}} MAD",
     "confirm": "Confirm extension"
+  },
+  "review": {
+    "editClient": "Edit client information",
+    "editVehicle": "Edit vehicle & options",
+    "signContract": "Sign contract",
+    "resendLink": "Resend link",
+    "finalize": "Finalize contract",
+    "finalizing": "Finalizing…",
+    "sending": "Sending…",
+    "errors": {
+      "noContact": "The client has neither email nor WhatsApp number",
+      "sendFailed": "Failed to send the signing link",
+      "finalizeFailed": "Failed to finalize the contract",
+      "prepareFailed": "Could not prepare the contract",
+      "noPdf": "No contract to send"
+    },
+    "modal": {
+      "eyebrow": "ELECTRONIC SIGNATURE",
+      "title": "Send contract for signing",
+      "subtitle": "Choose the delivery channel. The client will receive a secure link to sign the contract on their device.",
+      "byEmail": "Send by email",
+      "byWhatsApp": "Send via WhatsApp",
+      "emailHint": "Link sent to the client's email address",
+      "emailMissing": "Client email missing",
+      "whatsappHint": "Link sent to the client's WhatsApp number",
+      "whatsappMissing": "WhatsApp number missing",
+      "cancel": "Cancel"
+    },
+    "awaiting": {
+      "title": "Awaiting signature",
+      "subtitle": "Link sent via {{channel}}{{ago}}. You can wait for the online signature or click \"Finalize\" for a manual in-agency signature.",
+      "channelEmail": "email",
+      "channelWhatsApp": "WhatsApp",
+      "ago": " {{minutes}} min ago",
+      "resend": "Resend"
+    },
+    "signedOnline": "Contract signed by the client. Click \"Finalize contract\" to close the case.",
+    "finalized": {
+      "eyebrow": "CASE CLOSED",
+      "title": "Contract finalized",
+      "subtitle": "The rental contract {{name}} has been successfully closed.",
+      "download": "Download contract",
+      "print": "Print contract",
+      "send": "Send contract",
+      "backToDashboard": "Back to dashboard"
+    },
+    "sendModal": {
+      "eyebrow": "SEND CONTRACT",
+      "pickChannel": "Choose channel",
+      "confirmSend": "Confirm send",
+      "byEmail": "By email",
+      "byEmailHint": "Send PDF as attachment",
+      "byWhatsApp": "Via WhatsApp",
+      "byWhatsAppHint": "Notification to client's number",
+      "emailLabel": "Email address",
+      "phoneLabel": "WhatsApp number",
+      "emailPlaceholder": "client@example.com",
+      "phonePlaceholder": "+212 6XX XXXXXX",
+      "recipientRequired": "Please enter a recipient",
+      "back": "← Change",
+      "send": "Send",
+      "sendError": "Send failed"
+    },
+    "badges": {
+      "signed": "Signed",
+      "awaiting": "Awaiting signature"
+    },
+    "signature": {
+      "electronic": "✓ Signed electronically"
+    }
   }
 }

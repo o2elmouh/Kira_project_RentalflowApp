@@ -337,7 +337,18 @@ export default function NewRental({ onDone, onSigned, prefilledLead = null }) {
         {step === 0 && <ScanStep   initialClient={prefilledLead || client} onNext={c => advance({ client: c, step: 1 })} onSaveAndQuit={saveQuitFromStep('client')} onCancel={() => setShowCancelConfirm(true)} />}
         {step === 1 && <RentalStep client={client} initialRental={rental || rentalPrefill} onNext={r => advance({ rental: r, step: 2 })} onBack={() => advance({ step: 0 })} onSaveAndQuit={saveQuitFromStep('rental')} onCancel={() => setShowCancelConfirm(true)} />}
         {step === 2 && <PhotoStep  initialPhotos={photos} onNext={p => advance({ photos: p, step: 3 })} onBack={() => advance({ step: 1 })} onSaveAndQuit={saveQuitFromStep('photos')} onCancel={() => setShowCancelConfirm(true)} />}
-        {step === 3 && <ContractStep client={client} rental={rental} photos={photos} onDone={handleDone} onBack={() => advance({ step: 2 })} onEditDetails={() => advance({ step: 1 })} onSigned={onSigned} onSaveAndQuit={saveQuitFromStep()} onCancel={() => setShowCancelConfirm(true)} />}
+        {step === 3 && <ContractStep
+          client={client}
+          rental={rental}
+          photos={photos}
+          onDone={handleDone}
+          onBack={() => advance({ step: 2 })}
+          onSaveAndQuit={saveQuitFromStep()}
+          onCancel={() => setShowCancelConfirm(true)}
+          onEditStep1={() => advance({ step: 0 })}
+          onEditStep2={() => advance({ step: 1 })}
+          onFinalized={onSigned}
+        />}
       </div>
 
       {/* ── Cancel Confirmation Modal ────────────────────────── */}

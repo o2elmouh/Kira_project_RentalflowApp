@@ -53,5 +53,75 @@
     "dailyRateSuffix": "درهم/يوم",
     "summary": "التمديد: {{days}} يوم · ‎+{{amount}} درهم",
     "confirm": "تأكيد التمديد"
+  },
+  "review": {
+    "editClient": "تعديل بيانات العميل",
+    "editVehicle": "تعديل السيارة والخيارات",
+    "signContract": "توقيع العقد",
+    "resendLink": "إعادة إرسال الرابط",
+    "finalize": "إنهاء العقد",
+    "finalizing": "جارٍ الإنهاء…",
+    "sending": "جارٍ الإرسال…",
+    "errors": {
+      "noContact": "العميل لا يملك بريداً إلكترونياً ولا رقم واتساب",
+      "sendFailed": "فشل إرسال الرابط",
+      "finalizeFailed": "فشل إنهاء العقد",
+      "prepareFailed": "تعذّر تجهيز العقد",
+      "noPdf": "لا يوجد عقد للإرسال"
+    },
+    "modal": {
+      "eyebrow": "التوقيع الإلكتروني",
+      "title": "إرسال العقد للتوقيع",
+      "subtitle": "اختر قناة الإرسال. سيستلم العميل رابطاً آمناً لتوقيع العقد على جهازه.",
+      "byEmail": "إرسال بالبريد الإلكتروني",
+      "byWhatsApp": "إرسال عبر واتساب",
+      "emailHint": "إرسال الرابط إلى البريد الإلكتروني للعميل",
+      "emailMissing": "بريد العميل غير متوفر",
+      "whatsappHint": "إرسال الرابط إلى رقم واتساب العميل",
+      "whatsappMissing": "رقم واتساب غير متوفر",
+      "cancel": "إلغاء"
+    },
+    "awaiting": {
+      "title": "في انتظار التوقيع",
+      "subtitle": "تم إرسال الرابط عبر {{channel}}{{ago}}. يمكنك الانتظار للتوقيع الإلكتروني أو الضغط على « إنهاء » للتوقيع اليدوي في الوكالة.",
+      "channelEmail": "البريد الإلكتروني",
+      "channelWhatsApp": "واتساب",
+      "ago": " منذ {{minutes}} دقيقة",
+      "resend": "إعادة الإرسال"
+    },
+    "signedOnline": "وقّع العميل العقد. اضغط على « إنهاء العقد » لإغلاق الملف.",
+    "finalized": {
+      "eyebrow": "تم إغلاق الملف",
+      "title": "تم إنهاء العقد",
+      "subtitle": "تم إغلاق عقد الإيجار {{name}} بنجاح.",
+      "download": "تحميل العقد",
+      "print": "طباعة العقد",
+      "send": "إرسال العقد",
+      "backToDashboard": "العودة إلى لوحة التحكم"
+    },
+    "sendModal": {
+      "eyebrow": "إرسال العقد",
+      "pickChannel": "اختر القناة",
+      "confirmSend": "تأكيد الإرسال",
+      "byEmail": "بالبريد الإلكتروني",
+      "byEmailHint": "إرسال ملف PDF كمرفق",
+      "byWhatsApp": "عبر واتساب",
+      "byWhatsAppHint": "إشعار إلى رقم العميل",
+      "emailLabel": "البريد الإلكتروني",
+      "phoneLabel": "رقم واتساب",
+      "emailPlaceholder": "client@example.com",
+      "phonePlaceholder": "+212 6XX XXXXXX",
+      "recipientRequired": "الرجاء إدخال المستلم",
+      "back": "← تغيير",
+      "send": "إرسال",
+      "sendError": "فشل الإرسال"
+    },
+    "badges": {
+      "signed": "موقّع",
+      "awaiting": "في انتظار التوقيع"
+    },
+    "signature": {
+      "electronic": "✓ موقّع إلكترونياً"
+    }
   }
 }

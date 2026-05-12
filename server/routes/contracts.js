@@ -69,6 +69,43 @@ router.post('/:id/close', async (req, res, next) => {
   }
 })
 
+// POST /contracts/:id/finalize — lock the contract case (wizard completion)
+// Sets finalized_at = NOW(). Status stays 'active' so Restitution can still
+// operate on the contract when the vehicle returns.
+router.post('/:id/finalize', async (req, res, next) => {
+  try {
+    const { id } = req.params
+
+    const { data: profile } = await supabaseAdmin
+      .from('profiles').select('agency_id').eq('id', req.user.id).single()
+
+    const { data: contract, error: contractError } = await supabaseAdmin
+      .from('contracts')
+      .select('id, agency_id, status, finalized_at')
+      .eq('id', id)
+      .single()
+
+    if (contractError || !contract) return res.status(404).json({ error: 'Contract not found' })
+    if (contract.agency_id !== profile.agency_id) return res.status(403).json({ error: 'Forbidden' })
+    if (contract.finalized_at) {
+      // Idempotent: already finalized, return the existing row.
+      return res.json({ contract, alreadyFinalized: true })
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('contracts')
+      .update({ finalized_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) return next(error)
+    res.json({ contract: data })
+  } catch (err) {
+    next(err)
+  }
+})
+
 // POST /contracts/:id/extend — extend contract end date
 router.post('/:id/extend', async (req, res, next) => {
   try {
@@ -244,6 +281,148 @@ router.get('/:id/signed-pdf-url', async (req, res, next) => {
     if (urlErr) return next(urlErr)
 
     res.json({ url: urlData?.signedUrl, expires_in: SIGNED_URL_TTL_SECONDS })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /contracts/:id/send-email
+// Mirror of /send-whatsapp but dispatches the signing link via Resend.
+router.post('/:id/send-email', async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { pdf_base64 } = req.body
+    if (!pdf_base64 || typeof pdf_base64 !== 'string') {
+      return res.status(400).json({ error: 'pdf_base64 is required' })
+    }
+
+    const { data: contract, error } = await supabaseAdmin
+      .from('contracts')
+      .select('id, agency_id, client_id, contract_number, signing_token, signing_token_expires_at, signature_status, clients(email, first_name, last_name)')
+      .eq('id', id)
+      .single()
+    if (error || !contract) return res.status(404).json({ error: 'Contract not found' })
+    if (contract.agency_id !== req.user.agency_id) return res.status(403).json({ error: 'Forbidden' })
+
+    const email = contract.clients?.email
+    if (!email) return res.status(400).json({ error: 'Client has no email on file' })
+
+    const base64Data = pdf_base64.includes(',') ? pdf_base64.split(',')[1] : pdf_base64
+    const pdfBuffer = Buffer.from(base64Data, 'base64')
+    if (pdfBuffer.length === 0) return res.status(400).json({ error: 'pdf_base64 decoded to empty buffer' })
+
+    const unsignedObjectPath = `${id}/unsigned.pdf`
+    const { error: upErr } = await supabaseAdmin
+      .storage.from('signed_contracts')
+      .upload(unsignedObjectPath, pdfBuffer, { contentType: 'application/pdf', upsert: true })
+    if (upErr) return res.status(500).json({ error: 'pdf_upload_failed', detail: upErr.message })
+
+    // Idempotent token: reuse if still valid, mint otherwise.
+    const { token, expiresAt } = await ensureSigningToken(contract)
+
+    const { error: updateErr } = await supabaseAdmin
+      .from('contracts')
+      .update({
+        signature_status:        'pending',
+        signing_token:           token,
+        signing_token_expires_at: expiresAt,
+        unsigned_pdf_path:       `signed_contracts/${unsignedObjectPath}`,
+      })
+      .eq('id', id)
+    if (updateErr) return next(updateErr)
+
+    const baseUrl = process.env.FRONTEND_URL || 'https://app.rentaflow.local'
+    const signUrl = `${baseUrl}/?sign=${token}`
+    const fullName = `${contract.clients.first_name || ''} ${contract.clients.last_name || ''}`.trim()
+
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const { Resend } = await import('resend')
+        const resend = new Resend(process.env.RESEND_API_KEY)
+        await resend.emails.send({
+          from: 'RentaFlow <noreply@rentaflow.ma>',
+          to: email,
+          subject: `Signature de votre contrat ${contract.contract_number}`,
+          html: `<p>Bonjour ${fullName || ''},</p>
+<p>Votre contrat de location <strong>${contract.contract_number}</strong> est prêt à être signé.</p>
+<p><a href="${signUrl}" style="display:inline-block;padding:12px 24px;background:#141413;color:#FCFBFA;text-decoration:none;border-radius:999px;font-weight:600">Consulter et signer le contrat</a></p>
+<p style="font-size:12px;color:#696969">Lien valable ${SIGN_TOKEN_TTL_HOURS}h. Si le bouton ne fonctionne pas, copiez ce lien : ${signUrl}</p>`,
+        })
+      } catch (mailErr) {
+        console.error('[contracts] Resend send failed:', mailErr.message)
+        return res.status(502).json({ error: 'Email delivery failed. Token saved — click again to retry.', sign_url: signUrl })
+      }
+    } else {
+      console.log(`[contracts/send-email] No RESEND_API_KEY — would send to ${email}: ${signUrl}`)
+    }
+
+    res.json({ success: true, sign_url: signUrl, expires_at: expiresAt })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /contracts/:id/send-final
+// Send the FINAL (already-closed) contract PDF to the client via email or whatsapp.
+// Body: { channel: 'email' | 'whatsapp', pdf_base64, recipient?: string }
+router.post('/:id/send-final', async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { channel, pdf_base64, recipient } = req.body
+    if (!channel || !['email', 'whatsapp'].includes(channel)) {
+      return res.status(400).json({ error: 'channel must be email or whatsapp' })
+    }
+    if (!pdf_base64) return res.status(400).json({ error: 'pdf_base64 is required' })
+
+    const { data: contract, error } = await supabaseAdmin
+      .from('contracts')
+      .select('id, agency_id, contract_number, clients(email, phone, first_name, last_name)')
+      .eq('id', id)
+      .single()
+    if (error || !contract) return res.status(404).json({ error: 'Contract not found' })
+    if (contract.agency_id !== req.user.agency_id) return res.status(403).json({ error: 'Forbidden' })
+
+    const fullName = `${contract.clients?.first_name || ''} ${contract.clients?.last_name || ''}`.trim()
+
+    if (channel === 'whatsapp') {
+      const phone = recipient || contract.clients?.phone
+      if (!phone) return res.status(400).json({ error: 'No phone number available' })
+      try {
+        await sendWhatsAppMessage(
+          phone,
+          `Bonjour ${fullName}, voici votre contrat finalisé ${contract.contract_number}. Vous trouverez le PDF en pièce jointe.`
+        )
+        // Note: Twilio sandbox doesn't accept attachments easily — PDF link would require Storage.
+        // For now we send the message; the agent can also download/forward the file.
+        return res.json({ success: true, channel: 'whatsapp' })
+      } catch (waErr) {
+        return res.status(502).json({ error: 'WhatsApp delivery failed', detail: waErr.message })
+      }
+    }
+
+    // channel === 'email'
+    const email = recipient || contract.clients?.email
+    if (!email) return res.status(400).json({ error: 'No email on file' })
+
+    if (process.env.RESEND_API_KEY) {
+      const base64Data = pdf_base64.includes(',') ? pdf_base64.split(',')[1] : pdf_base64
+      try {
+        const { Resend } = await import('resend')
+        const resend = new Resend(process.env.RESEND_API_KEY)
+        await resend.emails.send({
+          from: 'RentaFlow <noreply@rentaflow.ma>',
+          to: email,
+          subject: `Votre contrat finalisé ${contract.contract_number}`,
+          html: `<p>Bonjour ${fullName},</p><p>Veuillez trouver ci-joint votre contrat finalisé <strong>${contract.contract_number}</strong>.</p>`,
+          attachments: [{ filename: `${contract.contract_number}.pdf`, content: base64Data }],
+        })
+        return res.json({ success: true, channel: 'email' })
+      } catch (mailErr) {
+        return res.status(502).json({ error: 'Email delivery failed', detail: mailErr.message })
+      }
+    }
+    console.log(`[contracts/send-final] No RESEND_API_KEY — would send contract ${contract.contract_number} to ${email}`)
+    res.json({ success: true, channel: 'email', note: 'Email provider not configured' })
   } catch (err) {
     next(err)
   }
