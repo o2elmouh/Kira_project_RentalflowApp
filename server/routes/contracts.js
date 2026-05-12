@@ -447,7 +447,7 @@ publicContractsRouter.get('/sign/:token', async (req, res, next) => {
         id, contract_number, signature_status, signing_token_expires_at,
         total_ttc, start_date, end_date,
         clients(first_name, last_name),
-        vehicles(make, model, registration)
+        vehicles(brand, model, plate_number)
       `)
       .eq('signing_token', token)
       .maybeSingle()
@@ -463,7 +463,7 @@ publicContractsRouter.get('/sign/:token', async (req, res, next) => {
         contractNumber: data.contract_number,
         clientName:     `${data.clients?.first_name || ''} ${data.clients?.last_name || ''}`.trim(),
         vehicleName:    data.vehicles
-          ? `${data.vehicles.make} ${data.vehicles.model} (${data.vehicles.registration})`
+          ? `${data.vehicles.brand} ${data.vehicles.model} (${data.vehicles.plate_number})`
           : null,
         totalTTC:       data.total_ttc,
         startDate:      data.start_date,
