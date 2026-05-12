@@ -12,8 +12,12 @@
 ALTER TABLE contracts
   ADD COLUMN IF NOT EXISTS signed_pdf_path text;
 
--- Bounded version of the purge function.
-CREATE OR REPLACE FUNCTION purge_expired_signed_pdfs()
+-- Bounded version of the purge function. DROP first because we changed the
+-- OUT parameter shape from migration 20260508_agency_contract_template.sql
+-- (CREATE OR REPLACE refuses to change the return type).
+DROP FUNCTION IF EXISTS purge_expired_signed_pdfs();
+
+CREATE FUNCTION purge_expired_signed_pdfs()
 RETURNS TABLE (contract_id uuid, pdf_path text) AS $$
   WITH stale AS (
     SELECT id, signed_pdf_path
