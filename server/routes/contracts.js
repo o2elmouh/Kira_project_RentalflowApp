@@ -133,7 +133,7 @@ router.post('/:id/extend', async (req, res, next) => {
       .from('contracts')
       .update({
         end_date: newEndDate,
-        total_ttc: (contract.total_ttc || 0) + extraAmount,
+        total_amount: (contract.total_amount || 0) + extraAmount,
       })
       .eq('id', id)
       .select()
@@ -445,7 +445,7 @@ publicContractsRouter.get('/sign/:token', async (req, res, next) => {
       .from('contracts')
       .select(`
         id, contract_number, signature_status, signing_token_expires_at,
-        total_ttc, start_date, end_date,
+        total_amount, start_date, end_date,
         clients(first_name, last_name),
         vehicles(brand, model, plate_number)
       `)
@@ -465,7 +465,7 @@ publicContractsRouter.get('/sign/:token', async (req, res, next) => {
         vehicleName:    data.vehicles
           ? `${data.vehicles.brand} ${data.vehicles.model} (${data.vehicles.plate_number})`
           : null,
-        totalTTC:       data.total_ttc,
+        totalTTC:       data.total_amount,
         startDate:      data.start_date,
         endDate:        data.end_date,
       },
