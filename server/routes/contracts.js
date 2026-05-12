@@ -223,7 +223,7 @@ router.post('/:id/send-email', async (req, res, next) => {
         const { Resend } = await import('resend')
         const resend = new Resend(process.env.RESEND_API_KEY)
         const result = await resend.emails.send({
-          from: 'RentaFlow <noreply@rentaflow.ma>',
+          from: process.env.RESEND_FROM || 'onboarding@resend.dev',
           to: email,
           subject: `Signature de votre contrat ${prep.contract.contract_number}`,
           html: `
@@ -340,7 +340,7 @@ router.post('/:id/send-email', async (req, res, next) => {
         const { Resend } = await import('resend')
         const resend = new Resend(process.env.RESEND_API_KEY)
         await resend.emails.send({
-          from: 'RentaFlow <noreply@rentaflow.ma>',
+          from: process.env.RESEND_FROM || 'onboarding@resend.dev',
           to: email,
           subject: `Signature de votre contrat ${contract.contract_number}`,
           html: `<p>Bonjour ${fullName || ''},</p>
@@ -410,7 +410,7 @@ router.post('/:id/send-final', async (req, res, next) => {
         const { Resend } = await import('resend')
         const resend = new Resend(process.env.RESEND_API_KEY)
         await resend.emails.send({
-          from: 'RentaFlow <noreply@rentaflow.ma>',
+          from: process.env.RESEND_FROM || 'onboarding@resend.dev',
           to: email,
           subject: `Votre contrat finalisé ${contract.contract_number}`,
           html: `<p>Bonjour ${fullName},</p><p>Veuillez trouver ci-joint votre contrat finalisé <strong>${contract.contract_number}</strong>.</p>`,

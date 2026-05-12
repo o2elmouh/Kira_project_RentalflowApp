@@ -78,7 +78,7 @@ router.post('/send-offer', emailLimit, async (req, res) => {
       if (process.env.RESEND_API_KEY) {
       const { Resend } = await import('resend')
       const resend = new Resend(process.env.RESEND_API_KEY)
-      await resend.emails.send({ from: 'RentaFlow <noreply@rentaflow.ma>', to, subject, html })
+      await resend.emails.send({ from: process.env.RESEND_FROM || 'onboarding@resend.dev', to, subject, html })
     } else {
       console.log(`[Email/send-offer] No RESEND_API_KEY — would send to ${to}: ${subject}`)
     }
