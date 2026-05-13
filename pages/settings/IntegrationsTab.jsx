@@ -3,9 +3,11 @@
  * (visible only on premium plan)
  */
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api.js'
 
 export default function IntegrationsTab() {
+  const { t } = useTranslation('settings')
   const [gmailStatus, setGmailStatus] = useState(null)
   const [gmailAddress, setGmailAddress] = useState('')
   const [appPassword, setAppPassword] = useState('')
@@ -27,7 +29,7 @@ export default function IntegrationsTab() {
     setGmailMsg(null)
     try {
       await api.saveGmailCredentials({ gmail_address: gmailAddress, gmail_app_password: appPassword })
-      setGmailMsg({ ok: true, text: 'Intégration Gmail enregistrée.' })
+      setGmailMsg({ ok: true, text: t('integrations.saved') })
       setAppPassword('')
       setGmailStatus(prev => ({ ...prev, connected: true, gmail_address: gmailAddress }))
     } catch (err) {
@@ -38,12 +40,12 @@ export default function IntegrationsTab() {
   }
 
   async function disconnectGmail() {
-    if (!window.confirm('Déconnecter Gmail ?')) return
+    if (!window.confirm(t('integrations.disconnectConfirm'))) return
     try {
       await api.deleteGmailCredentials()
       setGmailStatus({ connected: false, gmail_address: null, last_polled: null })
       setGmailAddress('')
-      setGmailMsg({ ok: true, text: 'Gmail déconnecté.' })
+      setGmailMsg({ ok: true, text: t('integrations.disconnected') })
     } catch (err) {
       setGmailMsg({ ok: false, text: err.message })
     }
@@ -52,7 +54,7 @@ export default function IntegrationsTab() {
   async function pollNow() {
     try {
       await api.triggerGmailPoll()
-      setGmailMsg({ ok: true, text: 'Synchronisation déclenchée.' })
+      setGmailMsg({ ok: true, text: t('integrations.syncTriggered') })
     } catch (err) {
       setGmailMsg({ ok: false, text: err.message })
     }
@@ -92,7 +94,7 @@ export default function IntegrationsTab() {
   return (
     <div style={{ maxWidth: 600 }}>
       <p style={{ color: 'var(--text-secondary)', marginTop: 0, marginBottom: 24, fontSize: 14 }}>
-        Connectez vos canaux de communication pour recevoir automatiquement les demandes de location.
+        {t('integrations.intro')}
         <span style={{ marginLeft: 8, fontSize: 11, background: 'var(--accent)', color: '#fff', borderRadius: 4, padding: '2px 7px', fontWeight: 600 }}>
           PREMIUM
         </span>
@@ -103,11 +105,11 @@ export default function IntegrationsTab() {
         <h3 style={{ margin: '0 0 4px', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 20 }}>📱</span> WhatsApp
           <span style={{ fontSize: 11, background: 'rgba(34,197,94,0.15)', color: '#22c55e', borderRadius: 4, padding: '2px 7px', fontWeight: 600 }}>
-            Connecté via Twilio
+            {t('integrations.waConnected')}
           </span>
         </h3>
         <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4, marginBottom: 16 }}>
-          Les messages WhatsApp sont envoyés via l'API Twilio. Aucune configuration supplémentaire requise.
+          {t('integrations.waDesc')}
         </p>
         <div style={{ fontSize: 13, color: 'var(--text-secondary)', background: 'var(--bg-secondary)', borderRadius: 8, padding: '12px 16px', lineHeight: 1.7 }}>
           <div>🔑 <strong style={{ color: 'var(--text-primary)' }}>TWILIO_ACCOUNT_SID</strong> — configuré sur Railway</div>
@@ -122,33 +124,33 @@ export default function IntegrationsTab() {
           <span style={{ fontSize: 20 }}>✉️</span> Gmail IMAP
           {gmailStatus?.connected && (
             <span style={{ fontSize: 11, background: 'rgba(34,197,94,0.15)', color: '#22c55e', borderRadius: 4, padding: '2px 7px', fontWeight: 600 }}>
-              Connecté
+              {t('integrations.gmailConnected')}
             </span>
           )}
         </h3>
         <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4, marginBottom: 16 }}>
-          Sondage IMAP toutes les 5 minutes. Utilisez un{' '}
+          {t('integrations.gmailImap')}{' '}
           <a href="https://support.google.com/accounts/answer/185833" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>
-            mot de passe d'application Google
+            {t('integrations.gmailAppPwdLink')}
           </a>
-          , pas votre mot de passe habituel.
+          {t('integrations.gmailAppPwdSuffix')}
         </p>
 
         {gmailStatus?.last_polled && (
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
-            Dernière synchro : {new Date(gmailStatus.last_polled).toLocaleString('fr-MA')}
+            {t('integrations.lastSync')} {new Date(gmailStatus.last_polled).toLocaleString('fr-MA')}
             <button
               onClick={pollNow}
               style={{ marginLeft: 12, fontSize: 12, background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 8px', color: 'var(--text-secondary)', cursor: 'pointer' }}
             >
-              Synchroniser maintenant
+              {t('integrations.syncNow')}
             </button>
           </div>
         )}
 
         <form onSubmit={saveGmail}>
           <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>Adresse Gmail</label>
+            <label style={labelStyle}>{t('integrations.gmailAddress')}</label>
             <input
               type="email"
               value={gmailAddress}
@@ -159,18 +161,18 @@ export default function IntegrationsTab() {
             />
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Mot de passe d'application (16 caractères)</label>
+            <label style={labelStyle}>{t('integrations.gmailAppPwd')}</label>
             <input
               type="password"
               value={appPassword}
               onChange={e => setAppPassword(e.target.value)}
-              placeholder={gmailStatus?.connected ? '••••••••••••••••  (laissez vide pour conserver)' : 'xxxx xxxx xxxx xxxx'}
+              placeholder={gmailStatus?.connected ? '••••••••••••••••' : 'xxxx xxxx xxxx xxxx'}
               required={!gmailStatus?.connected}
               style={fieldStyle}
               autoComplete="new-password"
             />
             <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
-              Stocké chiffré AES-256 — jamais transmis au frontend
+              {t('integrations.gmailAppPwdHint')}
             </div>
           </div>
 
@@ -180,7 +182,7 @@ export default function IntegrationsTab() {
               disabled={gmailSaving}
               style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--accent)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
             >
-              {gmailSaving ? 'Enregistrement…' : gmailStatus?.connected ? 'Mettre à jour' : 'Connecter'}
+              {gmailSaving ? t('integrations.saving') : gmailStatus?.connected ? t('integrations.update') : t('integrations.connect')}
             </button>
             {gmailStatus?.connected && (
               <button
@@ -188,7 +190,7 @@ export default function IntegrationsTab() {
                 onClick={disconnectGmail}
                 style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #ef444455', background: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 13 }}
               >
-                Déconnecter
+                {t('integrations.disconnect')}
               </button>
             )}
           </div>

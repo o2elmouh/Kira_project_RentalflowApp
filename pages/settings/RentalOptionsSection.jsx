@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { DEFAULT_RENTAL_OPTIONS } from '../../utils/rentalOptions'
 import { getGeneralConfig, saveGeneralConfig } from '../../lib/db'
 
 export default function RentalOptionsSection() {
+  const { t } = useTranslation('settings')
   const [options, setOptions] = useState(DEFAULT_RENTAL_OPTIONS)
 
   useEffect(() => {
@@ -41,11 +43,11 @@ export default function RentalOptionsSection() {
   return (
     <div className="card" style={{ maxWidth: 780 }}>
       <div className="card-header">
-        <h3>Options de location</h3>
+        <h3>{t('rentalOptions.title')}</h3>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {saved && <span className="badge badge-green">Enregistré</span>}
+          {saved && <span className="badge badge-green">{t('rentalOptions.saved')}</span>}
           {!editMode && (
-            <button className="btn btn-ghost btn-sm" onClick={() => setEditMode(true)}>Modifier</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setEditMode(true)}>{t('rentalOptions.editBtn')}</button>
           )}
         </div>
       </div>
@@ -63,7 +65,7 @@ export default function RentalOptionsSection() {
                 className="form-input"
                 style={{ fontSize: 13, padding: '5px 8px', minWidth: 0 }}
                 value={opt.name}
-                placeholder="Nom de l'option"
+                placeholder={t('rentalOptions.optionPlaceholder')}
                 readOnly={!editMode}
                 onChange={e => update(opt.id, 'name', e.target.value)}
               />
@@ -93,7 +95,7 @@ export default function RentalOptionsSection() {
                 <button
                   onClick={() => removeOption(opt.id)}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#ef4444', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  title="Supprimer"
+                  title={t('rentalOptions.deleteTitle')}
                 >
                   🗑️
                 </button>
@@ -104,13 +106,13 @@ export default function RentalOptionsSection() {
         {editMode && (
           <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
             <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={addOption}>
-              + Ajouter une option
+              {t('rentalOptions.addBtn')}
             </button>
             <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={save}>
-              Enregistrer
+              {t('rentalOptions.saveBtn')}
             </button>
             <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => { setOptions(DEFAULT_RENTAL_OPTIONS); setEditMode(false) }}>
-              Annuler
+              {t('rentalOptions.cancelBtn')}
             </button>
           </div>
         )}

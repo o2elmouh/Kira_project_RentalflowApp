@@ -75,7 +75,21 @@
     "technicalControl": "الفحص الفني (سنوات)",
     "duration": "المدة (سنوات)",
     "generalWarranty": "الضمان العام",
-    "resetConfirm": "إعادة تعيين إعدادات الأسطول إلى القيم الافتراضية؟"
+    "resetConfirm": "إعادة تعيين إعدادات الأسطول إلى القيم الافتراضية؟",
+    "colMake": "الماركة",
+    "colWarrantyGeneral": "الضمان العام",
+    "colWarrantyYears": "المدة (سنوات)",
+    "colWarrantyBattery": "ضمان البطارية",
+    "colControlTech": "الفحص الفني (سنوات)",
+    "colVidange": "تغيير الزيت (كم)",
+    "colCourroie": "سير التوقيت (كم)",
+    "colExtension": "تمديد ممكن",
+    "colActions": "الإجراءات",
+    "loading": "جاري التحميل…",
+    "saveRow": "حفظ",
+    "cancel": "إلغاء",
+    "edit": "تعديل",
+    "saved": "تم الحفظ"
   },
   "general": {
     "tabs": {
@@ -131,30 +145,90 @@
     "anonymizing": "جارٍ التنفيذ..."
   },
   "generalConfig": {
-    "defaultSignature": "التوقيع الافتراضي"
+    "defaultSignature": "التوقيع الافتراضي",
+    "optionsLabel": "خيارات الإيجار",
+    "signatureLabel": "التوقيع الافتراضي",
+    "paramsLabel": "الإعدادات",
+    "paramsTitle": "الإعدادات العامة",
+    "paramsPlaceholder": "ستُضاف إعدادات عامة أخرى هنا قريباً.",
+    "kmHint": "يمكن الآن تكوين حد الكيلومترات لكل مركبة من بطاقة المركبة (تبويب الأسطول)."
   },
   "integrations": {
     "gmailDisconnect": "قطع الاتصال بـ Gmail؟",
     "gmailDisconnected": "تم قطع الاتصال بـ Gmail.",
     "gmailSaved": "تم حفظ تكامل Gmail.",
     "update": "تحديث",
-    "syncTriggered": "تم بدء المزامنة."
+    "syncTriggered": "تم بدء المزامنة.",
+    "intro": "قم بتوصيل قنوات التواصل لاستقبال طلبات الإيجار تلقائياً.",
+    "waConnected": "متصل عبر Twilio",
+    "waDesc": "تُرسل رسائل WhatsApp عبر Twilio API. لا يلزم أي إعداد إضافي.",
+    "gmailConnected": "متصل",
+    "gmailImap": "استطلاع IMAP كل 5 دقائق. استخدم",
+    "gmailAppPwdLink": "كلمة مرور تطبيق Google",
+    "gmailAppPwdSuffix": "، وليس كلمة مرورك العادية.",
+    "lastSync": "آخر مزامنة:",
+    "syncNow": "مزامنة الآن",
+    "gmailAddress": "عنوان Gmail",
+    "gmailAppPwd": "كلمة مرور التطبيق (16 حرفاً)",
+    "gmailAppPwdHint": "مخزن مشفر AES-256 — لا يُنقل أبداً إلى الواجهة الأمامية",
+    "saving": "جاري الحفظ…",
+    "connect": "توصيل",
+    "disconnect": "قطع الاتصال",
+    "disconnectConfirm": "قطع اتصال Gmail؟",
+    "disconnected": "تم قطع اتصال Gmail.",
+    "saved": "تم حفظ تكامل Gmail."
   },
   "telemetrics": {
     "deviceId": "معرف الجهاز",
     "noManualLink": "لا توجد روابط يدوية. استخدم حقل \"معرف الجهاز\" في بطاقة المركبة، أو أضف إدخالاً هنا.",
     "save": "حفظ",
-    "saved": "✓ تم الحفظ"
+    "saved": "✓ تم الحفظ",
+    "providerTitle": "مزود التتبع",
+    "mockDesc": "وضع العرض — مواقع GPS محاكاة. لا يلزم مفتاح API.",
+    "mappingsTitle": "ربط المركبة ↔ الجهاز",
+    "addBtn": "إضافة",
+    "devicesDefined": "الأجهزة المحددة في بطاقات المركبة ({{count}})",
+    "autoDetectedNote": "تُقرأ هذه الروابط تلقائياً. الإدخالات اليدوية أدناه تكميلية.",
+    "colVehicle": "المركبة",
+    "colDeviceId": "معرف الجهاز",
+    "chooseVehicle": "— اختر مركبة —",
+    "saveBtn": "حفظ",
+    "savedBtn": "✓ تم الحفظ"
   },
   "rentalOptions": {
     "optionName": "اسم الخيار",
-    "delete": "حذف"
+    "delete": "حذف",
+    "title": "خيارات الإيجار",
+    "saved": "تم الحفظ",
+    "editBtn": "تعديل",
+    "optionPlaceholder": "اسم الخيار",
+    "deleteTitle": "حذف",
+    "addBtn": "+ إضافة خيار",
+    "saveBtn": "حفظ",
+    "cancelBtn": "إلغاء"
   },
   "signature": {
-    "savedSignature": "التوقيع المحفوظ"
+    "savedSignature": "التوقيع المحفوظ",
+    "title": "التوقيع الافتراضي",
+    "savedBadge": "تم الحفظ",
+    "imgAlt": "التوقيع المحفوظ",
+    "editBtn": "تعديل التوقيع",
+    "drawHint": "ارسم توقيعك أدناه:",
+    "clearBtn": "مسح",
+    "saveBtn": "حفظ التوقيع",
+    "cancelBtn": "إلغاء"
   },
   "team": {
     "inviting": "جاري الإرسال…",
-    "invite": "إرسال دعوة"
+    "invite": "إرسال دعوة",
+    "inviteTitle": "دعوة عضو",
+    "inviteSending": "جاري إرسال الدعوة إلى {{email}}…",
+    "inviteSent": "تم إرسال الدعوة إلى {{email}}",
+    "inviteBtn": "إرسال دعوة",
+    "removeConfirm": "إزالة {{name}} من الوكالة؟",
+    "membersTitle": "الأعضاء ({{count}})",
+    "loading": "جاري التحميل…",
+    "empty": "لم يتم العثور على أعضاء. قم بتكوين خادم Railway لعرض الفريق.",
+    "inviteHint": "سيتلقى المدعو رابطاً عبر البريد الإلكتروني لإنشاء حسابه."
   }
 }

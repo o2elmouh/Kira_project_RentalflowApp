@@ -3,17 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { Edit2 } from 'lucide-react'
 import { getFleetConfig, saveFleetConfig, resetFleetConfig } from '../../lib/db'
 
-const FLEET_CONFIG_COLS = [
-  { key: 'make',             label: 'Marque',                     type: 'text' },
-  { key: 'warrantyGeneral',  label: 'Garantie générale',          type: 'text' },
-  { key: 'warrantyYears',    label: 'Durée (ans)',                type: 'number' },
-  { key: 'warrantyBattery',  label: 'Garantie batterie',          type: 'text' },
-  { key: 'controlTechYears', label: 'Contrôle technique (ans)',   type: 'number' },
-  { key: 'vidangeKm',        label: 'Vidange (km)',               type: 'number' },
-  { key: 'courroieKm',       label: 'Courroie distribution (km)', type: 'number' },
-  { key: 'extension',        label: 'Extension possible',         type: 'text' },
-]
-
 export default function FleetConfigTab() {
   const { t } = useTranslation('settings')
   const [config, setConfig] = useState([])
@@ -21,6 +10,17 @@ export default function FleetConfigTab() {
   const [editRow, setEditRow] = useState(null)
   const [editData, setEditData] = useState({})
   const [savedRow, setSavedRow] = useState(null)
+
+  const FLEET_CONFIG_COLS = [
+    { key: 'make',             label: t('fleetConfig.colMake'),           type: 'text' },
+    { key: 'warrantyGeneral',  label: t('fleetConfig.colWarrantyGeneral'), type: 'text' },
+    { key: 'warrantyYears',    label: t('fleetConfig.colWarrantyYears'),   type: 'number' },
+    { key: 'warrantyBattery',  label: t('fleetConfig.colWarrantyBattery'), type: 'text' },
+    { key: 'controlTechYears', label: t('fleetConfig.colControlTech'),     type: 'number' },
+    { key: 'vidangeKm',        label: t('fleetConfig.colVidange'),         type: 'number' },
+    { key: 'courroieKm',       label: t('fleetConfig.colCourroie'),        type: 'number' },
+    { key: 'extension',        label: t('fleetConfig.colExtension'),       type: 'text' },
+  ]
 
   useEffect(() => {
     let cancelled = false
@@ -57,20 +57,20 @@ export default function FleetConfigTab() {
   }
 
   const handleReset = async () => {
-    if (!window.confirm('Réinitialiser la configuration parc aux valeurs par défaut ?')) return
+    if (!window.confirm(t('fleetConfig.resetConfirm'))) return
     const defaults = await resetFleetConfig()
     setConfig(defaults || [])
     setEditRow(null)
   }
 
-  if (loading) return <p style={{ color: 'var(--text3)', fontSize: 13 }}>Chargement…</p>
+  if (loading) return <p style={{ color: 'var(--text3)', fontSize: 13 }}>{t('fleetConfig.loading')}</p>
 
   return (
     <div className="card">
       <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3>{t('fleetConfig.title')}</h3>
         <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={handleReset}>
-          Réinitialiser les valeurs par défaut
+          {t('fleetConfig.resetBtn')}
         </button>
       </div>
       <div className="card-body" style={{ padding: 0, overflowX: 'auto' }}>
@@ -80,7 +80,7 @@ export default function FleetConfigTab() {
               {FLEET_CONFIG_COLS.map(col => (
                 <th key={col.key} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, fontSize: 12, color: 'var(--text2)', whiteSpace: 'nowrap' }}>{col.label}</th>
               ))}
-              <th style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text2)' }}>Actions</th>
+              <th style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text2)' }}>{t('fleetConfig.colActions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -116,15 +116,15 @@ export default function FleetConfigTab() {
                   <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
                     {isEditing ? (
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-primary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => saveRow(i)}>Sauvegarder</button>
-                        <button className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setEditRow(null)}>Annuler</button>
+                        <button className="btn btn-primary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => saveRow(i)}>{t('fleetConfig.saveRow')}</button>
+                        <button className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setEditRow(null)}>{t('fleetConfig.cancel')}</button>
                       </div>
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <button className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => startEditRow(i)}>
-                          <Edit2 size={13} /> Modifier
+                          <Edit2 size={13} /> {t('fleetConfig.edit')}
                         </button>
-                        {savedRow === i && <span className="badge badge-green" style={{ fontSize: 11 }}>Enregistré</span>}
+                        {savedRow === i && <span className="badge badge-green" style={{ fontSize: 11 }}>{t('fleetConfig.saved')}</span>}
                       </div>
                     )}
                   </td>

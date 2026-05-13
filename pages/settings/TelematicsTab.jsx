@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Radio, Plus, Trash2 } from 'lucide-react'
 import { getFleet, getTelemetryConfig, saveTelemetryConfig } from '../../lib/db'
 
 export default function TelematicsTab() {
+  const { t } = useTranslation('settings')
   const [cfg, setCfg]     = useState(null)
   const [fleet, setFleet] = useState([])
   const [saved, setSaved] = useState(false)
@@ -59,7 +61,6 @@ export default function TelematicsTab() {
     card:  { background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 10, padding: '20px 24px', marginBottom: 20 },
   }
 
-  // Tracked vehicles (those with trackedDevice set in fleet)
   const trackedInFleet = fleet.filter(v => v.trackedDevice)
 
   return (
@@ -69,7 +70,7 @@ export default function TelematicsTab() {
       <div style={s.card}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
           <Radio size={15} color="var(--accent)" />
-          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text1)' }}>Fournisseur télématique</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text1)' }}>{t('telemetrics.providerTitle')}</span>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {['mock', 'traccar', 'flespi'].map(p => (
@@ -87,7 +88,7 @@ export default function TelematicsTab() {
         </div>
         {cfg?.provider === 'mock' && (
           <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text3)', background: 'var(--bg-tertiary)', borderRadius: 6, padding: '8px 12px' }}>
-            Mode démo — positions GPS simulées. Aucune clé API requise.
+            {t('telemetrics.mockDesc')}
           </div>
         )}
         {cfg?.provider === 'traccar' && (
@@ -105,20 +106,19 @@ export default function TelematicsTab() {
       {/* Vehicle ↔ Device mappings */}
       <div style={s.card}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text1)' }}>Association véhicule ↔ boîtier</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text1)' }}>{t('telemetrics.mappingsTitle')}</span>
           <button
             onClick={addMapping}
             style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
           >
-            <Plus size={13} /> Ajouter
+            <Plus size={13} /> {t('telemetrics.addBtn')}
           </button>
         </div>
 
-        {/* Auto-detected from fleet */}
         {trackedInFleet.length > 0 && (
           <div style={{ marginBottom: 14, padding: '10px 12px', background: 'var(--bg-tertiary)', borderRadius: 8, fontSize: 12 }}>
             <div style={{ fontWeight: 600, color: 'var(--text2)', marginBottom: 6 }}>
-              Boîtiers définis dans les fiches véhicule ({trackedInFleet.length})
+              {t('telemetrics.devicesDefined', { count: trackedInFleet.length })}
             </div>
             {trackedInFleet.map(v => (
               <div key={v.id} style={{ display: 'flex', gap: 8, color: 'var(--text3)', marginBottom: 3 }}>
@@ -127,20 +127,20 @@ export default function TelematicsTab() {
               </div>
             ))}
             <div style={{ marginTop: 6, color: 'var(--text3)', fontStyle: 'italic' }}>
-              Ces associations sont lues automatiquement. Les entrées manuelles ci-dessous servent de complément.
+              {t('telemetrics.autoDetectedNote')}
             </div>
           </div>
         )}
 
         {(!cfg?.mappings || cfg.mappings.length === 0) ? (
           <p style={{ fontSize: 13, color: 'var(--text3)' }}>
-            Aucune association manuelle. Utilisez le champ "ID boîtier" dans la fiche véhicule, ou ajoutez une entrée ici.
+            {t('telemetrics.noManualLink')}
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 10 }}>
-              <span style={s.label}>Véhicule</span>
-              <span style={s.label}>ID boîtier (deviceId)</span>
+              <span style={s.label}>{t('telemetrics.colVehicle')}</span>
+              <span style={s.label}>{t('telemetrics.colDeviceId')}</span>
               <span />
             </div>
             {cfg?.mappings?.map((m, i) => (
@@ -150,7 +150,7 @@ export default function TelematicsTab() {
                   value={m.vehicleId}
                   onChange={e => setMapping(i, 'vehicleId', e.target.value)}
                 >
-                  <option value="">— Choisir véhicule —</option>
+                  <option value="">{t('telemetrics.chooseVehicle')}</option>
                   {fleet.map(v => (
                     <option key={v.id} value={v.id}>{v.make} {v.model} {v.year} — {v.plate}</option>
                   ))}
@@ -177,7 +177,7 @@ export default function TelematicsTab() {
         onClick={save}
         style={{ background: saved ? '#166534' : 'var(--accent)', color: '#fff', border: 'none', borderRadius: 7, padding: '9px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
       >
-        {saved ? '✓ Sauvegardé' : 'Enregistrer'}
+        {saved ? t('telemetrics.savedBtn') : t('telemetrics.saveBtn')}
       </button>
     </div>
   )

@@ -1,7 +1,9 @@
 import { useRef, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getGeneralConfig, saveGeneralConfig } from '../../lib/db'
 
 export default function SignatureSection() {
+  const { t } = useTranslation('settings')
   const canvasRef = useRef(null)
   const [drawing, setDrawing] = useState(false)
   const [savedSig, setSavedSig] = useState(null)
@@ -82,25 +84,25 @@ export default function SignatureSection() {
   return (
     <div className="card" style={{ maxWidth: 520 }}>
       <div className="card-header">
-        <h3>Signature par défaut</h3>
-        {saveFeedback && <span className="badge badge-green">Enregistrée</span>}
+        <h3>{t('signature.title')}</h3>
+        {saveFeedback && <span className="badge badge-green">{t('signature.savedBadge')}</span>}
       </div>
       <div className="card-body">
         {!editMode && savedSig ? (
           <div>
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', display: 'inline-block', marginBottom: 12 }}>
-              <img src={savedSig} alt="Signature enregistrée" style={{ display: 'block', maxWidth: 400 }} />
+              <img src={savedSig} alt={t('signature.imgAlt')} style={{ display: 'block', maxWidth: 400 }} />
             </div>
             <div>
               <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={startEdit}>
-                Modifier la signature
+                {t('signature.editBtn')}
               </button>
             </div>
           </div>
         ) : (
           <div>
             <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 8 }}>
-              Dessinez votre signature ci-dessous :
+              {t('signature.drawHint')}
             </div>
             <canvas
               ref={canvasRef}
@@ -117,14 +119,14 @@ export default function SignatureSection() {
             />
             <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
               <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={clearCanvas}>
-                Effacer
+                {t('signature.clearBtn')}
               </button>
               <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={saveSig}>
-                Enregistrer la signature
+                {t('signature.saveBtn')}
               </button>
               {savedSig && (
                 <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => setEditMode(false)}>
-                  Annuler
+                  {t('signature.cancelBtn')}
                 </button>
               )}
             </div>

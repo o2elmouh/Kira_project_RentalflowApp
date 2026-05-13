@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
 import { useIsAdmin } from '../../lib/UserContext'
 
 export default function TeamTab() {
+  const { t } = useTranslation('settings')
   const isAdmin = useIsAdmin()
   const [members, setMembers]   = useState([])
   const [loading, setLoading]   = useState(true)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole]   = useState('staff')
   const [inviting, setInviting] = useState(false)
-  const [feedback, setFeedback] = useState(null) // { type: 'success'|'error', msg }
+  const [feedback, setFeedback] = useState(null)
 
   const load = async () => {
     setLoading(true)
@@ -29,30 +31,22 @@ export default function TeamTab() {
     e.preventDefault()
     if (!inviteEmail) return
 
-    // Capture the email locally so we can reset the form right away —
-    // by the time the API resolves the user may already be typing the
-    // next invitee.
     const emailSnapshot = inviteEmail
     const roleSnapshot  = inviteRole
 
-    // Show the toast immediately and clear the input. The actual API
-    // call runs in the background; failures are logged but never block
-    // the UI or evict the success toast — admins can simply retry.
-    setFeedback({ type: 'success', msg: `Invitation en cours d'envoi à ${emailSnapshot}…` })
+    setFeedback({ type: 'success', msg: t('team.inviteSending', { email: emailSnapshot }) })
     setInviteEmail('')
     setInviting(true)
 
-    // Auto-dismiss the toast after 4s so it doesn't accumulate.
     setTimeout(() => setFeedback(null), 4000)
 
     api.inviteMember({ email: emailSnapshot, role: roleSnapshot })
       .then(() => {
-        setFeedback({ type: 'success', msg: `Invitation envoyée à ${emailSnapshot}` })
+        setFeedback({ type: 'success', msg: t('team.inviteSent', { email: emailSnapshot }) })
         setTimeout(() => setFeedback(null), 4000)
         load()
       })
       .catch((err) => {
-        // Log but don't block — the admin can re-submit the form.
         console.error('[TeamTab] inviteMember failed:', err)
       })
       .finally(() => {
@@ -70,7 +64,7 @@ export default function TeamTab() {
   }
 
   const handleRemove = async (id, name) => {
-    if (!window.confirm(`Retirer ${name} de l'agence ?`)) return
+    if (!window.confirm(t('team.removeConfirm', { name }))) return
     try {
       await api.removeMember(id)
       setMembers(m => m.filter(x => x.id !== id))
@@ -90,10 +84,9 @@ export default function TeamTab() {
 
   return (
     <div style={{ maxWidth: 680 }}>
-      {/* Invite form — admin only */}
       {isAdmin && (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 20, marginBottom: 24 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>Inviter un membre</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>{t('team.inviteTitle')}</h3>
           {feedback && (
             <div style={{
               padding: '8px 12px', borderRadius: 6, marginBottom: 12, fontSize: 13,
@@ -116,24 +109,23 @@ export default function TeamTab() {
               <option value="admin">Admin</option>
             </select>
             <button className="btn btn-primary" disabled={inviting}>
-              {inviting ? 'Envoi…' : 'Inviter'}
+              {inviting ? t('team.inviting') : t('team.inviteBtn')}
             </button>
           </form>
           <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8 }}>
-            L'invité recevra un lien par email pour créer son compte.
+            {t('team.inviteHint')}
           </p>
         </div>
       )}
 
-      {/* Members list */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: 14 }}>
-          Membres ({members.length})
+          {t('team.membersTitle', { count: members.length })}
         </div>
         {loading ? (
-          <div style={{ padding: 24, color: 'var(--text3)', textAlign: 'center' }}>Chargement…</div>
+          <div style={{ padding: 24, color: 'var(--text3)', textAlign: 'center' }}>{t('team.loading')}</div>
         ) : members.length === 0 ? (
-          <div style={{ padding: 24, color: 'var(--text3)', textAlign: 'center' }}>Aucun membre trouvé. Configurez votre backend Railway pour afficher l'équipe.</div>
+          <div style={{ padding: 24, color: 'var(--text3)', textAlign: 'center' }}>{t('team.empty')}</div>
         ) : members.map((m, i) => (
           <div key={m.id} style={{
             display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
