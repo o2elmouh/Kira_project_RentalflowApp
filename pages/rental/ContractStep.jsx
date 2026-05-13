@@ -133,6 +133,36 @@ export default function ContractStep({
     }
   }
 
+  // ── Revert ensureContract side-effects when the user backs out ──
+  // Once ensureContract runs (e.g. user picks a sign channel), the vehicle
+  // is marked 'rented' and a contract/invoice row exists. Quitting at that
+  // point must not leave the vehicle locked.
+  const [reverting, setReverting] = useState(false)
+  const revertEnsured = async () => {
+    if (!contract || phase === Phase.SIGNED_ONLINE) return
+    setReverting(true)
+    try {
+      const fleet = await getFleet()
+      const v = fleet.find(veh => veh.id === rental.vehicle?.id || veh.id === rental.vehicleId)
+      if (v && v.status === 'rented') await saveVehicle({ ...v, status: 'available' })
+      await saveContract({ ...contract, status: 'cancelled' })
+    } catch (err) {
+      console.error('[ContractStep] revertEnsured', err)
+    } finally {
+      setReverting(false)
+    }
+  }
+
+  const handleCancel = async () => {
+    await revertEnsured()
+    onCancel?.()
+  }
+
+  const handleSaveAndQuit = async () => {
+    await revertEnsured()
+    onSaveAndQuit?.()
+  }
+
   // ── Send signature link via email or whatsapp ──────────────
   const handlePickChannel = async (channel) => {
     if (sendingChannel) return
@@ -353,10 +383,10 @@ export default function ContractStep({
             <button
               className="btn-outline-ink"
               style={{ fontSize: 14, color: '#CF4500', borderColor: '#CF4500' }}
-              disabled={persisting || sendingChannel || finalizing}
-              onClick={onCancel}
+              disabled={persisting || sendingChannel || finalizing || reverting}
+              onClick={handleCancel}
             >
-              <X size={15} /> Annuler la location
+              <X size={15} /> {reverting ? 'Annulation…' : 'Annuler la location'}
             </button>
           </>
         }
@@ -365,8 +395,8 @@ export default function ContractStep({
             <button
               className="btn-outline-ink"
               style={{ fontSize: 14 }}
-              onClick={() => onSaveAndQuit()}
-              disabled={persisting || sendingChannel || finalizing}
+              onClick={handleSaveAndQuit}
+              disabled={persisting || sendingChannel || finalizing || reverting}
             >
               💾 Sauvegarder & quitter
             </button>
