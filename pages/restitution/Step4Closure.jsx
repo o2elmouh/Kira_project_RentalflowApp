@@ -33,7 +33,7 @@ export default function Step4Closure({ agency, contract, vehicle, returnDate, re
 
   const handleSendWhatsApp = async () => {
     const phone = contract.clientPhone || ''
-    if (!phone) { alert('Numéro de téléphone client introuvable.'); return }
+    if (!phone) { alert(t('step4.phoneNotFound')); return }
     setWaSending(true)
     setWaStatus(null)
     try {
@@ -146,7 +146,7 @@ export default function Step4Closure({ agency, contract, vehicle, returnDate, re
             [t('step4.contract'), contract.contractNumber || '—'],
             [t('step4.client'), contract.clientName || '—'],
             [t('step4.vehicle'), contract.vehicleName || '—'],
-            [t('step4.actualDuration'), `${realDays} jour(s)`],
+            [t('step4.actualDuration'), `${realDays} ${t('step4.dayUnit')}`],
             [t('step4.drivenKm'), `${kmDriven} km`],
             [t('step4.rentalAmount'), `${contract.totalTTC || 0} MAD`],
             [t('step4.extraFees'), `${totalExtraFees} MAD`],
@@ -189,7 +189,7 @@ export default function Step4Closure({ agency, contract, vehicle, returnDate, re
             disabled={waSending}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
           >
-            {waSending ? '…' : waStatus === 'ok' ? '✅ PV envoyé' : waStatus === 'err' ? '❌ Échec' : '📱 Envoyer PV par WhatsApp'}
+            {waSending ? '…' : waStatus === 'ok' ? `✅ ${t('step4.sentOk')}` : waStatus === 'err' ? `❌ ${t('step4.sentErr')}` : `📱 ${t('step4.sendWhatsApp')}`}
           </button>
           <button
             className="btn btn-primary"
