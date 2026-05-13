@@ -111,13 +111,20 @@ export default function App() {
 
   async function resolveUser(u) {
     if (resolvingRef.current) return
+    // Already resolved for this user — skip the profile/agency roundtrip.
+    // Auth events like USER_UPDATED / SIGNED_IN can re-emit the same user and
+    // would otherwise re-block the UI behind the profile query timeout.
+    if (isReadyRef.current && user?.id === u.id) {
+      setUser(u)
+      return
+    }
     resolvingRef.current = true
     setUser(u)
 
     const fetchProfile = () =>
       Promise.race([
         supabase.from('profiles').select('id, full_name, email, phone, role, agency_id').eq('id', u.id).maybeSingle(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Profile query timed out')), 8000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Profile query timed out')), 4000)),
       ])
 
     try {
@@ -136,7 +143,7 @@ export default function App() {
         try {
           const { data: agency } = await Promise.race([
             supabase.from('agencies').select('*').eq('id', prof.agency_id).maybeSingle(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Agency query timed out')), 4000)),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Agency query timed out')), 3000)),
           ])
           if (agency) prof.agencies = agency
         } catch {}
