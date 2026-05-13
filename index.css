@@ -767,6 +767,10 @@ body {
    RTL (Arabic)
    ═══════════════════════════════════════════════════════════ */
 [dir="rtl"] .app-shell               { flex-direction: row-reverse }
+/* Defensive: explicit order guarantees the sidebar lands on the right
+   side of the viewport in RTL even if flex-direction is overridden. */
+[dir="rtl"] .app-shell > .sidebar    { order: 2 }
+[dir="rtl"] .app-shell > .main       { order: 1 }
 [dir="rtl"] .sidebar                 { border-right: none; border-left: 1px solid var(--border) }
 [dir="rtl"] .nav-item                { text-align: right }
 [dir="rtl"] .page-header             { flex-direction: row-reverse }

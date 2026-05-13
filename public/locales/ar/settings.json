@@ -45,7 +45,8 @@
     "insurance": "رقم بوليصة التأمين",
     "insurancePlaceholder": "مثال: ASS-2024-00123",
     "saveBtn": "حفظ الإعدادات",
-    "saved": "تم الحفظ"
+    "saved": "تم الحفظ",
+    "pdfModel": "نموذج عقد PDF"
   },
   "fleetConfig": {
     "title": "إعدادات الأسطول",

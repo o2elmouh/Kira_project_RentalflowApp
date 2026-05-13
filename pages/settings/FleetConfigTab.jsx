@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Edit2 } from 'lucide-react'
 import { getFleetConfig, saveFleetConfig, resetFleetConfig } from '../../lib/db'
 
@@ -14,6 +15,7 @@ const FLEET_CONFIG_COLS = [
 ]
 
 export default function FleetConfigTab() {
+  const { t } = useTranslation('settings')
   const [config, setConfig] = useState([])
   const [loading, setLoading] = useState(true)
   const [editRow, setEditRow] = useState(null)
@@ -66,7 +68,7 @@ export default function FleetConfigTab() {
   return (
     <div className="card">
       <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3>Configuration parc</h3>
+        <h3>{t('fleetConfig.title')}</h3>
         <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={handleReset}>
           Réinitialiser les valeurs par défaut
         </button>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getContracts, getFleet } from '../lib/db.js'
 
 function startOf(date, zoom) {
@@ -48,6 +49,7 @@ const VW = 164
 const NAV_BTN = { width:30, height:30, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-secondary)', color:'var(--text-primary)', cursor:'pointer', fontSize:18, padding:0 }
 
 export default function Calendar() {
+  const { t } = useTranslation("common")
   const [contracts, setContracts] = useState([])
   const [fleet, setFleet]         = useState([])
   const [loading, setLoading]     = useState(true)
@@ -90,7 +92,7 @@ export default function Calendar() {
     <div style={{ padding:24, color:'var(--text-primary)' }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:24, flexWrap:'wrap' }}>
-        <h1 style={{ margin:0, fontSize:22, fontWeight:700, letterSpacing:'-0.02em' }}>Calendrier</h1>
+        <h1 style={{ margin:0, fontSize:22, fontWeight:700, letterSpacing:'-0.02em' }}>{t('calendar.title')}</h1>
 
         <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8 }}>
           <button onClick={() => setAnchor(advance(anchor,zoom,-1))} style={NAV_BTN}>&#8249;</button>
@@ -99,13 +101,13 @@ export default function Calendar() {
           </span>
           <button onClick={() => setAnchor(advance(anchor,zoom,1))} style={NAV_BTN}>&#8250;</button>
           <button onClick={() => setAnchor(startOf(new Date(), zoom))} style={{ ...NAV_BTN, width:'auto', padding:'0 14px', borderRadius:99, fontSize:12 }}>
-            Aujourd'hui
+            {t('calendar.today')}
           </button>
         </div>
 
         {/* Zoom selector */}
         <div style={{ display:'flex', gap:3, background:'var(--bg-secondary)', padding:3, borderRadius:10 }}>
-          {[['week','Semaine'],['month','Mois'],['year','Année']].map(([z,label]) => (
+          {[['week', t('calendar.week')],['month', t('calendar.month')],['year', t('calendar.year')]].map(([z,label]) => (
             <button key={z} onClick={() => { setZoom(z); setAnchor(startOf(new Date(), z)) }} style={{
               padding:'5px 14px', borderRadius:8, border:'none', cursor:'pointer', fontSize:12, fontWeight:600,
               background: zoom===z ? 'var(--bg-primary)' : 'transparent',
@@ -120,7 +122,7 @@ export default function Calendar() {
           background:'var(--bg-secondary)', border:'1px solid var(--border)',
           borderRadius:8, padding:'6px 12px', fontSize:13, color:'var(--text-primary)', cursor:'pointer',
         }}>
-          <option value="all">Tous les véhicules</option>
+          <option value="all">{t('calendar.allVehicles')}</option>
           {fleet.map(v => (
             <option key={v.id} value={v.id}>{v.make} {v.model}{v.plate ? ' · '+v.plate : ''}</option>
           ))}
@@ -128,7 +130,7 @@ export default function Calendar() {
       </div>
 
       {loading && (
-        <div style={{ padding:60, textAlign:'center', color:'var(--text-secondary)' }}>Chargement…</div>
+        <div style={{ padding:60, textAlign:'center', color:'var(--text-secondary)' }}>{t('loading')}</div>
       )}
 
       {!loading && (
@@ -160,7 +162,7 @@ export default function Calendar() {
             {/* Vehicle rows */}
             {rows.length === 0 && (
               <div style={{ padding:40, textAlign:'center', color:'var(--text-secondary)', fontSize:14 }}>
-                Aucun véhicule dans la flotte
+                {t('calendar.noFleet')}
               </div>
             )}
             {rows.map((v, vi) => (
@@ -200,7 +202,7 @@ export default function Calendar() {
 
           {/* Legend */}
           <div style={{ display:'flex', gap:16, marginTop:14, flexWrap:'wrap' }}>
-            {[['En cours', PALETTE.active],['Clôturé', PALETTE.closed],['En retard', PALETTE.late]].map(([label, col]) => (
+            {[[t('status.inProgress'), PALETTE.active],[t('status.closed'), PALETTE.closed],[t('status.late'), PALETTE.late]].map(([label, col]) => (
               <div key={label} style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-secondary)' }}>
                 <div style={{ width:22, height:10, borderRadius:99, background:col.bg, border:'1.5px solid '+col.border }} />
                 {label}

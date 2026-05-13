@@ -33,7 +33,8 @@
     "insurance": "Insurance policy #",
     "insurancePlaceholder": "Ex: ASS-2024-00123",
     "saveBtn": "Save settings",
-    "saved": "Saved"
+    "saved": "Saved",
+    "pdfModel": "PDF contract template"
   },
   "fleetConfig": {
     "title": "Fleet configuration",

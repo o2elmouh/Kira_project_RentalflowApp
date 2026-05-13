@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { PlusCircle, Trash2, Edit2, AlertTriangle } from 'lucide-react'
 import { getFleet, saveVehicle, deleteVehicle } from '../lib/db'
 import { getDefaultConfigForMake as getFleetConfigForMake } from '../lib/fleetConfigDefaults'
@@ -56,6 +57,7 @@ function autoFillMaintenance(form) {
 
 // ── Main component ────────────────────────────────────────
 export default function Fleet() {
+  const { t } = useTranslation('fleet')
   const [fleet,        setFleet]       = useState([])
   const [loading,      setLoading]     = useState(true)
   const [editing,      setEditing]     = useState(null)
@@ -129,10 +131,10 @@ export default function Fleet() {
   return (
     <div>
       <div className="page-header">
-        <div><h2>Parc automobile</h2><p>Gérez votre flotte de véhicules</p></div>
+        <div><h2>{t("title")}</h2><p>{t("subtitle")}</p></div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {!detail && !editing && (
-            <button className="btn-primary" onClick={openAdd} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 18px', borderRadius:'var(--r-btn)', background:'var(--ink)', color:'var(--canvas)', border:'none', fontWeight:600, fontSize:13, cursor:'pointer' }}><PlusCircle size={15} /> Ajouter</button>
+            <button className="btn-primary" onClick={openAdd} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 18px', borderRadius:'var(--r-btn)', background:'var(--ink)', color:'var(--canvas)', border:'none', fontWeight:600, fontSize:13, cursor:'pointer' }}><PlusCircle size={15} /> {t("addVehicle")}</button>
           )}
         </div>
       </div>
@@ -233,7 +235,7 @@ export default function Fleet() {
         )}
 
         {fleet.length === 0 && (
-          <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: 40 }}>Aucun véhicule. Ajoutez-en un ci-dessus.</p>
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: 40 }}>{t("noVehicles")}</p>
         )}
       </div>
     </div>

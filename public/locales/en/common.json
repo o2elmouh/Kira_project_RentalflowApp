@@ -30,7 +30,9 @@
     "cancelled": "Cancelled",
     "closed": "Closed",
     "paid": "Paid",
-    "pending": "Pending"
+    "pending": "Pending",
+    "late": "Overdue",
+    "inProgress": "In progress"
   },
   "months": [
     "January",
@@ -68,5 +70,14 @@
     "label": "Alerts",
     "seeAll": "View →",
     "empty": "No pending alerts — all clear"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "today": "Today",
+    "week": "Week",
+    "month": "Month",
+    "year": "Year",
+    "allVehicles": "All vehicles",
+    "noFleet": "No vehicle in the fleet"
   }
 }

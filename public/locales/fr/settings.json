@@ -45,7 +45,8 @@
     "insurance": "N° Police d'assurance",
     "insurancePlaceholder": "Ex: ASS-2024-00123",
     "saveBtn": "Enregistrer les paramètres",
-    "saved": "Enregistré"
+    "saved": "Enregistré",
+    "pdfModel": "Modèle de contrat PDF"
   },
   "fleetConfig": {
     "title": "Configuration parc",

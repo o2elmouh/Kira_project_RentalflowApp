@@ -30,7 +30,9 @@
     "cancelled": "Annulé",
     "closed": "Clôturé",
     "paid": "Payée",
-    "pending": "En attente"
+    "pending": "En attente",
+    "late": "En retard",
+    "inProgress": "En cours"
   },
   "months": [
     "Janvier",
@@ -103,5 +105,14 @@
       "body": "Pour exercer vos droits ou pour toute question sur le traitement de vos données, contactez directement l'agence de location.\n\nEn cas de désaccord, vous pouvez saisir la CNDP :\n• Site web : www.cndp.ma\n• Adresse : Avenue Mehdi Ben Barka, Rabat"
     },
     "footer": "Cette politique peut être mise à jour à tout moment. La version la plus récente est toujours disponible dans l'application."
+  },
+  "calendar": {
+    "title": "Calendrier",
+    "today": "Aujourd'hui",
+    "week": "Semaine",
+    "month": "Mois",
+    "year": "Année",
+    "allVehicles": "Tous les véhicules",
+    "noFleet": "Aucun véhicule dans la flotte"
   }
 }

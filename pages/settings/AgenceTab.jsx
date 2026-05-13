@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getAgency, saveAgency } from '../../lib/db'
 import { supabase } from '../../lib/supabase'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 export default function AgenceTab() {
+  const { t } = useTranslation('settings')
   const [agency, setAgency] = useState({})
   const [loading, setLoading] = useState(true)
   const [saved, setSaved] = useState(false)
@@ -98,7 +100,7 @@ export default function AgenceTab() {
     <>
       <div className="card" style={{ maxWidth: 680 }}>
         <div className="card-header">
-          <h3>Informations générales</h3>
+          <h3>{t('agency.generalInfo')}</h3>
           {saved && <span className="badge badge-green">Enregistré</span>}
         </div>
         <div className="card-body">
@@ -118,7 +120,7 @@ export default function AgenceTab() {
 
       <div className="card" style={{ maxWidth: 680, marginTop: 16 }}>
         <div className="card-header">
-          <h3>Identifiants fiscaux &amp; légaux</h3>
+          <h3>{t('agency.legalSection')}</h3>
         </div>
         <div className="card-body">
           <div className="form-row cols-2">
@@ -138,7 +140,7 @@ export default function AgenceTab() {
 
       <div className="card" style={{ maxWidth: 680, marginTop: 16 }}>
         <div className="card-header">
-          <h3>Modèle de contrat PDF</h3>
+          <h3>{t('agency.pdfModel')}</h3>
         </div>
         <div className="card-body">
           <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 12 }}>
