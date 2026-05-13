@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useRef, useContext } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Globe, Search, ArrowUpRight, ArrowDownLeft, Eye, Check, X, Loader2, Calendar, RefreshCw } from 'lucide-react'
 import { api } from '../lib/api'
 import { supabase } from '../lib/supabase'
@@ -167,6 +168,7 @@ function RevealModal({ data, onClose }) {
 
 // ─── Main page ────────────────────────────────────────────────
 export default function Network() {
+  const { t } = useTranslation('common')
   const { profile } = useContext(UserContext)
   const isAdmin = profile?.role === 'admin'
 
@@ -289,8 +291,8 @@ export default function Network() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Globe size={22} color="var(--accent)" />
           <div>
-            <h2>RentalFlow Network</h2>
-            <p>Borrow vehicles from partner agencies when your fleet is full</p>
+            <h2>{t('pages.network.title')}</h2>
+            <p>{t('pages.network.subtitle')}</p>
           </div>
         </div>
       </div>

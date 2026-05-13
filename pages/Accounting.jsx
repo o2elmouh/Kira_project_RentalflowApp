@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   BarChart2, BookOpen, List, Shield, Building2,
 } from 'lucide-react'
@@ -116,14 +117,15 @@ function TabBilan() {
 // Main Accounting page
 // ══════════════════════════════════════════════════════════
 const TABS = [
-  { id: 'dashboard', label: 'Tableau de bord', icon: BarChart2 },
-  { id: 'plan',      label: 'Plan comptable',  icon: BookOpen },
-  { id: 'journal',   label: 'Journal',         icon: List },
-  { id: 'deposits',  label: 'Dépôts',          icon: Shield },
-  { id: 'bilan',     label: 'Bilan agence',    icon: Building2 },
+  { id: 'dashboard', labelKey: 'pages.accounting.tabs.dashboard', icon: BarChart2 },
+  { id: 'plan',      labelKey: 'pages.accounting.tabs.plan',      icon: BookOpen },
+  { id: 'journal',   labelKey: 'pages.accounting.tabs.journal',   icon: List },
+  { id: 'deposits',  labelKey: 'pages.accounting.tabs.deposits',  icon: Shield },
+  { id: 'bilan',     labelKey: 'pages.accounting.tabs.bilan',     icon: Building2 },
 ]
 
 export default function Accounting() {
+  const { t } = useTranslation('common')
   const [tab, setTab] = useState('dashboard')
 
   const renderTab = () => {
@@ -141,21 +143,21 @@ export default function Accounting() {
     <div style={{ padding: '24px 28px', maxWidth: 1200, margin: '0 auto' }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text1)' }}>Comptabilité</h1>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text1)' }}>{t('pages.accounting.title')}</h1>
         <p style={{ margin: '4px 0 0', color: 'var(--text3)', fontSize: 13 }}>
-          Plan comptable marocain — double entrée — données locales
+          {t('pages.accounting.subtitle')}
         </p>
       </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '1px solid var(--border, #2d3147)', paddingBottom: 0 }}>
-        {TABS.map(t => {
-          const Icon = t.icon
-          const active = tab === t.id
+        {TABS.map(tabItem => {
+          const Icon = tabItem.icon
+          const active = tab === tabItem.id
           return (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+              key={tabItem.id}
+              onClick={() => setTab(tabItem.id)}
               style={{
                 background: 'none',
                 border: 'none',
@@ -173,7 +175,7 @@ export default function Accounting() {
               }}
             >
               <Icon size={14} />
-              {t.label}
+              {t(tabItem.labelKey)}
             </button>
           )
         })}

@@ -114,5 +114,49 @@
     "year": "Année",
     "allVehicles": "Tous les véhicules",
     "noFleet": "Aucun véhicule dans la flotte"
+  },
+  "pages": {
+    "accounting": {
+      "title": "Comptabilité",
+      "subtitle": "Plan comptable marocain — double entrée — données locales",
+      "tabs": {
+        "dashboard": "Tableau de bord",
+        "plan": "Plan comptable",
+        "journal": "Journal",
+        "deposits": "Dépôts",
+        "bilan": "Bilan agence"
+      }
+    },
+    "network": {
+      "title": "RentaFlow Network",
+      "subtitle": "Empruntez des véhicules à des agences partenaires quand votre flotte est complète"
+    },
+    "basket": {
+      "title": "Boîte de réception",
+      "subtitle": "Demandes entrantes WhatsApp & Gmail — extraction IA automatique",
+      "refresh": "↻ Actualiser",
+      "tabLeads": "Leads",
+      "tabAlerts": "⚠ Alertes",
+      "empty": "Aucun dossier en attente",
+      "status": {
+        "pending": "En attente",
+        "waiting": "Devis à préparer",
+        "offer_sent": "Offre envoyée",
+        "accepted": "Accepté",
+        "processed": "Traité",
+        "ignored": "Ignoré",
+        "converted": "Converti"
+      }
+    },
+    "newRental": {
+      "title": "Nouvelle location",
+      "subtitle": "Complétez toutes les étapes pour générer le contrat et la facture",
+      "steps": {
+        "scan": "Scan CIN",
+        "rental": "Détails location",
+        "photos": "Photos",
+        "contract": "Contrat & Facture"
+      }
+    }
   }
 }

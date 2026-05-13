@@ -5,6 +5,7 @@
  * "Convert to Rental" pre-fills the NewRental wizard.
  */
 import { useState, useContext } from 'react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../lib/api.js'
 import { supabase } from '../lib/supabase.js'
 import { UserContext } from '../lib/UserContext.js'
@@ -138,6 +139,7 @@ function LeadCard({ lead, onClick }) {
 
 // ── Main page ──────────────────────────────────────────────
 export default function Basket({ onNavigate, initialTab = null }) {
+  const { t } = useTranslation('common')
   const { isPremium } = useContext(UserContext)
   const [activeTab, setActiveTab]   = useState(initialTab === 'alertes' ? 'alertes' : 'leads')
   const [statusFilter, setStatusFilter] = useState('pending')
@@ -172,10 +174,10 @@ export default function Basket({ onNavigate, initialTab = null }) {
   }
 
   const SUB_FILTERS = [
-    ['pending', 'En attente'],
-    ['waiting', 'Devis à préparer'],
-    ['offer_sent', 'Offre envoyée'],
-    ['accepted', 'Accepté'],
+    ['pending', t('pages.basket.status.pending')],
+    ['waiting', t('pages.basket.status.waiting')],
+    ['offer_sent', t('pages.basket.status.offer_sent')],
+    ['accepted', t('pages.basket.status.accepted')],
   ]
 
   return (
@@ -183,16 +185,16 @@ export default function Basket({ onNavigate, initialTab = null }) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22 }}>Boîte de réception</h1>
+          <h1 style={{ margin: 0, fontSize: 22 }}>{t('pages.basket.title')}</h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 13 }}>
-            Demandes entrantes WhatsApp &amp; Gmail — extraction IA automatique
+            {t('pages.basket.subtitle')}
           </p>
         </div>
         <button
           onClick={load}
           style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13 }}
         >
-          ↻ Actualiser
+          {t('pages.basket.refresh')}
         </button>
       </div>
 
@@ -206,7 +208,7 @@ export default function Basket({ onNavigate, initialTab = null }) {
             color: activeTab === 'leads' ? '#F3F0EE' : 'var(--text-secondary)',
           }}
         >
-          Leads {leads.length > 0 && <span style={{ marginLeft: 6, background: '#F3F0EE', color: '#141413', borderRadius: 10, padding: '1px 7px', fontSize: 11 }}>{leads.length}</span>}
+          {t('pages.basket.tabLeads')} {leads.length > 0 && <span style={{ marginLeft: 6, background: '#F3F0EE', color: '#141413', borderRadius: 10, padding: '1px 7px', fontSize: 11 }}>{leads.length}</span>}
         </button>
         <button
           onClick={() => setActiveTab('alertes')}
@@ -216,7 +218,7 @@ export default function Basket({ onNavigate, initialTab = null }) {
             color: activeTab === 'alertes' ? '#fff' : '#CF4500',
           }}
         >
-          ⚠ Alertes {alerts.length > 0 && <span style={{ marginLeft: 6, background: activeTab === 'alertes' ? '#fff' : '#CF4500', color: activeTab === 'alertes' ? '#CF4500' : '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 11 }}>{alerts.length}</span>}
+          {t('pages.basket.tabAlerts')} {alerts.length > 0 && <span style={{ marginLeft: 6, background: activeTab === 'alertes' ? '#fff' : '#CF4500', color: activeTab === 'alertes' ? '#CF4500' : '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 11 }}>{alerts.length}</span>}
         </button>
       </div>
 
@@ -243,7 +245,7 @@ export default function Basket({ onNavigate, initialTab = null }) {
 
       {/* Content */}
       {loading ? (
-        <div style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: 60 }}>Chargement…</div>
+        <div style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: 60 }}>{t('loading')}</div>
       ) : error ? (
         <div style={{ color: '#ef4444', textAlign: 'center', marginTop: 60 }}>{error}</div>
       ) : activeTab === 'alertes' ? (
@@ -251,7 +253,7 @@ export default function Basket({ onNavigate, initialTab = null }) {
       ) : leads.length === 0 ? (
         <div style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: 60 }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
-          Aucun dossier en attente
+          {t('pages.basket.empty')}
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>

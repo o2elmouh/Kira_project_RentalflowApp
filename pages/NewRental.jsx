@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Trash2 } from 'lucide-react'
 import StepBar from './rental/StepBar'
 import ScanStep from './rental/ScanStep'
@@ -12,6 +13,7 @@ import {
 import { useCreateReservation } from '../src/hooks/useReservations'
 
 export default function NewRental({ onDone, onSigned, prefilledLead = null }) {
+  const { t } = useTranslation('common')
   const { profile } = useUser()
   const agencyId = profile?.agency_id
 
@@ -318,7 +320,7 @@ export default function NewRental({ onDone, onSigned, prefilledLead = null }) {
           lineHeight: '40px',
           fontFamily: "'Sofia Sans', 'Inter', sans-serif",
         }}>
-          New Rental
+          {t('pages.newRental.title')}
         </h2>
         <p style={{
           fontSize: 14,
@@ -327,7 +329,7 @@ export default function NewRental({ onDone, onSigned, prefilledLead = null }) {
           fontFamily: "'Sofia Sans', 'Inter', sans-serif",
           lineHeight: '22px',
         }}>
-          Complete all steps to generate the contract and invoice
+          {t('pages.newRental.subtitle')}
         </p>
       </div>
 

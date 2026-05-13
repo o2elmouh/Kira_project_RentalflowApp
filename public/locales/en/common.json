@@ -79,5 +79,49 @@
     "year": "Year",
     "allVehicles": "All vehicles",
     "noFleet": "No vehicle in the fleet"
+  },
+  "pages": {
+    "accounting": {
+      "title": "Accounting",
+      "subtitle": "Moroccan chart of accounts — double-entry — local data",
+      "tabs": {
+        "dashboard": "Dashboard",
+        "plan": "Chart of accounts",
+        "journal": "Journal",
+        "deposits": "Deposits",
+        "bilan": "Agency report"
+      }
+    },
+    "network": {
+      "title": "RentaFlow Network",
+      "subtitle": "Borrow vehicles from partner agencies when your fleet is full"
+    },
+    "basket": {
+      "title": "Inbox",
+      "subtitle": "Incoming WhatsApp & Gmail requests — automatic AI extraction",
+      "refresh": "↻ Refresh",
+      "tabLeads": "Leads",
+      "tabAlerts": "⚠ Alerts",
+      "empty": "No case pending",
+      "status": {
+        "pending": "Pending",
+        "waiting": "Quote to prepare",
+        "offer_sent": "Offer sent",
+        "accepted": "Accepted",
+        "processed": "Processed",
+        "ignored": "Ignored",
+        "converted": "Converted"
+      }
+    },
+    "newRental": {
+      "title": "New rental",
+      "subtitle": "Complete all steps to generate the contract and invoice",
+      "steps": {
+        "scan": "Scan ID",
+        "rental": "Rental details",
+        "photos": "Photos",
+        "contract": "Contract & Invoice"
+      }
+    }
   }
 }
