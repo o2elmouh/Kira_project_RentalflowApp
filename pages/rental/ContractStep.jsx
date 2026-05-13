@@ -158,8 +158,9 @@ export default function ContractStep({
     onCancel?.()
   }
 
-  const handleSaveAndQuit = async () => {
-    await revertEnsured()
+  // Save & quit leaves the contract intact — the agent can resume later.
+  // Only "Annuler la location" reverts the ensureContract side-effects.
+  const handleSaveAndQuit = () => {
     onSaveAndQuit?.()
   }
 
