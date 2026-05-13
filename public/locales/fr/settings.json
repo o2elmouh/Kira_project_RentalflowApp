@@ -46,7 +46,18 @@
     "insurancePlaceholder": "Ex: ASS-2024-00123",
     "saveBtn": "Enregistrer les paramètres",
     "saved": "Enregistré",
-    "pdfModel": "Modèle de contrat PDF"
+    "pdfModel": "Modèle de contrat PDF",
+    "fileTypeError": "Le fichier doit être un PDF.",
+    "fileSizeError": "5 MB maximum.",
+    "deleteConfirm": "Supprimer le modèle PDF ?",
+    "deleteError": "Échec de la suppression",
+    "loading": "Chargement…",
+    "viewModel": "Voir le modèle actuel",
+    "delete": "Supprimer",
+    "replace": "Remplacer",
+    "uploading": "Téléversement…",
+    "uploadBtn": "Téléverser un modèle",
+    "pdfDesc": "Téléversez votre propre modèle de contrat PDF. Si renseigné, ce modèle sera utilisé comme base pour la signature électronique (annexé au contrat généré). 5 MB max — format PDF uniquement."
   },
   "fleetConfig": {
     "title": "Configuration parc",
@@ -60,7 +71,11 @@
       "oilChange": "Vidange (km)",
       "timingBelt": "Courroie distribution (km)",
       "extensible": "Extension possible"
-    }
+    },
+    "technicalControl": "Contrôle technique (ans)",
+    "duration": "Durée (ans)",
+    "generalWarranty": "Garantie générale",
+    "resetConfirm": "Réinitialiser la configuration parc aux valeurs par défaut ?"
   },
   "general": {
     "tabs": {
@@ -114,5 +129,32 @@
     "cancel": "Annuler",
     "confirm": "Confirmer l'anonymisation",
     "anonymizing": "En cours..."
+  },
+  "generalConfig": {
+    "defaultSignature": "Signature par défaut"
+  },
+  "integrations": {
+    "gmailDisconnect": "Déconnecter Gmail ?",
+    "gmailDisconnected": "Gmail déconnecté.",
+    "gmailSaved": "Intégration Gmail enregistrée.",
+    "update": "Mettre à jour",
+    "syncTriggered": "Synchronisation déclenchée."
+  },
+  "telemetrics": {
+    "deviceId": "ID boîtier",
+    "noManualLink": "Aucune association manuelle. Utilisez le champ \"ID boîtier\" dans la fiche véhicule, ou ajoutez une entrée ici.",
+    "save": "Enregistrer",
+    "saved": "✓ Sauvegardé"
+  },
+  "rentalOptions": {
+    "optionName": "Nom de l'option",
+    "delete": "Supprimer"
+  },
+  "signature": {
+    "savedSignature": "Signature enregistrée"
+  },
+  "team": {
+    "inviting": "Envoi…",
+    "invite": "Inviter"
   }
 }

@@ -31,8 +31,8 @@ export default function AgenceTab() {
 
   const uploadTemplate = async (file) => {
     if (!file) return
-    if (file.type !== 'application/pdf') { setTplError('Le fichier doit être un PDF.'); return }
-    if (file.size > 5 * 1024 * 1024)     { setTplError('5 MB maximum.'); return }
+    if (file.type !== 'application/pdf') { setTplError(t('agency.fileTypeError')); return }
+    if (file.size > 5 * 1024 * 1024)     { setTplError(t('agency.fileSizeError')); return }
     setTplUploading(true); setTplError(null)
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -58,14 +58,14 @@ export default function AgenceTab() {
   }
 
   const removeTemplate = async () => {
-    if (!confirm('Supprimer le modèle PDF ?')) return
+    if (!confirm(t('agency.deleteConfirm'))) return
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch(`${API_URL}/agency/contract-template`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${session?.access_token || ''}` },
       })
-      if (!res.ok) throw new Error('Échec de la suppression')
+      if (!res.ok) throw new Error(t('agency.deleteError'))
       setAgency(p => ({ ...p, contract_template_url: null }))
     } catch (err) {
       setTplError(err.message)
@@ -94,26 +94,26 @@ export default function AgenceTab() {
     </div>
   )
 
-  if (loading) return <p style={{ color: 'var(--text3)', fontSize: 13 }}>Chargement…</p>
+  if (loading) return <p style={{ color: 'var(--text3)', fontSize: 13 }}>{t('agency.loading')}</p>
 
   return (
     <>
       <div className="card" style={{ maxWidth: 680 }}>
         <div className="card-header">
           <h3>{t('agency.generalInfo')}</h3>
-          {saved && <span className="badge badge-green">Enregistré</span>}
+          {saved && <span className="badge badge-green">{t('agency.saved')}</span>}
         </div>
         <div className="card-body">
           <div className="form-row cols-2">
-            {field('Nom de l\'agence', 'name', 'Ex: Location Auto Maroc')}
-            {field('Ville', 'city', 'Ex: Casablanca')}
+            {field(t('agency.name'), 'name', t('agency.namePlaceholder'))}
+            {field(t('agency.city'), 'city', t('agency.cityPlaceholder'))}
           </div>
           <div className="form-row cols-2">
-            {field('Adresse', 'address', 'Ex: 12 Rue des Fleurs, Casablanca')}
-            {field('Téléphone', 'phone', 'Ex: +212 6XX XXX XXX')}
+            {field(t('agency.address'), 'address', t('agency.addressPlaceholder'))}
+            {field(t('agency.phone'), 'phone', t('agency.phonePlaceholder'))}
           </div>
           <div className="form-row cols-1">
-            {field('Email de l\'agence', 'email', 'Ex: contact@agence.ma')}
+            {field(t('agency.email'), 'email', t('agency.emailPlaceholder'))}
           </div>
         </div>
       </div>
@@ -124,17 +124,17 @@ export default function AgenceTab() {
         </div>
         <div className="card-body">
           <div className="form-row cols-2">
-            {field('ICE', 'ice', 'Identifiant Commun de l\'Entreprise')}
-            {field('RC', 'rc', 'Registre de Commerce')}
+            {field(t('agency.ice'), 'ice', t('agency.icePlaceholder'))}
+            {field(t('agency.rc'), 'rc', t('agency.rcPlaceholder'))}
           </div>
           <div className="form-row cols-2">
-            {field('IF — Identifiant Fiscal', 'if_number', 'Ex: 12345678')}
-            {field('Patente', 'patente', 'Numéro de patente')}
+            {field(t('agency.if'), 'if_number', t('agency.ifPlaceholder'))}
+            {field(t('agency.patente'), 'patente', t('agency.patentePlaceholder'))}
           </div>
           <div className="form-row cols-1">
-            {field('N° Police d\'assurance', 'insurance_policy', 'Ex: ASS-2024-00123')}
+            {field(t('agency.insurance'), 'insurance_policy', t('agency.insurancePlaceholder'))}
           </div>
-          <button className="btn btn-primary mt-2" onClick={save}>Enregistrer les paramètres</button>
+          <button className="btn btn-primary mt-2" onClick={save}>{t('agency.saveBtn')}</button>
         </div>
       </div>
 
@@ -144,26 +144,24 @@ export default function AgenceTab() {
         </div>
         <div className="card-body">
           <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 12 }}>
-            Téléversez votre propre modèle de contrat PDF. Si renseigné, ce
-            modèle sera utilisé comme base pour la signature électronique
-            (annexé au contrat généré). 5 MB max — format PDF uniquement.
+            {t('agency.pdfDesc')}
           </p>
 
           {agency.contract_template_url ? (
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <a className="btn btn-ghost" href={agency.contract_template_url} target="_blank" rel="noopener noreferrer">
-                Voir le modèle actuel
+                {t('agency.viewModel')}
               </a>
               <button className="btn btn-ghost" style={{ color: '#CF4500' }} onClick={removeTemplate} disabled={tplUploading}>
-                Supprimer
+                {t('agency.delete')}
               </button>
               <button className="btn btn-primary" onClick={() => fileInputRef.current?.click()} disabled={tplUploading}>
-                Remplacer
+                {t('agency.replace')}
               </button>
             </div>
           ) : (
             <button className="btn btn-primary" onClick={() => fileInputRef.current?.click()} disabled={tplUploading}>
-              {tplUploading ? 'Téléversement…' : 'Téléverser un modèle'}
+              {tplUploading ? t('agency.uploading') : t('agency.uploadBtn')}
             </button>
           )}
 

@@ -46,7 +46,18 @@
     "insurancePlaceholder": "مثال: ASS-2024-00123",
     "saveBtn": "حفظ الإعدادات",
     "saved": "تم الحفظ",
-    "pdfModel": "نموذج عقد PDF"
+    "pdfModel": "نموذج عقد PDF",
+    "fileTypeError": "يجب أن يكون الملف بصيغة PDF.",
+    "fileSizeError": "بحد أقصى 5 ميجابايت.",
+    "deleteConfirm": "حذف قالب PDF؟",
+    "deleteError": "فشل الحذف",
+    "loading": "جاري التحميل…",
+    "viewModel": "عرض القالب الحالي",
+    "delete": "حذف",
+    "replace": "استبدال",
+    "uploading": "جاري الرفع…",
+    "uploadBtn": "رفع قالب",
+    "pdfDesc": "قم برفع نموذج عقدك الخاص بصيغة PDF. إذا تم تحديده، سيتم استخدام هذا النموذج كأساس للتوقيع الإلكتروني (مرفق بالعقد المُنشأ). بحد أقصى 5 ميجابايت - بصيغة PDF فقط."
   },
   "fleetConfig": {
     "title": "إعدادات الأسطول",
@@ -60,7 +71,11 @@
       "oilChange": "تغيير الزيت (كم)",
       "timingBelt": "سير التوزيع (كم)",
       "extensible": "قابل للتمديد"
-    }
+    },
+    "technicalControl": "الفحص الفني (سنوات)",
+    "duration": "المدة (سنوات)",
+    "generalWarranty": "الضمان العام",
+    "resetConfirm": "إعادة تعيين إعدادات الأسطول إلى القيم الافتراضية؟"
   },
   "general": {
     "tabs": {
@@ -114,5 +129,32 @@
     "cancel": "إلغاء",
     "confirm": "تأكيد إزالة البيانات",
     "anonymizing": "جارٍ التنفيذ..."
+  },
+  "generalConfig": {
+    "defaultSignature": "التوقيع الافتراضي"
+  },
+  "integrations": {
+    "gmailDisconnect": "قطع الاتصال بـ Gmail؟",
+    "gmailDisconnected": "تم قطع الاتصال بـ Gmail.",
+    "gmailSaved": "تم حفظ تكامل Gmail.",
+    "update": "تحديث",
+    "syncTriggered": "تم بدء المزامنة."
+  },
+  "telemetrics": {
+    "deviceId": "معرف الجهاز",
+    "noManualLink": "لا توجد روابط يدوية. استخدم حقل \"معرف الجهاز\" في بطاقة المركبة، أو أضف إدخالاً هنا.",
+    "save": "حفظ",
+    "saved": "✓ تم الحفظ"
+  },
+  "rentalOptions": {
+    "optionName": "اسم الخيار",
+    "delete": "حذف"
+  },
+  "signature": {
+    "savedSignature": "التوقيع المحفوظ"
+  },
+  "team": {
+    "inviting": "جاري الإرسال…",
+    "invite": "إرسال دعوة"
   }
 }

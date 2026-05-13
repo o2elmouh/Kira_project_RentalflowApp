@@ -34,7 +34,18 @@
     "insurancePlaceholder": "Ex: ASS-2024-00123",
     "saveBtn": "Save settings",
     "saved": "Saved",
-    "pdfModel": "PDF contract template"
+    "pdfModel": "PDF contract template",
+    "fileTypeError": "File must be a PDF.",
+    "fileSizeError": "5 MB maximum.",
+    "deleteConfirm": "Delete PDF template?",
+    "deleteError": "Delete failed",
+    "loading": "Loading…",
+    "viewModel": "View current template",
+    "delete": "Delete",
+    "replace": "Replace",
+    "uploading": "Uploading…",
+    "uploadBtn": "Upload a template",
+    "pdfDesc": "Upload your own contract PDF template. If set, this template will be used as the basis for electronic signature (attached to the generated contract). 5 MB max — PDF format only."
   },
   "fleetConfig": {
     "title": "Fleet configuration",
@@ -48,7 +59,11 @@
       "oilChange": "Oil change (km)",
       "timingBelt": "Timing belt (km)",
       "extensible": "Extensible"
-    }
+    },
+    "technicalControl": "Technical control (years)",
+    "duration": "Duration (years)",
+    "generalWarranty": "General warranty",
+    "resetConfirm": "Reset fleet configuration to default values?"
   },
   "general": {
     "tabs": {
@@ -83,5 +98,32 @@
       "comingSoon": "More general parameters will be added here soon.",
       "kmNote": "ℹ️ Mileage limit is now configurable per vehicle in the Fleet page."
     }
+  },
+  "generalConfig": {
+    "defaultSignature": "Default signature"
+  },
+  "integrations": {
+    "gmailDisconnect": "Disconnect Gmail?",
+    "gmailDisconnected": "Gmail disconnected.",
+    "gmailSaved": "Gmail integration saved.",
+    "update": "Update",
+    "syncTriggered": "Sync triggered."
+  },
+  "telemetrics": {
+    "deviceId": "Device ID",
+    "noManualLink": "No manual links. Use the \"Device ID\" field in the vehicle card, or add an entry here.",
+    "save": "Save",
+    "saved": "✓ Saved"
+  },
+  "rentalOptions": {
+    "optionName": "Option name",
+    "delete": "Delete"
+  },
+  "signature": {
+    "savedSignature": "Saved signature"
+  },
+  "team": {
+    "inviting": "Sending…",
+    "invite": "Invite"
   }
 }
