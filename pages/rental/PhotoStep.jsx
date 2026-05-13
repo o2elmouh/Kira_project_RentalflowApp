@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Camera, CheckCircle, ArrowLeft, X, ArrowRight } from 'lucide-react'
 import { compressImage } from '../../utils/imageUtils'
 import StepButtons from './StepButtons'
@@ -13,16 +14,16 @@ const SLOT_IMAGES = {
   damage:   '/photos/détail_dommage.png',
 }
 
-const PHOTO_SLOTS = [
-  { id: 'front',    label: 'Avant' },
-  { id: 'rear',     label: 'Arrière' },
-  { id: 'left',     label: 'Côté gauche' },
-  { id: 'right',    label: 'Côté droit' },
-  { id: 'interior', label: 'Intérieur' },
-  { id: 'damage',   label: 'Détail / Dommage' },
-]
-
 export default function PhotoStep({ onNext, onBack, onSaveAndQuit, onCancel, initialPhotos }) {
+  const { t } = useTranslation('rental')
+  const PHOTO_SLOTS = [
+    { id: 'front',    label: t('photoStep.front') },
+    { id: 'rear',     label: t('photoStep.back') },
+    { id: 'left',     label: t('photoStep.leftSide') },
+    { id: 'right',    label: t('photoStep.rightSide') },
+    { id: 'interior', label: t('photoStep.interior') },
+    { id: 'damage',   label: t('photoStep.damage') },
+  ]
   const [photos,     setPhotos]     = useState(initialPhotos || {})
   const [loading,    setLoading]    = useState({})
   const [activeSlot, setActiveSlot] = useState(null)
@@ -64,8 +65,8 @@ export default function PhotoStep({ onNext, onBack, onSaveAndQuit, onCancel, ini
             {activeSlot
               ? `📷 ${PHOTO_SLOTS.find(s => s.id === activeSlot)?.label}`
               : takenCount > 0
-                ? `${takenCount} / ${PHOTO_SLOTS.length} photos`
-                : 'Appuyez sur une zone'}
+                ? t('photoStep.progress', { n: takenCount, total: PHOTO_SLOTS.length })
+                : t('photoStep.tapZone')}
           </div>
         </div>
 
@@ -121,7 +122,7 @@ export default function PhotoStep({ onNext, onBack, onSaveAndQuit, onCancel, ini
                 {photos[id] && (
                   <button className="btn-outline-ink" style={{ padding: '3px 10px', fontSize: 11 }}
                     onClick={() => triggerCapture(id)}>
-                    <Camera size={10} /> Reprendre
+                    <Camera size={10} /> {t('photoStep.retake')}
                   </button>
                 )}
               </div>
@@ -133,26 +134,26 @@ export default function PhotoStep({ onNext, onBack, onSaveAndQuit, onCancel, ini
       {takenCount > 0 && (
         <div className="alert alert-success mb-4" style={{ fontSize: 12 }}>
           <CheckCircle size={14} />
-          <span>{takenCount} photo{takenCount > 1 ? 's' : ''} prise{takenCount > 1 ? 's' : ''}. Elles seront incluses dans le contrat PDF.</span>
+          <span>{t('photoStep.photosTaken', { n: takenCount })}</span>
         </div>
       )}
 
       <StepButtons
         leftBtns={
           <>
-            <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onBack}><ArrowLeft size={15} /> Retour</button>
+            <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={onBack}><ArrowLeft size={15} /> {t('photoStep.backBtn')}</button>
             <button className="btn-outline-ink" style={{ fontSize: 14, color: '#CF4500', borderColor: '#CF4500' }} onClick={onCancel}>
-              <X size={15} /> Annuler la location
+              <X size={15} /> {t('photoStep.cancelBtn')}
             </button>
           </>
         }
         rightBtns={
           <>
             <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={() => onSaveAndQuit(photos)}>
-              💾 Sauvegarder & quitter
+              {t('photoStep.saveQuitBtn')}
             </button>
             <button className="btn-ink" style={{ fontSize: 15 }} onClick={() => onNext(photos)}>
-              Continuer <ArrowRight size={15} />
+              {t('photoStep.continueBtn')} <ArrowRight size={15} />
             </button>
           </>
         }

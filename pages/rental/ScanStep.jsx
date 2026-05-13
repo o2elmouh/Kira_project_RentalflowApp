@@ -48,7 +48,7 @@ function detectIdentityMismatch(cinExtracted, licenseExtracted) {
 }
 
 export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClient }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['rental', 'common'])
   const cinRef = useRef()
   const licRef = useRef()
 
@@ -126,29 +126,27 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
               <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <PenLine size={18} style={{ color: 'var(--accent)' }} />
-                Saisie manuelle recommandée
+                {t('rental:scanStep.manualEntryTitle')}
               </h3>
               <button className="btn-outline-ink" style={{ padding: '4px 12px', fontSize: 13 }} onClick={dismissManualEntryPrompt}>
                 <X size={14} />
               </button>
             </div>
             <p style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 16 }}>
-              Après {scanAttemptCount[manualEntrySlot ?? 'cin']} tentatives, le scanner n'a pas pu extraire
-              tous les champs du {manualEntrySlot === 'license' ? 'permis de conduire' : 'CIN / passeport'}.
+              {t('rental:scanStep.manualEntryReason', { n: scanAttemptCount[manualEntrySlot ?? 'cin'], doc: manualEntrySlot === 'license' ? t('rental:scanStep.docLicense') : t('rental:scanStep.docCin') })}
             </p>
             <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>
-              Pour gagner du temps, remplissez les champs directement dans le formulaire ci-dessous.
-              Vous pouvez également réessayer avec une photo plus lumineuse.
+              {t('rental:scanStep.manualEntryHint')}
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn-ink" style={{ flex: 1, justifyContent: 'center', fontSize: 14 }} onClick={dismissManualEntryPrompt}>
-                <PenLine size={13} /> Saisir manuellement
+                <PenLine size={13} /> {t('rental:scanStep.manualEntryConfirm')}
               </button>
               <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={() => {
                 if (manualEntrySlot) resetAttemptCount(manualEntrySlot)
                 dismissManualEntryPrompt()
               }}>
-                Réessayer
+                {t('rental:scanStep.retryBtn')}
               </button>
             </div>
           </div>
@@ -177,10 +175,10 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
         {/* CIN Scan */}
         <div className="card">
           <div className="card-header">
-            <h3>Carte nationale (CIN) ou Passeport</h3>
+            <h3>{t('rental:scanStep.cinSection')}</h3>
             {extracted.cin && (
               <span className="badge badge-green">
-                <CheckCircle size={11} /> {extracted.cin.docType === 'passport' ? 'Passport MRZ' : 'CIN'} scanné
+                <CheckCircle size={11} /> {t('rental:scanStep.scannedBadge', { type: extracted.cin.docType === 'passport' ? t('rental:scanStep.passportType') : 'CIN' })}
               </span>
             )}
             {scanAttemptCount.cin > 0 && !extracted.cin && (
@@ -195,8 +193,8 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
               onClick={() => !scanning && cinRef.current?.click()}
             >
               <div className="scan-icon">🪪</div>
-              <div className="scan-title">Importer CIN / Passeport</div>
-              <div className="scan-hint">Cliquez ou déposez un fichier (JPG, PNG)</div>
+              <div className="scan-title">{t('rental:scanStep.importCin')}</div>
+              <div className="scan-hint">{t('rental:scanStep.importHint')}</div>
               {scanning && activeScanType === 'cin' && (
                 <div className="progress-bar">
                   <div className="progress-fill" style={{ width: `${progress}%` }} />
@@ -216,9 +214,9 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
         {/* License Scan */}
         <div className="card">
           <div className="card-header">
-            <h3>Permis de conduire</h3>
+            <h3>{t('rental:scanStep.licenseSection')}</h3>
             {extracted.license && (
-              <span className="badge badge-green"><CheckCircle size={11} /> Permis scanné</span>
+              <span className="badge badge-green"><CheckCircle size={11} /> {t('rental:scanStep.licenseScanned')}</span>
             )}
             {scanAttemptCount.license > 0 && !extracted.license && (
               <span className="badge badge-orange" title={`${scanAttemptCount.license} tentative(s)`}>
@@ -232,8 +230,8 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
               onClick={() => !scanning && licRef.current?.click()}
             >
               <div className="scan-icon">🪙</div>
-              <div className="scan-title">Importer le permis</div>
-              <div className="scan-hint">Recto du permis marocain ou européen</div>
+              <div className="scan-title">{t('rental:scanStep.importLicense')}</div>
+              <div className="scan-hint">{t('rental:scanStep.licenseHint')}</div>
               {scanning && activeScanType === 'license' && (
                 <div className="progress-bar">
                   <div className="progress-fill" style={{ width: `${progress}%` }} />
@@ -254,15 +252,15 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
       {/* Extracted / Editable fields */}
       <div className="card">
         <div className="card-header">
-          <h3>Informations client</h3>
-          <span style={{ fontSize: 12, color: 'var(--text3)' }}>Vérifiez et corrigez les résultats OCR</span>
+          <h3>{t('rental:scanStep.clientInfo')}</h3>
+          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{t('rental:scanStep.ocrHint')}</span>
         </div>
         <div className="card-body">
           <div className="form-row cols-3">
             {[
-              { label: 'Prénom *', key: 'firstName' },
-              { label: 'Nom *', key: 'lastName' },
-              { label: 'Nationalité', key: 'nationality' },
+              { label: t('rental:scanStep.firstNameReq'), key: 'firstName' },
+              { label: t('rental:scanStep.lastNameReq'), key: 'lastName' },
+              { label: t('rental:scanStep.nationality'), key: 'nationality' },
             ].map(({ label, key }) => (
               <div className="form-group" key={key}>
                 <label className="form-label">{label}</label>
@@ -276,10 +274,10 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
           </div>
           <div className="form-row cols-2">
             {[
-              { label: 'N° CIN / Passeport *', key: 'cinNumber' },
-              { label: 'Expiration CIN', key: 'cinExpiry', type: 'date' },
-              { label: 'N° Permis de conduire *', key: 'drivingLicenseNumber' },
-              { label: 'Expiration permis', key: 'licenseExpiry', type: 'date' },
+              { label: t('rental:scanStep.cinNumberReq'), key: 'cinNumber' },
+              { label: t('rental:scanStep.cinExpiryShort'), key: 'cinExpiry', type: 'date' },
+              { label: t('rental:scanStep.licenseNumberReq'), key: 'drivingLicenseNumber' },
+              { label: t('rental:scanStep.licenseExpiryShort'), key: 'licenseExpiry', type: 'date' },
             ].map(({ label, key, type = 'text' }) => (
               <div className="form-group" key={key}>
                 <label className="form-label">{label}</label>
@@ -294,8 +292,8 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
           </div>
           <div className="form-row cols-2">
             {[
-              { label: 'Téléphone', key: 'phone' },
-              { label: 'Email', key: 'email' },
+              { label: t('rental:scanStep.phone'), key: 'phone' },
+              { label: t('rental:scanStep.email'), key: 'email' },
             ].map(({ label, key }) => (
               <div className="form-group" key={key}>
                 <label className="form-label">{label}</label>
@@ -309,7 +307,7 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
           </div>
           <div className="form-row cols-2">
             <div className="form-group">
-              <label className="form-label">Date de naissance</label>
+              <label className="form-label">{t('rental:scanStep.dateOfBirth')}</label>
               <input
                 className="form-input text-mono"
                 type="date"
@@ -320,7 +318,7 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
           </div>
           <div className="alert alert-info mt-2" style={{ fontSize: 12 }}>
             <AlertCircle size={14} />
-            <span>Conformément à la Loi 09-08 (CNDP), seuls les champs texte extraits sont conservés — aucune image de document n'est stockée.</span>
+            <span>{t('rental:scanStep.law0908Notice')}</span>
           </div>
         </div>
       </div>
@@ -330,16 +328,16 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
       <StepButtons
         leftBtns={
           <button className="btn-outline-ink" style={{ fontSize: 14, color: '#CF4500', borderColor: '#CF4500' }} onClick={onCancel}>
-            <X size={15} /> Annuler
+            <X size={15} /> {t('rental:scanStep.cancelShort')}
           </button>
         }
         rightBtns={
           <>
             <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={() => onSaveAndQuit(clientData)}>
-              💾 Sauvegarder & quitter
+              {t('rental:scanStep.saveQuitBtn')}
             </button>
             <button className="btn-ink" style={{ fontSize: 15 }} disabled={!allFilled} onClick={handleContinue}>
-              Continuer <ArrowRight size={15} />
+              {t('rental:scanStep.continueBtn')} <ArrowRight size={15} />
             </button>
           </>
         }
