@@ -63,6 +63,7 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
     showManualEntryPrompt,
     manualEntrySlot,
     startScan,
+    simulateScan,
     updateField,
     dismissManualEntryPrompt,
     resetAttemptCount,
@@ -208,6 +209,17 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
               ref={cinRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => handleFile('cin', e.target.files?.[0])}
             />
+            {import.meta.env.DEV && (
+              <button
+                type="button"
+                className="btn-outline-ink"
+                style={{ fontSize: 12, marginTop: 8, width: '100%', justifyContent: 'center' }}
+                disabled={scanning}
+                onClick={() => simulateScan('cin')}
+              >
+                🧪 Simuler scan CIN
+              </button>
+            )}
           </div>
         </div>
 
@@ -245,6 +257,17 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
               ref={licRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => handleFile('license', e.target.files?.[0])}
             />
+            {import.meta.env.DEV && (
+              <button
+                type="button"
+                className="btn-outline-ink"
+                style={{ fontSize: 12, marginTop: 8, width: '100%', justifyContent: 'center' }}
+                disabled={scanning}
+                onClick={() => simulateScan('license')}
+              >
+                🧪 Simuler scan permis
+              </button>
+            )}
           </div>
         </div>
       </div>
