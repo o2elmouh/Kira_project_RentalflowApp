@@ -169,7 +169,7 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
         color: 'var(--text2, #5A564F)',
       }}>
         <Shield size={14} style={{ flexShrink: 0, marginTop: 2, color: 'var(--accent, #2D7A47)' }} />
-        <span>{t('privacy.scanNotice')}</span>
+        <span>{t('common:privacy.scanNotice')}</span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
@@ -209,17 +209,15 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
               ref={cinRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => handleFile('cin', e.target.files?.[0])}
             />
-            {import.meta.env.DEV && (
-              <button
-                type="button"
-                className="btn-outline-ink"
-                style={{ fontSize: 12, marginTop: 8, width: '100%', justifyContent: 'center' }}
-                disabled={scanning}
-                onClick={() => simulateScan('cin')}
-              >
-                🧪 Simuler scan CIN
-              </button>
-            )}
+            <button
+              type="button"
+              className="btn-outline-ink"
+              style={{ fontSize: 12, marginTop: 8, width: '100%', justifyContent: 'center' }}
+              disabled={scanning}
+              onClick={() => simulateScan('cin')}
+            >
+              🧪 Simuler scan CIN
+            </button>
           </div>
         </div>
 
@@ -257,17 +255,15 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
               ref={licRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => handleFile('license', e.target.files?.[0])}
             />
-            {import.meta.env.DEV && (
-              <button
-                type="button"
-                className="btn-outline-ink"
-                style={{ fontSize: 12, marginTop: 8, width: '100%', justifyContent: 'center' }}
-                disabled={scanning}
-                onClick={() => simulateScan('license')}
-              >
-                🧪 Simuler scan permis
-              </button>
-            )}
+            <button
+              type="button"
+              className="btn-outline-ink"
+              style={{ fontSize: 12, marginTop: 8, width: '100%', justifyContent: 'center' }}
+              disabled={scanning}
+              onClick={() => simulateScan('license')}
+            >
+              🧪 Simuler scan permis
+            </button>
           </div>
         </div>
       </div>
