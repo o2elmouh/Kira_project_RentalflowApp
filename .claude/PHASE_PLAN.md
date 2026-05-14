@@ -6,6 +6,97 @@
 
 ---
 
+## Status audit (2026-05-14, staging v1.10.4)
+
+| Phase | Status | Evidence in codebase |
+|---|---|---|
+| **1** — Privacy notice | ✅ SHIPPED v1.4.0 | `pages/legal/PrivacyPolicy.jsx`, Sidebar footer link, ScanStep notice |
+| **2** — Pending demands cleanup | ✅ SHIPPED v1.4.1 | `server/scripts/cleanupPendingDemands.js` + `.test.js`, `supabase/migrations/20260503_pending_demands_anonymized.sql`, `package.json` `cleanup:pending` script, cron wired in `server/index.js:95` |
+| **3** — Right to erasure | ✅ SHIPPED v1.5.0 | `server/routes/admin.js` POST `/admin/clients/:id/anonymize`, `audit_log` table (migration `20260503_clients_anonymization.sql`), `pages/settings/PrivacyTab.jsx`, `lib/api.js:88 anonymizeClient()`, tests in `server/routes/admin.test.js` |
+| **4** — Retention automation | ✅ SHIPPED v1.10.5 (2026-05-15) | `supabase/migrations/20260515_agencies_retention.sql`, `server/lib/anonymize.js` (shared helper), `server/scripts/enforceRetention.js` + `.test.js` (8 cases), `server/routes/agency.js` PATCH accepts `retention_years` 5-30, `pages/settings/PrivacyTab.jsx` settings UI, monthly cron `30 4 1 * *` in `server/index.js`, `enforce:retention` npm script |
+| **5** — Encryption at rest | ❌ NOT STARTED | No `server/lib/encryption.js`, no `server/routes/clients.js`, no `_enc` columns, no `ENCRYPT_PII` env flag, frontend still uses `lib/db.js` direct Supabase reads |
+
+---
+
+## Phase 4 — Remaining work
+
+All of the original plan still applies. Concrete punch list:
+
+1. **Migration** `supabase/migrations/20260514_agencies_retention.sql`:
+   ```sql
+   ALTER TABLE agencies
+     ADD COLUMN IF NOT EXISTS retention_years int NOT NULL DEFAULT 10
+       CHECK (retention_years BETWEEN 5 AND 30);
+   ```
+2. **Backend script** `server/scripts/enforceRetention.js` — for each agency, find clients where every contract is `status='closed'` AND `MAX(closed_at) < NOW() - retention_years * INTERVAL '1 year'` AND `anonymized_at IS NULL`, then call a shared anonymize helper. Reuse logic from `server/routes/admin.js` — refactor it into `server/lib/anonymize.js` first so both the manual endpoint and the cron use the same code path.
+3. **Tests** `server/scripts/enforceRetention.test.js` — backdated test data covering three cases: closed >retention → anonymized, closed <retention → skipped, has open contract → skipped.
+4. **Settings UI** — extend `pages/settings/PrivacyTab.jsx` with a "Retention period" number input (admin-only). Wire through `lib/api.js` → `server/routes/agency.js` PATCH (extend the existing route).
+5. **npm script** — `"enforce:retention": "node server/scripts/enforceRetention.js"` in `package.json`.
+6. **Cron wiring** — add to `server/index.js` alongside the existing `cleanup:pending` cron, monthly at 04:00 UTC on the 1st. Pattern is already there at `server/index.js:95`.
+7. **Regression check** — Phase 3 anonymize endpoint must continue working unchanged after the helper extraction. Run `admin.test.js`.
+8. **Version bump** — v1.5.1 (patch).
+
+Estimated effort: 3-4 hours including tests.
+
+---
+
+## Phase 5 — Remaining work
+
+Nothing has been started. This is the high-risk phase. Punch list per the original plan stands, but worth re-validating these decisions before kicking off:
+
+### Pre-work (decisions to confirm with user)
+
+1. **Search by CIN** — does the current `pages/Clients.jsx` filter let users search by CIN number? If yes, Phase 5 needs a deterministic hash column (e.g. `id_number_hash text`) so search still works without decryption. **Check by:** opening Clients page and looking at the filter inputs.
+2. **PDF generation** — does `utils/pdf.js` read `client.cinNumber` directly? If yes, the PDF generation flow must call the backend for the decrypted value (it currently pulls from props, which would work).
+3. **`audit_log` already exists** (Phase 3) — Phase 5 should add entries like `'client.encrypt.read'` on every decryption to track who saw raw PII. Or skip per too-noisy. Decision: SKIP for Phase 5, revisit if auditors ask.
+
+### Punch list
+
+1. **Extract encryption helper** `server/lib/encryption.js` from the existing AES-256-GCM helpers at `server/routes/leads.js:24-45`. Both the leads pipeline and the new clients route will import from here.
+2. **New backend route** `server/routes/clients.js` — `GET /clients`, `GET /clients/:id`, `POST /clients`, `PATCH /clients/:id`, `DELETE /clients/:id`. Encrypt-on-write, decrypt-on-read for `id_number`, `driving_license_num`, `date_of_birth`. Reuse `requireAuth` + agency-isolation pattern.
+3. **Migration** `supabase/migrations/20260XXX_clients_encrypt.sql` — adds `id_number_enc text`, `driving_license_num_enc text`, `date_of_birth_enc text`. **Keep** the original plaintext columns through soak so rollback is one env-var flip.
+4. **Data migration script** `server/scripts/migrateClientsEncryption.js` — one-time. Reads each client row, encrypts the 3 sensitive fields, writes to `_enc` columns. **Must be idempotent** — re-runnable without double-encrypting.
+5. **Feature flag** `ENCRYPT_PII=true` env var. Backend reads/writes plaintext when false (current behaviour), `_enc` columns when true.
+6. **Frontend switch** — remove `getClients/saveClient/clientFromDb/clientToDb` from `lib/db.js`. Add the equivalent to `lib/api.js`. Update import sites:
+   - `pages/Clients.jsx`
+   - `pages/Restitution.jsx`
+   - `pages/Basket.jsx`
+   - `pages/rental/ScanStep.jsx`
+   - `pages/rental/ContractStep.jsx`
+   - `pages/clients/*` (if present)
+   Pagination may be needed for large client lists — backend round-trip is slower than direct Supabase.
+7. **Tests**
+   - `server/lib/encryption.test.js` — round-trip (plaintext → encrypt → decrypt → equality), handles null, doesn't double-encrypt.
+   - `server/routes/clients.test.js` — GET returns decrypted, POST encrypts before storage, agency isolation enforced, anonymize from Phase 3 still works.
+   - `server/scripts/migrateClientsEncryption.test.js` — idempotent, null-safe.
+8. **Search/filter compatibility** — see pre-work (1). If CIN search is in scope, add `id_number_hash` column populated via `sha256(plaintext)` on write, then change the filter query to search by hash.
+9. **Anonymization compatibility** — verify Phase 3 anonymize sets `id_number_enc = null` (not just `id_number = null`) when feature flag is on. May need a tweak to `server/routes/admin.js`.
+10. **Zero-downtime rollout sequence:**
+    1. Deploy code with feature flag OFF — new endpoints exist but write plaintext.
+    2. Run `migrateClientsEncryption.js` to backfill `_enc` columns.
+    3. Verify `_enc` columns populated and decryptable.
+    4. Flip `ENCRYPT_PII=true` in Railway env, restart.
+    5. Soak 1 week. If anything breaks → flip flag false (instant rollback).
+    6. After 2 weeks clean: drop plaintext columns in a follow-up migration `20260XXX_clients_drop_plaintext.sql`.
+11. **Version bump** — v1.6.0 (minor — major architectural change but feature-flagged).
+
+Estimated effort: 2-3 working days for the code, plus 2-week soak time.
+
+---
+
+## Soak cadence (revised given today is 2026-05-14)
+
+```
+Phase 1 → SHIPPED v1.4.0  (2026-05-02)
+Phase 2 → SHIPPED v1.4.1  (around 2026-05-04)
+Phase 3 → SHIPPED v1.5.0  (around 2026-05-12)
+Phase 4 → ready to start now; target ship: 2026-05-15-17, then 2-week soak
+Phase 5 → start ~2026-05-29 after Phase 4 soak; target ship: ~2026-06-05
+```
+
+
+---
+
 ## Decisions already locked in
 
 - **Retention period:** 10 years post-contract closure (matches Moroccan accounting/tax law).

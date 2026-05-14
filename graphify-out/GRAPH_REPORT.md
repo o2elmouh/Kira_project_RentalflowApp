@@ -1,5 +1,14 @@
 # Graph Report - .  (2026-05-13)
 
+> **Manual edits since last full regen (2026-05-15, v1.10.5 — Law 09-08 Phase 4):**
+> - NEW `server/lib/anonymize.js` `anonymizeClient({ clientId, agencyId, actorUserId, action, reason, metadata, db })` — shared helper for manual + automated anonymization. Writes `clients` row + `audit_log` row. Idempotent (`skipped` on already-anonymized).
+> - NEW `server/scripts/enforceRetention.js` `enforceRetention(db?)` — monthly cron entry point. Iterates agencies, picks oldest admin as actor, anonymizes clients whose contracts are all closed past `agency.retention_years`.
+> - NEW `supabase/migrations/20260515_agencies_retention.sql` — adds `agencies.retention_years int DEFAULT 10 CHECK 5-30`.
+> - MODIFIED `server/routes/admin.js` — now calls `anonymizeClient` helper instead of inlining the update + audit logic.
+> - MODIFIED `server/routes/agency.js` — PATCH whitelist includes `retention_years`, 5-30 validation returns 400.
+> - MODIFIED `pages/settings/PrivacyTab.jsx` — new retention-period input + Save button, wired to `api.updateAgency`.
+> - MODIFIED `server/index.js` — new monthly cron schedule `30 4 1 * *` for `enforceRetention`.
+>
 > **Manual edits since last full regen (2026-05-14, v1.10.4):**
 > - `lib/db.js` `getAgencyId()` rewritten — now uses `supabase.auth.getSession()` (no network) with a module-scope cache keyed by user_id, invalidated via `onAuthStateChange(SIGNED_OUT|USER_UPDATED)`. Removes ~600-1000 ms latency from every db.js call.
 > - `pages/SignContract.jsx` — `drawing` and `hasStrokes` flags moved from `useState` to `useRef` during the canvas drag; React state only flips on `stopDraw`. Fixes signature-disappears-on-release bug.

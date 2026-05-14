@@ -43,10 +43,19 @@ router.patch('/', requireAdmin, async (req, res, next) => {
 
     if (!profile) return res.status(404).json({ error: 'Profile not found' })
 
-    const allowed = ['name', 'phone', 'city', 'address', 'email', 'ice', 'rc', 'if_number', 'patente', 'insurance_policy']
+    const allowed = ['name', 'phone', 'city', 'address', 'email', 'ice', 'rc', 'if_number', 'patente', 'insurance_policy', 'retention_years']
     const patch = Object.fromEntries(
       Object.entries(req.body).filter(([k]) => allowed.includes(k))
     )
+    // Validate retention_years against the same 5-30 bounds the DB check enforces,
+    // so the API returns a clean 400 instead of a Postgres constraint error.
+    if ('retention_years' in patch) {
+      const n = Number(patch.retention_years)
+      if (!Number.isInteger(n) || n < 5 || n > 30) {
+        return res.status(400).json({ error: 'retention_years must be an integer between 5 and 30' })
+      }
+      patch.retention_years = n
+    }
 
     const { data, error } = await supabaseAdmin
       .from('agencies')

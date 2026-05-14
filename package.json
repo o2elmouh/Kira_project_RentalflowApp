@@ -10,7 +10,8 @@
     "start": "cd server && node index.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "cleanup:pending": "node server/scripts/cleanupPendingDemands.js"
+    "cleanup:pending": "node server/scripts/cleanupPendingDemands.js",
+    "enforce:retention": "node server/scripts/enforceRetention.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",

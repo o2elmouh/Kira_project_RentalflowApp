@@ -22,6 +22,7 @@ import reservationsRouter from './routes/reservations.js'
 import cron from 'node-cron'
 import { cleanupPendingDemands } from './scripts/cleanupPendingDemands.js'
 import { purgeSignedPdfs } from './scripts/purgeSignedPdfs.js'
+import { enforceRetention } from './scripts/enforceRetention.js'
 
 const app = express()
 app.set('trust proxy', 1)
@@ -101,6 +102,13 @@ cron.schedule('0 4 * * *', () => {
   purgeSignedPdfs()
     .then(({ purged }) => console.log(`[cron] purge:signed-pdfs — ${purged} removed`))
     .catch(err => console.error('[cron] purge:signed-pdfs failed:', err))
+})
+
+// Monthly on the 1st at 04:30 UTC — Law 09-08 Phase 4 retention enforcement
+cron.schedule('30 4 1 * *', () => {
+  enforceRetention()
+    .then(({ anonymized }) => console.log(`[cron] enforce:retention — ${anonymized} anonymized`))
+    .catch(err => console.error('[cron] enforce:retention failed:', err))
 })
 
 app.listen(PORT, () => {

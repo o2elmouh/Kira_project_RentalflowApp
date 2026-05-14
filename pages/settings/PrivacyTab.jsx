@@ -12,6 +12,11 @@ export default function PrivacyTab() {
   const [modal, setModal] = useState(null)   // { clientId, name }
   const [reason, setReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Retention period (Phase 4) — controls the monthly auto-anonymization cron.
+  const [retentionYears, setRetentionYears] = useState(10)
+  const [retentionDirty, setRetentionDirty] = useState(false)
+  const [retentionSaving, setRetentionSaving] = useState(false)
+  const [retentionFeedback, setRetentionFeedback] = useState(null) // 'saved' | 'error' | null
 
   useEffect(() => {
     if (!profile?.agency_id) return
@@ -21,7 +26,31 @@ export default function PrivacyTab() {
       .eq('agency_id', profile.agency_id)
       .order('last_name')
       .then(({ data }) => { setClients(data || []); setLoading(false) })
+
+    supabase
+      .from('agencies')
+      .select('retention_years')
+      .eq('id', profile.agency_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.retention_years != null) setRetentionYears(data.retention_years)
+      })
   }, [profile?.agency_id])
+
+  async function handleSaveRetention() {
+    setRetentionSaving(true)
+    setRetentionFeedback(null)
+    try {
+      await api.updateAgency({ retention_years: Number(retentionYears) })
+      setRetentionDirty(false)
+      setRetentionFeedback('saved')
+      setTimeout(() => setRetentionFeedback(null), 2500)
+    } catch {
+      setRetentionFeedback('error')
+    } finally {
+      setRetentionSaving(false)
+    }
+  }
 
   async function handleAnonymize() {
     setSubmitting(true)
@@ -49,6 +78,75 @@ export default function PrivacyTab() {
     <div>
       <h3 style={{ marginBottom: 8, color: 'var(--ink)' }}>{t('privacy.title')}</h3>
       <p style={{ color: 'var(--text2)', marginBottom: 24, fontSize: 14 }}>{t('privacy.description')}</p>
+
+      {/* Retention period — drives the monthly auto-anonymization cron */}
+      <div style={{
+        padding: '14px 16px',
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        background: 'var(--surface)',
+        marginBottom: 28,
+      }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>
+          {t('privacy.retentionTitle', 'Période de conservation')}
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
+          {t('privacy.retentionDesc', 'Les fiches clients dont tous les contrats sont clôturés depuis plus longtemps que cette période seront anonymisées automatiquement chaque mois (loi 09-08 / comptabilité marocaine).')}
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <input
+            type="number"
+            min={5}
+            max={30}
+            value={retentionYears}
+            onChange={e => {
+              setRetentionYears(e.target.value)
+              setRetentionDirty(true)
+              setRetentionFeedback(null)
+            }}
+            style={{
+              width: 70,
+              padding: '6px 8px',
+              border: '1px solid var(--border)',
+              borderRadius: 4,
+              background: 'var(--surface)',
+              color: 'var(--text)',
+              fontSize: 13,
+              fontFamily: 'DM Mono, monospace',
+            }}
+          />
+          <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+            {t('privacy.retentionYears', 'années (min. 5, max. 30)')}
+          </span>
+          <button
+            type="button"
+            onClick={handleSaveRetention}
+            disabled={!retentionDirty || retentionSaving}
+            style={{
+              marginLeft: 'auto',
+              fontSize: 12,
+              padding: '6px 14px',
+              borderRadius: 4,
+              border: '1px solid var(--ink)',
+              background: retentionDirty && !retentionSaving ? 'var(--ink)' : 'var(--border)',
+              color: retentionDirty && !retentionSaving ? '#fff' : 'var(--text2)',
+              cursor: retentionDirty && !retentionSaving ? 'pointer' : 'default',
+            }}
+          >
+            {retentionSaving ? t('privacy.retentionSaving', 'Enregistrement…') : t('privacy.retentionSave', 'Enregistrer')}
+          </button>
+          {retentionFeedback === 'saved' && (
+            <span style={{ fontSize: 12, color: 'var(--success, #22c55e)' }}>
+              {t('privacy.retentionSaved', 'Enregistré')}
+            </span>
+          )}
+          {retentionFeedback === 'error' && (
+            <span style={{ fontSize: 12, color: 'var(--danger, #ef4444)' }}>
+              {t('privacy.retentionError', 'Erreur')}
+            </span>
+          )}
+        </div>
+      </div>
 
       {clients.length === 0 ? (
         <p style={{ color: 'var(--text2)', fontSize: 13 }}>{t('privacy.empty')}</p>
