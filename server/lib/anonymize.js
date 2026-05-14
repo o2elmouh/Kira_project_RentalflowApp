@@ -52,18 +52,24 @@ export async function anonymizeClient({
   const { error: updateErr } = await db
     .from('clients')
     .update({
-      id_number:              null,
-      id_expiry:              null,
-      driving_license_num:    null,
-      driving_license_expiry: null,
-      date_of_birth:          null,
-      email:                  null,
-      phone:                  null,
-      phone2:                 null,
-      address:                null,
-      first_name:             '[ANONYMIZED]',
-      last_name:              '[ANONYMIZED]',
-      anonymized_at:          new Date().toISOString(),
+      id_number:               null,
+      id_expiry:               null,
+      driving_license_num:     null,
+      driving_license_expiry:  null,
+      date_of_birth:           null,
+      // Phase 5 ciphertext columns — null these too so erasure is complete
+      // regardless of the ENCRYPT_PII flag state. Setting unknown columns
+      // would error; these are added by migration 20260515b_clients_encrypt.
+      id_number_enc:           null,
+      driving_license_num_enc: null,
+      date_of_birth_enc:       null,
+      email:                   null,
+      phone:                   null,
+      phone2:                  null,
+      address:                 null,
+      first_name:              '[ANONYMIZED]',
+      last_name:               '[ANONYMIZED]',
+      anonymized_at:           new Date().toISOString(),
     })
     .eq('id', clientId)
 

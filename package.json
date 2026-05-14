@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "cleanup:pending": "node server/scripts/cleanupPendingDemands.js",
-    "enforce:retention": "node server/scripts/enforceRetention.js"
+    "enforce:retention": "node server/scripts/enforceRetention.js",
+    "migrate:clients-encrypt": "node server/scripts/migrateClientsEncryption.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",

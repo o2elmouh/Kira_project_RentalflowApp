@@ -1,5 +1,15 @@
 # Graph Report - .  (2026-05-13)
 
+> **Manual edits since last full regen (2026-05-15, v1.10.6 — Law 09-08 Phase 5a):**
+> - NEW `server/lib/encryption.js` exports `encrypt(text)`, `decrypt(blob)`, `isEncryptionConfigured()`, `isEncryptedBlob(value)`. Lazy key resolution so tests can mutate `ENCRYPTION_KEY` per case.
+> - NEW `server/routes/clients.js` — GET/GET:id/POST/PATCH/DELETE for `/clients`. Mirrors the pre-Phase-5 `lib/db.js` JSON shape. `ENCRYPT_PII=true` toggles between plaintext and `*_enc` columns.
+> - NEW `server/scripts/migrateClientsEncryption.js` `migrateClientsEncryption(db?)` — paginated, idempotent backfill. Returns `{processed, encrypted, skipped, nullified}`.
+> - NEW migration `20260515b_clients_encrypt.sql` adds `id_number_enc`, `driving_license_num_enc`, `date_of_birth_enc` text columns.
+> - MODIFIED `server/routes/leads.js` — encryption helpers removed, now imported (and re-exported) from `server/lib/encryption.js`.
+> - MODIFIED `server/lib/anonymize.js` — also nulls `*_enc` columns so erasure stays complete regardless of `ENCRYPT_PII` state.
+> - MODIFIED `server/index.js` — mounts `/clients` route.
+> - MODIFIED `lib/api.js` — new methods `getClientsApi`, `getClientApi`, `saveClientApi`, `patchClientApi`, `deleteClientApi` (Phase 5b will switch frontend imports to use them).
+>
 > **Manual edits since last full regen (2026-05-15, v1.10.5 — Law 09-08 Phase 4):**
 > - NEW `server/lib/anonymize.js` `anonymizeClient({ clientId, agencyId, actorUserId, action, reason, metadata, db })` — shared helper for manual + automated anonymization. Writes `clients` row + `audit_log` row. Idempotent (`skipped` on already-anonymized).
 > - NEW `server/scripts/enforceRetention.js` `enforceRetention(db?)` — monthly cron entry point. Iterates agencies, picks oldest admin as actor, anonymizes clients whose contracts are all closed past `agency.retention_years`.

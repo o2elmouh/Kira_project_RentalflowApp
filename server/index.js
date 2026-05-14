@@ -18,6 +18,7 @@ import leadsRouter from './routes/leads.js'
 import gmailRouter, { startGmailPoller } from './routes/gmail.js'
 import networkRouter from './routes/network.js'
 import adminRouter from './routes/admin.js'
+import clientsRouter from './routes/clients.js'
 import reservationsRouter from './routes/reservations.js'
 import cron from 'node-cron'
 import { cleanupPendingDemands } from './scripts/cleanupPendingDemands.js'
@@ -76,6 +77,7 @@ app.use('/gmail', gmailRouter)
 app.use('/reservations', reservationsRouter)
 app.use('/network', networkRouter)
 app.use('/admin', adminRouter)
+app.use('/clients', clientsRouter)
 
 // ── 404 ───────────────────────────────────────────────────
 app.use((req, res) => {

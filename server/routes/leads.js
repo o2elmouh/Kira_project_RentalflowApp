@@ -12,37 +12,18 @@
  */
 
 import { Router } from 'express'
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
 import Anthropic from '@anthropic-ai/sdk'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { requireAuth } from '../middleware/auth.js'
 import { requirePremium } from '../middleware/premium.js'
 import { detectLanguage, translateToFrench, preFilter, handleAmbiguous } from '../lib/triage.js'
+// Encryption helpers moved to server/lib/encryption.js so the new clients
+// route (Phase 5) and the leads pipeline share one AES-256-GCM implementation.
+// Re-exported here to preserve any existing import paths.
+import { encrypt, decrypt } from '../lib/encryption.js'
+export { encrypt, decrypt }
 
 const router = Router()
-
-// ── Encryption helpers (AES-256-GCM) ─────────────────────
-const ENC_KEY = process.env.ENCRYPTION_KEY
-  ? Buffer.from(process.env.ENCRYPTION_KEY, 'hex')
-  : null
-
-export function encrypt(text) {
-  if (!ENC_KEY) return text  // dev fallback — no encryption
-  const iv = randomBytes(12)
-  const cipher = createCipheriv('aes-256-gcm', ENC_KEY, iv)
-  const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()])
-  const tag = cipher.getAuthTag()
-  return `${iv.toString('hex')}:${tag.toString('hex')}:${encrypted.toString('hex')}`
-}
-
-export function decrypt(blob) {
-  if (!ENC_KEY || !blob?.includes(':')) return blob
-  const [ivHex, tagHex, encHex] = blob.split(':')
-  const decipher = createDecipheriv('aes-256-gcm', ENC_KEY, Buffer.from(ivHex, 'hex'))
-  decipher.setAuthTag(Buffer.from(tagHex, 'hex'))
-  const dec = Buffer.concat([decipher.update(Buffer.from(encHex, 'hex')), decipher.final()])
-  return dec.toString('utf8')
-}
 
 // ── Fuzzy name matching (Levenshtein distance) ────────────
 function levenshtein(a, b) {

@@ -183,7 +183,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
                 color: 'var(--text-muted)',
                 fontFamily: 'DM Mono, monospace',
               }}>
-                v1.10.5
+                v1.10.6
               </span>
             </div>
           )}
