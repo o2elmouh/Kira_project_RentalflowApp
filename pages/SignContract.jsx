@@ -21,9 +21,16 @@ export default function SignContract({ token }) {
   const [errorMsg, setErrorMsg] = useState('')
   const [contract, setContract] = useState(null)
 
-  // Signature pad
+  // Signature pad.
+  // drawing/hasStrokes are kept in refs (not state) so that drawing mouse-
+  // moves do NOT trigger React re-renders mid-stroke. A prior bug ("signature
+  // disappears on release") was caused by setHasStrokes(true) firing during
+  // the first mousemove, which re-rendered the canvas and reapplied its
+  // width/height attributes, clearing the bitmap. We now only sync to state
+  // once at stopDraw to flip the "Signer" button into its enabled style.
   const canvasRef = useRef(null)
-  const [drawing, setDrawing] = useState(false)
+  const drawingRef = useRef(false)
+  const strokesRef = useRef(false)
   const [hasStrokes, setHasStrokes] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
@@ -78,11 +85,11 @@ export default function SignContract({ token }) {
     const pos = getPos(e, canvas)
     ctx.beginPath()
     ctx.moveTo(pos.x, pos.y)
-    setDrawing(true)
+    drawingRef.current = true
   }
 
   const draw = (e) => {
-    if (!drawing) return
+    if (!drawingRef.current) return
     const canvas = canvasRef.current
     if (!canvas) return
     e.preventDefault()
@@ -94,15 +101,21 @@ export default function SignContract({ token }) {
     ctx.strokeStyle = '#1c1a16'
     ctx.lineTo(pos.x, pos.y)
     ctx.stroke()
-    setHasStrokes(true)
+    strokesRef.current = true
   }
 
-  const stopDraw = () => setDrawing(false)
+  const stopDraw = () => {
+    drawingRef.current = false
+    // Sync the strokes-ref to state once, on lift, to enable the Signer button.
+    // Doing it here (instead of inside draw) keeps the drag path render-free.
+    if (strokesRef.current && !hasStrokes) setHasStrokes(true)
+  }
 
   const clearCanvas = () => {
     const canvas = canvasRef.current
     if (!canvas) return
     canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
+    strokesRef.current = false
     setHasStrokes(false)
   }
 
