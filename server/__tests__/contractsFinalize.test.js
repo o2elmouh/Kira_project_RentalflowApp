@@ -1,15 +1,14 @@
 /**
  * Contracts /finalize endpoint logic — unit tests.
+ * Runner: Vitest (converted from node:test)
  *
  * The endpoint sets `finalized_at` on first call and is idempotent on retry.
  * Status stays 'active' so the Restitution flow can still operate on the row.
  *
- * Runner: Node native test runner — same pattern as smartQuote.test.js
- * Run:    node --experimental-test-module-mocks --test server/__tests__/contractsFinalize.test.js
+ * @vitest-environment node
  */
 
-import { test, mock } from 'node:test'
-import assert from 'node:assert/strict'
+import { test, expect, vi, beforeEach } from 'vitest'
 
 // ── In-memory contracts table ────────────────────────────────
 const contracts = new Map()
@@ -17,8 +16,8 @@ function seed(id, row) { contracts.set(id, { id, ...row }) }
 function reset() { contracts.clear() }
 
 // ── supabaseAdmin stub: profile + contract reads/writes ─────
-mock.module('../lib/supabaseAdmin.js', {
-  defaultExport: {
+vi.mock('../lib/supabaseAdmin.js', () => ({
+  default: {
     from: (table) => {
       if (table === 'profiles') {
         return {
@@ -60,15 +59,18 @@ mock.module('../lib/supabaseAdmin.js', {
       return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null }) }) }) }
     },
   },
-})
+}))
 
-mock.module('pdf-lib', { namedExports: { PDFDocument: {} } })
-mock.module('../lib/twilioClient.js', { namedExports: { sendWhatsAppMessage: async () => ({}) } })
-mock.module('../middleware/auth.js', {
-  namedExports: {
-    requireAuth: (req, _res, next) => { req.user = { id: 'u1', agency_id: 'agency-A' }; next() },
-  },
-})
+vi.mock('pdf-lib', () => ({ PDFDocument: {} }))
+vi.mock('../lib/twilioClient.js', () => ({ sendWhatsAppMessage: vi.fn().mockResolvedValue({}) }))
+vi.mock('../middleware/auth.js', () => ({
+  requireAuth: (req, _res, next) => { req.user = { id: 'u1', agency_id: 'agency-A' }; next() },
+}))
+vi.mock('../lib/contractSigning.js', () => ({
+  SIGN_TOKEN_TTL_HOURS: 48,
+  prepareSignableContract: vi.fn(),
+  escapeHtml: (s) => s,
+}))
 
 // ── Now import the router under test ────────────────────────
 const routerModule = await import('../routes/contracts.js')
@@ -96,21 +98,21 @@ async function invoke(handlerLayer, req, res) {
   return res
 }
 
+beforeEach(() => reset())
+
 test('POST /:id/finalize sets finalized_at on first call', async () => {
-  reset()
   seed('c1', { agency_id: 'agency-A', status: 'active', finalized_at: null })
 
   const layer = findRoute('POST', '/:id/finalize')
   const { req, res } = makeReqRes({ params: { id: 'c1' } })
   await invoke(layer, req, res)
 
-  assert.equal(res.statusCode, 200)
-  assert.ok(res.body.contract.finalized_at, 'finalized_at must be set')
-  assert.equal(res.body.contract.status, 'active', 'status must stay active')
+  expect(res.statusCode).toBe(200)
+  expect(res.body.contract.finalized_at).toBeTruthy()
+  expect(res.body.contract.status).toBe('active')
 })
 
 test('POST /:id/finalize is idempotent — second call returns alreadyFinalized=true', async () => {
-  reset()
   const ts = new Date(Date.now() - 60_000).toISOString()
   seed('c2', { agency_id: 'agency-A', status: 'active', finalized_at: ts })
 
@@ -118,27 +120,25 @@ test('POST /:id/finalize is idempotent — second call returns alreadyFinalized=
   const { req, res } = makeReqRes({ params: { id: 'c2' } })
   await invoke(layer, req, res)
 
-  assert.equal(res.statusCode, 200)
-  assert.equal(res.body.alreadyFinalized, true)
-  assert.equal(res.body.contract.finalized_at, ts, 'must not overwrite existing timestamp')
+  expect(res.statusCode).toBe(200)
+  expect(res.body.alreadyFinalized).toBe(true)
+  expect(res.body.contract.finalized_at).toBe(ts)
 })
 
 test('POST /:id/finalize returns 403 for wrong agency', async () => {
-  reset()
   seed('c3', { agency_id: 'agency-OTHER', status: 'active', finalized_at: null })
 
   const layer = findRoute('POST', '/:id/finalize')
   const { req, res } = makeReqRes({ params: { id: 'c3' } })
   await invoke(layer, req, res)
 
-  assert.equal(res.statusCode, 403)
+  expect(res.statusCode).toBe(403)
 })
 
 test('POST /:id/finalize returns 404 for missing contract', async () => {
-  reset()
   const layer = findRoute('POST', '/:id/finalize')
   const { req, res } = makeReqRes({ params: { id: 'does-not-exist' } })
   await invoke(layer, req, res)
 
-  assert.equal(res.statusCode, 404)
+  expect(res.statusCode).toBe(404)
 })

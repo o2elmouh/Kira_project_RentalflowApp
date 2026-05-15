@@ -1,15 +1,15 @@
 /**
  * Offer-response pre-triage — unit tests
- * Runner: Node native test runner (node:test)
- * Run: node --experimental-test-module-mocks --test server/__tests__/offerResponse.test.js
+ * Runner: Vitest (converted from node:test)
  *
  * Tests that handleInboundWhatsApp bypasses keyword triage when the sender has
  * an offer_sent lead, resets the lead status to 'waiting', and appends the
  * reply to raw_payload.replies.
+ *
+ * @vitest-environment node
  */
 
-import { test, mock, beforeEach } from 'node:test'
-import assert from 'node:assert/strict'
+import { test, expect, vi, beforeEach } from 'vitest'
 
 process.env.ANTHROPIC_API_KEY = 'test-key'
 
@@ -19,9 +19,8 @@ let _offerLead = null
 const _updateCalls = []
 
 // ── Anthropic mock ────────────────────────────────────────────────────────────
-mock.module('@anthropic-ai/sdk', {
-  namedExports: {},
-  defaultExport: class MockAnthropic {
+vi.mock('@anthropic-ai/sdk', () => ({
+  default: class MockAnthropic {
     constructor() {}
     get messages() {
       return {
@@ -29,11 +28,11 @@ mock.module('@anthropic-ai/sdk', {
       }
     }
   },
-})
+}))
 
 // ── supabaseAdmin mock ────────────────────────────────────────────────────────
-mock.module('../lib/supabaseAdmin.js', {
-  defaultExport: {
+vi.mock('../lib/supabaseAdmin.js', () => ({
+  default: {
     from: (table) => ({
       select: () => ({
         eq: (_col1, _val1) => ({
@@ -67,7 +66,24 @@ mock.module('../lib/supabaseAdmin.js', {
       not: () => Promise.resolve({ data: [] }),
     }),
   },
-})
+}))
+
+// Stub middleware
+vi.mock('../middleware/auth.js', () => ({
+  requireAuth: (req, _res, next) => { req.user = { id: 'u1', agency_id: 'a1' }; next() },
+}))
+vi.mock('../middleware/premium.js', () => ({
+  requirePremium: (_req, _res, next) => next(),
+}))
+vi.mock('../lib/triage.js', () => ({
+  detectLanguage: vi.fn().mockResolvedValue('fr'),
+  translateToFrench: vi.fn().mockImplementation((t) => t),
+  preFilter: vi.fn().mockReturnValue({ result: 'pass', matchedKeywords: ['location'] }),
+  handleAmbiguous: vi.fn().mockResolvedValue(null),
+}))
+vi.mock('../lib/conversation.js', () => ({
+  appendConversation: vi.fn().mockResolvedValue(undefined),
+}))
 
 // Lazy import AFTER mocks
 const { handleInboundWhatsApp } = await import('../routes/leads.js')
@@ -92,25 +108,25 @@ const makeOfferLead = (overrides = {}) => ({
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
+beforeEach(() => resetState())
+
 test('offer reply: status reset to waiting, reply appended to raw_payload.replies', async () => {
-  resetState()
   _offerLead = makeOfferLead()
   _intentReply = '{"intent":"accepted"}'
 
   await handleInboundWhatsApp(AGENCY_ID, SENDER_JID, null, 'image/jpeg', 'wakha mwafaq')
 
-  assert.equal(_updateCalls.length, 1, 'exactly one DB update should be made')
+  expect(_updateCalls.length).toBe(1)
   const update = _updateCalls[0]
-  assert.equal(update.payload.status, 'waiting', 'lead must be reset to waiting')
-  assert.equal(update.payload.last_client_note, 'wakha mwafaq')
-  assert.equal(Array.isArray(update.payload.raw_payload.replies), true)
-  assert.equal(update.payload.raw_payload.replies.length, 1)
-  assert.equal(update.payload.raw_payload.replies[0].text, 'wakha mwafaq')
-  assert.equal(update.payload.raw_payload.replies[0].intent, 'accepted')
+  expect(update.payload.status).toBe('waiting')
+  expect(update.payload.last_client_note).toBe('wakha mwafaq')
+  expect(Array.isArray(update.payload.raw_payload.replies)).toBe(true)
+  expect(update.payload.raw_payload.replies.length).toBe(1)
+  expect(update.payload.raw_payload.replies[0].text).toBe('wakha mwafaq')
+  expect(update.payload.raw_payload.replies[0].intent).toBe('accepted')
 })
 
 test('offer reply: appends to existing replies in raw_payload', async () => {
-  resetState()
   const existingReply = { text: 'first reply', intent: 'question', timestamp: '2026-04-01T10:00:00Z' }
   _offerLead = makeOfferLead({ raw_payload: { body: 'original', replies: [existingReply] } })
   _intentReply = '{"intent":"rejected"}'
@@ -118,46 +134,37 @@ test('offer reply: appends to existing replies in raw_payload', async () => {
   await handleInboundWhatsApp(AGENCY_ID, SENDER_JID, null, 'image/jpeg', 'non merci, trop cher')
 
   const replies = _updateCalls[0].payload.raw_payload.replies
-  assert.equal(replies.length, 2, 'new reply appended to existing one')
-  assert.equal(replies[0].text, 'first reply')
-  assert.equal(replies[1].text, 'non merci, trop cher')
-  assert.equal(replies[1].intent, 'rejected')
+  expect(replies.length).toBe(2)
+  expect(replies[0].text).toBe('first reply')
+  expect(replies[1].text).toBe('non merci, trop cher')
+  expect(replies[1].intent).toBe('rejected')
 })
 
 test('offer reply with empty body: intent defaults to question, status still resets', async () => {
-  resetState()
   _offerLead = makeOfferLead()
 
   await handleInboundWhatsApp(AGENCY_ID, SENDER_JID, null, 'image/jpeg', '')
 
-  assert.equal(_updateCalls.length, 1)
-  assert.equal(_updateCalls[0].payload.status, 'waiting')
-  assert.equal(_updateCalls[0].payload.raw_payload.replies[0].intent, 'question')
+  expect(_updateCalls.length).toBe(1)
+  expect(_updateCalls[0].payload.status).toBe('waiting')
+  expect(_updateCalls[0].payload.raw_payload.replies[0].intent).toBe('question')
 })
 
 test('sender phone normalisation: 9-digit suffix matches across variants', async () => {
-  resetState()
-  // Lead stored with international format, message arrives with local format
   _offerLead = makeOfferLead({ sender_id: '+212612345678' })
   _intentReply = '{"intent":"accepted"}'
 
-  // senderJid uses whatsapp: prefix stripped to 212612345678@s.whatsapp.net
   await handleInboundWhatsApp(AGENCY_ID, '212612345678@s.whatsapp.net', null, 'image/jpeg', 'ok')
 
-  assert.equal(_updateCalls.length, 1, 'should match by last 9 digits')
-  assert.equal(_updateCalls[0].payload.status, 'waiting')
+  expect(_updateCalls.length).toBe(1)
+  expect(_updateCalls[0].payload.status).toBe('waiting')
 })
 
 test('no offer_sent lead: pipeline continues normally (no update call)', async () => {
-  resetState()
-  _offerLead = null  // no offer lead
+  _offerLead = null
 
-  // Send a message that would fail triage (non-rental keyword)
-  // Since preFilter runs on real triage.js, use a clear rental keyword so it passes
-  // and reaches the insert step — verifying the offer-bypass was NOT triggered
   await handleInboundWhatsApp(AGENCY_ID, SENDER_JID, null, 'image/jpeg', 'je veux louer une voiture')
 
-  // No offer-response update should have been called
   const offerUpdates = _updateCalls.filter(c => c.payload?.status === 'waiting')
-  assert.equal(offerUpdates.length, 0, 'no waiting-status update when no offer lead exists')
+  expect(offerUpdates.length).toBe(0)
 })
