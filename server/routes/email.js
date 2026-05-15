@@ -3,7 +3,6 @@ import { requireAuth } from '../middleware/auth.js'
 import rateLimit from 'express-rate-limit'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { appendConversation } from '../lib/conversation.js'
-import { vehicleRowToApi } from '../lib/vehicleMapper.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -75,7 +74,7 @@ router.post('/send-offer', emailLimit, async (req, res) => {
     const subject = `Offre de location — ${vehicleName}`
     const html = `<p>Bonjour,</p><p>Suite à votre demande, nous vous proposons une <strong>${vehicleName}</strong> pour <strong>${priceTotal} MAD</strong> au total.</p><p>Répondez à cet email pour confirmer ou décliner l'offre.</p><p>Cordialement,<br/>RentaFlow</p>`
 
-      if (process.env.RESEND_API_KEY) {
+    if (process.env.RESEND_API_KEY) {
       const { Resend } = await import('resend')
       const resend = new Resend(process.env.RESEND_API_KEY)
       await resend.emails.send({ from: process.env.RESEND_FROM || 'onboarding@resend.dev', to, subject, html })

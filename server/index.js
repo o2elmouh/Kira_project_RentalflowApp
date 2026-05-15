@@ -37,7 +37,17 @@ const ALLOWED_ORIGINS = [
 ].filter(Boolean)
 
 app.use(cors({
-  origin: true,   // reflect request origin — allows all origins including Vercel previews
+  origin: (origin, cb) => {
+    // Allow requests with no origin (server-to-server, mobile, curl)
+    if (!origin) return cb(null, true)
+    // In development, allow all; in production, restrict to known origins
+    if (process.env.NODE_ENV !== 'production' || ALLOWED_ORIGINS.includes(origin)) {
+      return cb(null, true)
+    }
+    // Allow Vercel preview deployments (*.vercel.app)
+    if (/\.vercel\.app$/.test(origin)) return cb(null, true)
+    cb(new Error(`CORS: origin ${origin} not allowed`))
+  },
   credentials: true,
 }))
 

@@ -10,8 +10,10 @@
 import { Router } from 'express'
 import Anthropic from '@anthropic-ai/sdk'
 import multer from 'multer'
+import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
+router.use(requireAuth)
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
 
 const CLAUDE_SYSTEM_PROMPT = `You are a precise document parser specialised in Moroccan identity documents.
