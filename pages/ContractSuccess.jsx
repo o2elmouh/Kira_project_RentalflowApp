@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle, Download, Printer, Home, AlertCircle, Send } from 'lucide-react'
-import { getContractById, getClient, getVehicle } from '../lib/db'
+import { getContractById, getVehicle } from '../lib/db'
 import { generateContractBuffer } from '../utils/pdf'
 import { getAgency } from '../lib/db'
 import { api } from '../lib/api'
@@ -25,7 +25,7 @@ export default function ContractSuccess({ contractId, onDone }) {
         if (!c) { setError('Contrat introuvable.'); return }
         setContract(c)
         const [cl, v] = await Promise.all([
-          c.clientId  ? getClient(c.clientId) : null,
+          c.clientId  ? api.getClient(c.clientId) : null,
           c.vehicleId ? getVehicle(c.vehicleId) : null,
         ])
         if (cancelled) return

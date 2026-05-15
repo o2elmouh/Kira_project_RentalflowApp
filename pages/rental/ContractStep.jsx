@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { CheckCircle, AlertCircle, ArrowLeft, X, Edit3, FileSignature } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { getAgency, saveClient, saveVehicle, saveContract, saveInvoice, getFleet } from '../../lib/db'
+import { getAgency, saveVehicle, saveContract, saveInvoice, getFleet } from '../../lib/db'
 import { generateContractBuffer } from '../../utils/pdf'
 import { api } from '../../lib/api'
 import { supabase } from '../../lib/supabase'
@@ -92,7 +92,7 @@ export default function ContractStep({
     setPersisting(true)
     setError(null)
     try {
-      const savedClient = await saveClient(client)
+      const savedClient = await api.saveClient(client)
       const c = await saveContract({
         clientId: savedClient.id,
         clientName: `${client.firstName} ${client.lastName}`,

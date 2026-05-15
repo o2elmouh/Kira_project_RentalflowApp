@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Car, Users, FileText, Receipt, TrendingUp, PlusCircle, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
-import { getFleet, getClients, getContracts, getInvoices } from '../lib/db'
+import { getFleet, getContracts, getInvoices } from '../lib/db'
 import { api } from '../lib/api.js'
 
 function inMonth(dateStr, year, month) {
@@ -105,7 +105,7 @@ export default function Dashboard({ onNav }) {
       try {
         const [f, cl, co, inv] = await Promise.all([
           getFleet(),
-          getClients(),
+          api.getClients(),
           getContracts(),
           getInvoices(),
         ])

@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { FileText, Download, X, Link, Copy, Check, MessageCircle, CreditCard } from 'lucide-react'
 import { createSigningToken, getSigningUrl } from '../lib/signing'
 import {
-  getClients,
   getContracts, updateContract,
   getInvoices, saveInvoice, updateInvoice,
   getFleet,
@@ -86,7 +85,7 @@ export default function Contracts({ onRestitution }) {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    Promise.all([getContracts(), getClients(), getFleet(), getAgency()])
+    Promise.all([getContracts(), api.getClients(), getFleet(), getAgency()])
       .then(([ct, cl, fl, ag]) => {
         if (cancelled) return
         setContracts(ct)

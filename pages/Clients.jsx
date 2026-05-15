@@ -3,11 +3,8 @@ import { useTranslation } from 'react-i18next'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import { Download, Edit2 } from 'lucide-react'
-import {
-  getClients, saveClient,
-  getContracts,
-  getAgency,
-} from '../lib/db'
+import { getContracts, getAgency } from '../lib/db'
+import { api } from '../lib/api'
 
 // ─────────────────────────────────────────────────────────
 // Helpers
@@ -52,7 +49,7 @@ export default function Clients() {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    Promise.all([getClients(), getContracts(), getAgency()])
+    Promise.all([api.getClients(), getContracts(), getAgency()])
       .then(([c, ct, ag]) => {
         if (cancelled) return
         setClients(c)
@@ -79,7 +76,7 @@ export default function Clients() {
 
   const reload = async () => {
     try {
-      const [c, ct] = await Promise.all([getClients(), getContracts()])
+      const [c, ct] = await Promise.all([api.getClients(), getContracts()])
       setClients(c)
       setContracts(ct)
     } catch (err) {
@@ -95,7 +92,7 @@ export default function Clients() {
 
   const saveEdit = async (c) => {
     try {
-      await saveClient({ ...c, phone: editData.phone, email: editData.email })
+      await api.saveClient({ ...c, phone: editData.phone, email: editData.email })
       setEditId(null)
       reload()
     } catch (err) {
@@ -111,7 +108,7 @@ export default function Clients() {
 
   const saveFlag = async (c) => {
     try {
-      await saveClient({ ...c, flag: { category: flagData.category, note: flagData.note } })
+      await api.saveClient({ ...c, flag: { category: flagData.category, note: flagData.note } })
       setFlagId(null)
       reload()
     } catch (err) {
@@ -121,7 +118,7 @@ export default function Clients() {
 
   const removeFlag = async (c) => {
     try {
-      await saveClient({ ...c, flag: null })
+      await api.saveClient({ ...c, flag: null })
       setFlagId(null)
       reload()
     } catch (err) {
