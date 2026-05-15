@@ -41,6 +41,11 @@ router.post('/detect-damage', async (req, res) => {
   if (afterPhotos.length === 0) {
     return res.status(400).json({ error: 'At least one after-rental photo is required.' })
   }
+  // SECURITY: cap photo count to prevent API cost abuse (each image = ~$0.01+)
+  const MAX_PHOTOS = 6
+  if (beforePhotos.length > MAX_PHOTOS || afterPhotos.length > MAX_PHOTOS) {
+    return res.status(400).json({ error: `Maximum ${MAX_PHOTOS} photos per set (before/after).` })
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {

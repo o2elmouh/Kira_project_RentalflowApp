@@ -129,10 +129,14 @@ router.post('/:id/extend', async (req, res, next) => {
 
     const oldEnd  = new Date(contract.return_date)
     const newEnd  = new Date(newEndDate)
+    if (isNaN(newEnd.getTime())) return res.status(400).json({ error: 'Invalid date format' })
     const extraDays = Math.round((newEnd - oldEnd) / 86400000)
     if (extraDays <= 0) return res.status(400).json({ error: 'New end date must be after current end date' })
+    if (extraDays > 365) return res.status(400).json({ error: 'Extension cannot exceed 365 days' })
 
-    const extraAmount = extraDays * (dailyRate || contract.daily_rate)
+    const rate = Number(dailyRate || contract.daily_rate)
+    if (!rate || rate <= 0 || rate > 100000) return res.status(400).json({ error: 'Invalid daily rate' })
+    const extraAmount = extraDays * rate
 
     const { data, error } = await supabaseAdmin
       .from('contracts')
@@ -291,81 +295,8 @@ router.get('/:id/signed-pdf-url', async (req, res, next) => {
   }
 })
 
-// POST /contracts/:id/send-email
-// Mirror of /send-whatsapp but dispatches the signing link via Resend.
-router.post('/:id/send-email', async (req, res, next) => {
-  try {
-    const { id } = req.params
-    const { pdf_base64 } = req.body
-    if (!pdf_base64 || typeof pdf_base64 !== 'string') {
-      return res.status(400).json({ error: 'pdf_base64 is required' })
-    }
-
-    const { data: contract, error } = await supabaseAdmin
-      .from('contracts')
-      .select('id, agency_id, client_id, contract_number, signing_token, signing_token_expires_at, signature_status, clients(email, first_name, last_name)')
-      .eq('id', id)
-      .single()
-    if (error || !contract) return res.status(404).json({ error: 'Contract not found' })
-    if (contract.agency_id !== req.user.agency_id) return res.status(403).json({ error: 'Forbidden' })
-
-    const email = contract.clients?.email
-    if (!email) return res.status(400).json({ error: 'Client has no email on file' })
-
-    const base64Data = pdf_base64.includes(',') ? pdf_base64.split(',')[1] : pdf_base64
-    const pdfBuffer = Buffer.from(base64Data, 'base64')
-    if (pdfBuffer.length === 0) return res.status(400).json({ error: 'pdf_base64 decoded to empty buffer' })
-
-    const unsignedObjectPath = `${id}/unsigned.pdf`
-    const { error: upErr } = await supabaseAdmin
-      .storage.from('signed_contracts')
-      .upload(unsignedObjectPath, pdfBuffer, { contentType: 'application/pdf', upsert: true })
-    if (upErr) return res.status(500).json({ error: 'pdf_upload_failed', detail: upErr.message })
-
-    // Idempotent token: reuse if still valid, mint otherwise.
-    const { token, expiresAt } = await ensureSigningToken(contract)
-
-    const { error: updateErr } = await supabaseAdmin
-      .from('contracts')
-      .update({
-        signature_status:        'pending',
-        signing_token:           token,
-        signing_token_expires_at: expiresAt,
-        unsigned_pdf_path:       `signed_contracts/${unsignedObjectPath}`,
-      })
-      .eq('id', id)
-    if (updateErr) return next(updateErr)
-
-    const baseUrl = process.env.FRONTEND_URL || 'https://app.rentaflow.local'
-    const signUrl = `${baseUrl}/?sign=${token}`
-    const fullName = `${contract.clients.first_name || ''} ${contract.clients.last_name || ''}`.trim()
-
-    if (process.env.RESEND_API_KEY) {
-      try {
-        const { Resend } = await import('resend')
-        const resend = new Resend(process.env.RESEND_API_KEY)
-        await resend.emails.send({
-          from: process.env.RESEND_FROM || 'onboarding@resend.dev',
-          to: email,
-          subject: `Signature de votre contrat ${contract.contract_number}`,
-          html: `<p>Bonjour ${fullName || ''},</p>
-<p>Votre contrat de location <strong>${contract.contract_number}</strong> est prêt à être signé.</p>
-<p><a href="${signUrl}" style="display:inline-block;padding:12px 24px;background:#141413;color:#FCFBFA;text-decoration:none;border-radius:999px;font-weight:600">Consulter et signer le contrat</a></p>
-<p style="font-size:12px;color:#696969">Lien valable ${SIGN_TOKEN_TTL_HOURS}h. Si le bouton ne fonctionne pas, copiez ce lien : ${signUrl}</p>`,
-        })
-      } catch (mailErr) {
-        console.error('[contracts] Resend send failed:', mailErr.message)
-        return res.status(502).json({ error: 'Email delivery failed. Token saved — click again to retry.', sign_url: signUrl })
-      }
-    } else {
-      console.log(`[contracts/send-email] No RESEND_API_KEY — would send to ${email}: ${signUrl}`)
-    }
-
-    res.json({ success: true, sign_url: signUrl, expires_at: expiresAt })
-  } catch (err) {
-    next(err)
-  }
-})
+// NOTE: Duplicate /send-email route removed — the handler at line 207
+// (using prepareSignableContract + escapeHtml) is the canonical one.
 
 // POST /contracts/:id/send-final
 // Send the FINAL (already-closed) contract PDF to the client via email or whatsapp.

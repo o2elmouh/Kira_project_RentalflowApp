@@ -352,7 +352,7 @@ router.patch('/requests/:id/status', async (req, res, next) => {
 
     const { data: request, error: rErr } = await supabaseAdmin
       .from('cross_agency_requests')
-      .select('*')
+      .select('id, status, owning_agency_id, requesting_agency_id, vehicle_id, start_date, end_date, agreed_price, requester_notes, owner_notes')
       .eq('id', id)
       .maybeSingle()
 

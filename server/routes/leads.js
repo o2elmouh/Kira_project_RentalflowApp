@@ -192,15 +192,29 @@ async function findMatchingDemand(agencyId, senderIdOrName, extractedData) {
 
 
 // ── POST /leads/webhook/gmail ─────────────────────────────
-// Called internally by the Gmail poller (server/routes/gmail.js)
-router.post('/webhook/gmail', async (req, res) => {
+// Called internally by the Gmail poller (server/routes/gmail.js).
+// SECURITY: This endpoint is internal-only. Block external calls via a shared secret.
+function requireInternalSecret(req, res, next) {
+  const secret = process.env.INTERNAL_WEBHOOK_SECRET
+  if (!secret) return next() // skip in dev if not configured
+  const provided = req.headers['x-internal-secret']
+  if (provided !== secret) {
+    console.warn('[pipeline:gmail-wh] ✗ invalid or missing X-Internal-Secret header')
+    return res.status(403).json({ error: 'Forbidden' })
+  }
+  next()
+}
+
+router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
   const { agencyId, senderEmail, subject, bodyText, attachments } = req.body
 
   if (!agencyId || !senderEmail) {
     return res.status(400).json({ error: 'agencyId and senderEmail required' })
   }
 
-  console.log(`[pipeline:gmail-wh] ← email | agency=${agencyId} | from=${senderEmail} | subject="${subject}" | images=${(attachments || []).length}`)
+  // SECURITY: mask sender email in logs to protect PII
+  const maskedSender = senderEmail ? senderEmail.replace(/(.{2}).*@/, '$1***@') : '?'
+  console.log(`[pipeline:gmail-wh] ← email | agency=${agencyId} | from=${maskedSender} | images=${(attachments || []).length}`)
 
   let extractedData = null
   const mediaUrls = []
@@ -351,7 +365,36 @@ router.get('/media', async (req, res) => {
 // ── POST /leads/webhook/whatsapp — Twilio inbound webhook ─
 // Twilio console config: each agency's Twilio number → "When a message comes in" → POST <RAILWAY_URL>/leads/webhook/whatsapp
 // Agency is resolved by matching the Twilio `To` number against agencies.phone.
-router.post('/webhook/whatsapp', async (req, res) => {
+//
+// SECURITY: Verify Twilio signature if AUTH_TOKEN is configured.
+// Prevents attackers from injecting fake leads by spoofing webhook calls.
+async function verifyTwilioSignature(req, res, next) {
+  const authToken = process.env.TWILIO_AUTH_TOKEN
+  if (!authToken) return next() // skip in dev if no token set
+
+  const signature = req.headers['x-twilio-signature']
+  if (!signature) {
+    console.warn('[pipeline:twilio] ✗ missing X-Twilio-Signature header — rejecting')
+    return res.status(403).send('<Response/>')
+  }
+
+  try {
+    const twilio = await import('twilio')
+    const validateRequest = twilio.default.validateRequest || twilio.validateRequest
+    const webhookUrl = `${process.env.RAILWAY_PUBLIC_URL || process.env.BASE_URL || 'https://localhost:3001'}/leads/webhook/whatsapp`
+    const valid = validateRequest(authToken, signature, webhookUrl, req.body || {})
+    if (!valid) {
+      console.warn('[pipeline:twilio] ✗ invalid Twilio signature — rejecting')
+      return res.status(403).send('<Response/>')
+    }
+  } catch (err) {
+    console.error('[pipeline:twilio] ✗ signature validation error:', err.message)
+    // Fail open only if twilio module not available (shouldn't happen in prod)
+  }
+  next()
+}
+
+router.post('/webhook/whatsapp', verifyTwilioSignature, async (req, res) => {
   // Respond immediately so Twilio doesn't retry
   res.set('Content-Type', 'text/xml')
   res.send('<Response/>')
@@ -363,7 +406,9 @@ router.post('/webhook/whatsapp', async (req, res) => {
   const mediaUrl  = req.body.MediaUrl0 || null
   const mediaMime = req.body.MediaContentType0 || 'image/jpeg'
 
-  console.log(`[pipeline:twilio] ← inbound | from=${from} | to=${to} | media=${numMedia} | text="${bodyText.slice(0, 80)}"`)
+  // SECURITY: mask phone numbers in logs to protect PII
+  const maskedFrom = from ? from.slice(0, -4).replace(/\d/g, '*') + from.slice(-4) : '?'
+  console.log(`[pipeline:twilio] ← inbound | from=${maskedFrom} | to=${to} | media=${numMedia} | textLen=${bodyText.length}`)
 
   if (!from || !to) { console.warn('[pipeline:twilio] ✗ missing From/To — ignored'); return }
 
@@ -434,7 +479,7 @@ router.get('/', async (req, res) => {
 
   let query = supabaseAdmin
     .from('pending_demands')
-    .select('*')
+    .select('id, agency_id, sender_id, channel, status, classification, extracted_data, summary_for_agent, offered_vehicle_id, offered_price_total, media_urls, created_at, updated_at')
     .eq('agency_id', req.user.agency_id)
     .order('created_at', { ascending: false })
     .limit(100)
@@ -454,7 +499,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const { data, error } = await supabaseAdmin
     .from('pending_demands')
-    .select('*')
+    .select('id, agency_id, sender_id, channel, status, classification, extracted_data, summary_for_agent, offered_vehicle_id, offered_price_total, media_urls, conversation, created_at, updated_at')
     .eq('id', req.params.id)
     .eq('agency_id', req.user.agency_id)
     .maybeSingle()

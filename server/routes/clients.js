@@ -27,6 +27,9 @@ const router = Router()
 router.use(requireAuth)
 
 const ENCRYPT_PII = process.env.ENCRYPT_PII === 'true'
+if (!ENCRYPT_PII) {
+  console.warn('[security] ⚠️ ENCRYPT_PII is not enabled — client PII is stored in plaintext. Set ENCRYPT_PII=true after running the encryption migration.')
+}
 
 // ── camelCase ⇄ DB row mappers (mirror lib/db.js pre-Phase-5 shape) ─────────
 

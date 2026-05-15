@@ -70,7 +70,11 @@ router.get('/:id', async (req, res, next) => {
     const agencyId = req.user.agency_id
     const { data, error } = await supabaseAdmin
       .from('reservations')
-      .select('*, clients(*), vehicles(*)')
+      .select(`id, agency_id, status, start_date, end_date, total_price, daily_rate,
+        customer_name, customer_contact, car_model, source_channel, notes,
+        pickup_location, return_location, extras, vehicle_id, client_id, created_at, created_by,
+        clients(id, first_name, last_name, email, phone, id_type, id_number, driving_license_num),
+        vehicles(id, brand, model, plate_number, year, daily_rate, status)`)
       .eq('id', req.params.id)
       .eq('agency_id', agencyId)
       .maybeSingle()
@@ -92,16 +96,23 @@ router.get('/:id', async (req, res, next) => {
  * Body must include at minimum: customer_name, customer_contact, car_model,
  * start_date, end_date, total_price, source_channel.
  */
+// Allowed fields for reservation creation — prevents injection of arbitrary columns
+const RESERVATION_ALLOWED_FIELDS = [
+  'customer_name', 'customer_contact', 'car_model', 'vehicle_id', 'client_id',
+  'start_date', 'end_date', 'total_price', 'source_channel', 'status', 'notes',
+  'pickup_location', 'return_location', 'daily_rate', 'extras',
+]
+
 router.post('/', async (req, res, next) => {
   try {
     const agencyId = req.user.agency_id
     if (!agencyId) return res.status(403).json({ error: 'No agency on profile' })
 
-    const payload = {
-      ...req.body,
-      agency_id:  agencyId,
-      created_by: req.user.id,
-    }
+    const payload = Object.fromEntries(
+      Object.entries(req.body).filter(([k]) => RESERVATION_ALLOWED_FIELDS.includes(k))
+    )
+    payload.agency_id  = agencyId
+    payload.created_by = req.user.id
 
     const { data, error } = await supabaseAdmin
       .from('reservations')

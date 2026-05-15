@@ -18,6 +18,7 @@
     "express": "^4.19.2",
     "express-rate-limit": "^7.3.1",
     "franc": "^6.2.0",
+    "helmet": "^8.1.0",
     "imap-simple": "^5.1.0",
     "mailparser": "^3.7.0",
     "multer": "^2.1.1",

@@ -10,10 +10,21 @@
 import { Router } from 'express'
 import Anthropic from '@anthropic-ai/sdk'
 import multer from 'multer'
+import rateLimit from 'express-rate-limit'
 import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
 router.use(requireAuth)
+
+// Rate limit: 20 OCR scans per hour per user (Claude Vision is expensive)
+const ocrLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  keyGenerator: (req) => req.user.id,
+  message: { error: 'OCR scan limit reached (20/hour). Try again later.' },
+})
+router.use(ocrLimit)
+
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
 
 const CLAUDE_SYSTEM_PROMPT = `You are a precise document parser specialised in Moroccan identity documents.

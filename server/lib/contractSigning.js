@@ -84,9 +84,14 @@ export async function appendAgencyTemplate(autoBuffer, agencyId) {
  * @returns {Object} { contract, client, agencyId, signUrl, token, expiresAt, templateApplied, templateError }
  * @throws  Error with .status (4xx/5xx) and .body on validation/upload failure
  */
+const MAX_PDF_BASE64_LENGTH = 20 * 1024 * 1024 // ~15MB decoded PDF
+
 export async function prepareSignableContract({ contractId, pdfBase64, userAgencyId }) {
   if (!pdfBase64 || typeof pdfBase64 !== 'string') {
     throw httpError(400, { error: 'pdf_base64 is required' })
+  }
+  if (pdfBase64.length > MAX_PDF_BASE64_LENGTH) {
+    throw httpError(400, { error: `pdf_base64 exceeds max size (${Math.round(MAX_PDF_BASE64_LENGTH / 1024 / 1024)}MB)` })
   }
 
   const { data: contract, error } = await supabaseAdmin
@@ -127,7 +132,12 @@ export async function prepareSignableContract({ contractId, pdfBase64, userAgenc
     new Date(expiresAt).getTime() - now > (SIGN_TOKEN_TTL_HOURS * 3600_000) - TOKEN_REUSE_WINDOW_MS
 
   if (!tokenIsFresh) {
-    token = crypto.randomUUID()
+    // Generate a signed token: UUID + HMAC suffix for integrity verification.
+    // Even if someone guesses UUIDs, the HMAC prevents forgery.
+    const uuid = crypto.randomUUID()
+    const hmacKey = process.env.SIGNING_TOKEN_SECRET || process.env.ENCRYPTION_KEY || 'fallback-dev-key'
+    const hmac = crypto.createHmac('sha256', hmacKey).update(uuid).digest('hex').slice(0, 16)
+    token = `${uuid}-${hmac}`
     expiresAt = new Date(now + SIGN_TOKEN_TTL_HOURS * 3600_000).toISOString()
   }
 

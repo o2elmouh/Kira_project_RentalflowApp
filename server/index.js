@@ -1,5 +1,6 @@
 import 'dotenv/config'
 import express from 'express'
+import helmet from 'helmet'
 import cors from 'cors'
 import rateLimit from 'express-rate-limit'
 import { join } from 'path'
@@ -29,6 +30,14 @@ const app = express()
 app.set('trust proxy', 1)
 const PORT = process.env.PORT || 3001
 
+// ── Security headers ─────────────────────────────────────
+// Sets X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security,
+// X-XSS-Protection, and other security headers automatically.
+app.use(helmet({
+  contentSecurityPolicy: false, // CSP can break frontend fetches; enable when ready
+  crossOriginEmbedderPolicy: false, // needed for cross-origin images (photos)
+}))
+
 // ── CORS ──────────────────────────────────────────────────
 const ALLOWED_ORIGINS = [
   process.env.FRONTEND_URL,
@@ -40,12 +49,14 @@ app.use(cors({
   origin: (origin, cb) => {
     // Allow requests with no origin (server-to-server, mobile, curl)
     if (!origin) return cb(null, true)
-    // In development, allow all; in production, restrict to known origins
-    if (process.env.NODE_ENV !== 'production' || ALLOWED_ORIGINS.includes(origin)) {
-      return cb(null, true)
-    }
+    // Always allow explicitly configured origins
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true)
     // Allow Vercel preview deployments (*.vercel.app)
     if (/\.vercel\.app$/.test(origin)) return cb(null, true)
+    // In development, also allow localhost on any port
+    if (process.env.NODE_ENV !== 'production' && /^https?:\/\/localhost(:\d+)?$/.test(origin)) {
+      return cb(null, true)
+    }
     cb(new Error(`CORS: origin ${origin} not allowed`))
   },
   credentials: true,
@@ -95,9 +106,18 @@ app.use((req, res) => {
 })
 
 // ── Global error handler ──────────────────────────────────
+// SECURITY: Never leak stack traces, file paths, or internal details to clients.
 app.use((err, req, res, _next) => {
   console.error('[API Error]', err.message)
-  res.status(err.status || 500).json({ error: err.message || 'Internal server error' })
+
+  const status = err.status || 500
+  // Only forward the error message for expected client errors (4xx).
+  // For 5xx, always return a generic message to avoid leaking internals.
+  const safeMessage = status < 500
+    ? (err.message || 'Bad request')
+    : 'Internal server error'
+
+  res.status(status).json({ error: safeMessage })
 })
 
 startGmailPoller()

@@ -123,7 +123,10 @@ async function pollAgency(agency) {
           `http://localhost:${process.env.PORT || 3001}/leads/webhook/gmail`,
           {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(process.env.INTERNAL_WEBHOOK_SECRET ? { 'X-Internal-Secret': process.env.INTERNAL_WEBHOOK_SECRET } : {}),
+            },
             body:    JSON.stringify({ agencyId: agency.id, senderEmail: from, subject, bodyText, attachments }),
           }
         )

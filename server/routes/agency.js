@@ -81,9 +81,19 @@ const upload = multer({
   fileFilter: (_req, file, cb) => cb(null, file.mimetype === 'application/pdf'),
 })
 
+// Validate PDF magic bytes (%PDF header) — MIME type alone is spoofable.
+function validatePdfMagicBytes(buffer) {
+  if (!buffer || buffer.length < 5) return false
+  // PDF files start with %PDF-
+  return buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46 && buffer[4] === 0x2D
+}
+
 router.post('/contract-template', requireAdmin, upload.single('template'), async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No PDF file received (field name: "template")' })
+    if (!validatePdfMagicBytes(req.file.buffer)) {
+      return res.status(400).json({ error: 'Invalid file: not a valid PDF (magic bytes mismatch)' })
+    }
     const agencyId = req.user.agency_id
     if (!agencyId) return res.status(400).json({ error: 'No agency on profile' })
 

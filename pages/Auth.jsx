@@ -90,9 +90,9 @@ function ForgotPasswordForm({ onBack }) {
     <div className="auth-form" style={{ textAlign: 'center' }}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
       <h2>{t('forgotPassword.sentTitle')}</h2>
-      <p className="auth-subtitle" style={{ marginTop: 8 }}
-        dangerouslySetInnerHTML={{ __html: t('forgotPassword.sentHint', { email: `<strong>${email}</strong>` }) }}
-      />
+      <p className="auth-subtitle" style={{ marginTop: 8 }}>
+        {t('forgotPassword.sentHint', { email: '' })} <strong>{email}</strong>
+      </p>
       <button className="btn btn-ghost btn-sm" style={{ marginTop: 16, color: 'var(--link-blue)' }} onClick={onBack}>
         {t('forgotPassword.backToLogin')}
       </button>
@@ -149,9 +149,9 @@ function SignupForm({ onSwitch }) {
     <div className="auth-form" style={{ textAlign: 'center' }}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
       <h2>{t('verify.title')}</h2>
-      <p className="auth-subtitle" style={{ marginTop: 8 }}
-        dangerouslySetInnerHTML={{ __html: t('verify.hint', { email: `<strong>${email}</strong>` }) }}
-      />
+      <p className="auth-subtitle" style={{ marginTop: 8 }}>
+        {t('verify.hint', { email: '' })} <strong>{email}</strong>
+      </p>
       <button className="btn btn-ghost btn-sm" style={{ marginTop: 8, color: 'var(--link-blue)' }} onClick={onSwitch}>
         {t('verify.backToLogin')}
       </button>
