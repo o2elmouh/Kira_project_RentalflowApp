@@ -1,7 +1,8 @@
 # Arabic i18n Translation — Handoff
 
 **Branch:** `staging-fix` (pushed to remote `staging`)
-**Last commit:** `697f80e` — Phase 1: NewRental wizard
+<<<<<<< HEAD
+**Last commit:** `72c520f` — Phase 2: Restitution sub-steps (✅ complete)
 **Worktree:** `C:\Users\otman\Downloads\Rental flow app SAAS\.claude\worktrees\blissful-taussig-0c023e`
 
 ---
@@ -30,7 +31,7 @@ Translate every field/label in the app to Arabic without regression. ~5000 lines
 | # | Phase | Files | Status | Commit |
 |---|---|---|---|---|
 | 1 | NewRental sub-steps | `pages/rental/ScanStep.jsx`, `RentalStep.jsx`, `PhotoStep.jsx` | ✅ done | `697f80e` |
-| 2 | Restitution sub-steps | `pages/restitution/Step1Return.jsx`, `Step2Photos.jsx`, `Step3Damages.jsx`, `Step4Closure.jsx` | ⏳ pending | — |
+| 2 | Restitution sub-steps | `pages/restitution/Step1Return.jsx`, `Step2Photos.jsx`, `Step3Damages.jsx`, `Step4Closure.jsx` | ✅ done | `72c520f` |
 | 3 | Settings sub-tabs body | `pages/settings/AgenceTab.jsx` (body), `GeneralConfigTab.jsx`, `FleetConfigTab.jsx` (body), `TeamTab.jsx`, `IntegrationsTab.jsx`, `TelematicsTab.jsx`, `RentalOptionsSection.jsx`, `SignatureSection.jsx` | ⏳ pending | — |
 | 4 | Fleet sub-pages | `pages/fleet/VehicleEditForm.jsx`, `VehicleDetail.jsx`, `RentalsTab.jsx`, `RepairsTab.jsx`, `DeadlinesTab.jsx`, `AmortissementTab.jsx`, `InlineRepairsSection.jsx`, `ReferencePhotosSection.jsx` | ⏳ pending | — |
 | 5 | Documents internals | `pages/Contracts.jsx`, `Invoices.jsx`, `pages/accounting/TabDashboard.jsx`, `TabPlanComptable.jsx`, `TabJournal.jsx`, `TabDeposits.jsx`, the `TabBilan` inline component in `pages/Accounting.jsx` | ⏳ pending | — |
@@ -92,4 +93,4 @@ public/locales/{fr,ar,en}/
 
 ## Resume command for next session
 
-> "Continue the Arabic i18n work. Read `.claude/i18n-handoff.md` for context. Start Phase 2 (Restitution sub-steps). Follow the regression-safety rules. Commit atomically and push to `staging-fix:staging`."
+> "Continue the Arabic i18n work. Read `.claude/i18n-handoff.md` for context. Start Phase 3 (Settings sub-tabs). Follow the regression-safety rules. Commit atomically and push to `staging-fix:staging`."
