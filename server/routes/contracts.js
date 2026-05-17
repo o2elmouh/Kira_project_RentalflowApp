@@ -1,9 +1,11 @@
 import { Router } from 'express'
+import rateLimit from 'express-rate-limit'
 import { PDFDocument } from 'pdf-lib'
 import { requireAuth } from '../middleware/auth.js'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { sendWhatsAppMessage } from '../lib/twilioClient.js'
 import { SIGN_TOKEN_TTL_HOURS, prepareSignableContract, escapeHtml } from '../lib/contractSigning.js'
+import { buildUnsignedContractPdf } from '../lib/unsignedContractPdf.js'
 
 const SIGNED_URL_TTL_SECONDS = 60 // short-lived presigned URL for downloads
 
@@ -150,6 +152,48 @@ router.post('/:id/extend', async (req, res, next) => {
 
     if (error) return next(error)
     res.json({ contract: data, extraDays, extraAmount })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ─────────────────────────────────────────────────────────────
+// GET /contracts/:id/unsigned-pdf — server-side PDF generator
+// ─────────────────────────────────────────────────────────────
+//
+// Mobile clients can't run the web app's jsPDF generator (browser-only),
+// so they fetch the unsigned PDF from this endpoint and forward it to
+// `/send-whatsapp` or `/send-email`.
+//
+// Response: { pdf_base64: '<raw base64, no data URI prefix>' }
+router.get('/:id/unsigned-pdf', async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const agencyId = req.user.agency_id
+    if (!agencyId) return res.status(403).json({ error: 'No agency on profile' })
+
+    const { data: contract, error: cErr } = await supabaseAdmin
+      .from('contracts')
+      .select('*')
+      .eq('id', id)
+      .eq('agency_id', agencyId)
+      .maybeSingle()
+    if (cErr)     return next(cErr)
+    if (!contract) return res.status(404).json({ error: 'Contract not found' })
+
+    const [{ data: client }, { data: vehicle }, { data: agency }] = await Promise.all([
+      contract.client_id
+        ? supabaseAdmin.from('clients').select('*').eq('id', contract.client_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      contract.vehicle_id
+        ? supabaseAdmin.from('vehicles').select('*').eq('id', contract.vehicle_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabaseAdmin.from('agencies').select('*').eq('id', agencyId).maybeSingle(),
+    ])
+
+    const bytes = await buildUnsignedContractPdf({ contract, client, vehicle, agency })
+    const pdf_base64 = Buffer.from(bytes).toString('base64')
+    res.json({ pdf_base64 })
   } catch (err) {
     next(err)
   }
@@ -345,12 +389,19 @@ router.post('/:id/send-final', async (req, res, next) => {
       try {
         const { Resend } = await import('resend')
         const resend = new Resend(process.env.RESEND_API_KEY)
+        // SECURITY: escape DB-sourced values before interpolating into HTML —
+        // client/contract names are originally user-supplied and could carry
+        // HTML if anything upstream stored raw markup.
+        const safeName   = escapeHtml(fullName)
+        const safeNumber = escapeHtml(contract.contract_number || '')
+        // Sanitize filename: strip path separators and constrain charset.
+        const safeFile = (contract.contract_number || 'contract').replace(/[^A-Za-z0-9._-]/g, '_')
         await resend.emails.send({
           from: process.env.RESEND_FROM || 'onboarding@resend.dev',
           to: email,
           subject: `Votre contrat finalisé ${contract.contract_number}`,
-          html: `<p>Bonjour ${fullName},</p><p>Veuillez trouver ci-joint votre contrat finalisé <strong>${contract.contract_number}</strong>.</p>`,
-          attachments: [{ filename: `${contract.contract_number}.pdf`, content: base64Data }],
+          html: `<p>Bonjour ${safeName},</p><p>Veuillez trouver ci-joint votre contrat finalisé <strong>${safeNumber}</strong>.</p>`,
+          attachments: [{ filename: `${safeFile}.pdf`, content: base64Data }],
         })
         return res.json({ success: true, channel: 'email' })
       } catch (mailErr) {
@@ -373,8 +424,29 @@ export default router
 
 export const publicContractsRouter = Router()
 
+// SECURITY: rate-limit the public signing endpoints to slow token-guessing
+// attempts. Tokens are UUID + 16-hex HMAC (effectively unguessable), but
+// without a limit an attacker could still hammer the endpoint to harvest
+// signed PDFs from leaked tokens or burn CPU.
+const signRead = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,                    // 60 reads / 15 min / IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: r => r.ip,
+  message: { error: 'Too many requests' },
+})
+const signWrite = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,                    // 10 sign attempts / 15 min / IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: r => r.ip,
+  message: { error: 'Too many requests' },
+})
+
 // GET /contracts/sign/:token — fetch contract metadata for the signing page
-publicContractsRouter.get('/sign/:token', async (req, res, next) => {
+publicContractsRouter.get('/sign/:token', signRead, async (req, res, next) => {
   try {
     const { token } = req.params
     const { data, error } = await supabaseAdmin
@@ -414,7 +486,7 @@ publicContractsRouter.get('/sign/:token', async (req, res, next) => {
 // POST /contracts/sign/:token/sign-native
 // Body: { signatureBase64: 'data:image/png;base64,...' }
 // Stamps the signature onto the unsigned PDF, uploads the result, marks signed.
-publicContractsRouter.post('/sign/:token/sign-native', async (req, res, next) => {
+publicContractsRouter.post('/sign/:token/sign-native', signWrite, async (req, res, next) => {
   try {
     const { token } = req.params
     const { signatureBase64 } = req.body
