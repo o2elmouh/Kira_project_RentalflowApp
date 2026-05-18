@@ -508,7 +508,7 @@ router.get('/', async (req, res) => {
 
   let query = supabaseAdmin
     .from('pending_demands')
-    .select('id, agency_id, sender_id, source, status, classification, extracted_data, summary_for_agent, offered_vehicle_id, offered_price_total, media_urls, created_at, updated_at')
+    .select('id, agency_id, sender_id, source, status, classification, extracted_data, offered_vehicle_id, offered_price_total, media_urls, created_at, updated_at')
     .eq('agency_id', req.user.agency_id)
     .order('created_at', { ascending: false })
     .limit(100)
@@ -528,7 +528,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const { data, error } = await supabaseAdmin
     .from('pending_demands')
-    .select('id, agency_id, sender_id, source, status, classification, extracted_data, summary_for_agent, offered_vehicle_id, offered_price_total, media_urls, conversation, created_at, updated_at')
+    .select('id, agency_id, sender_id, source, status, classification, extracted_data, offered_vehicle_id, offered_price_total, media_urls, conversation, created_at, updated_at')
     .eq('id', req.params.id)
     .eq('agency_id', req.user.agency_id)
     .maybeSingle()
