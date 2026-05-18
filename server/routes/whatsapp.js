@@ -19,6 +19,7 @@ import { requireAuth } from '../middleware/auth.js'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { sendWhatsAppMessage } from '../lib/twilioClient.js'
 import { appendConversation } from '../lib/conversation.js'
+import { sendToAgency } from '../lib/pushNotifications.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -154,6 +155,13 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
 
     if (updateErr) console.error('[pipeline:offer] ✗ status update error:', updateErr.message)
     else console.log(`[pipeline:offer] ✓ lead ${leadId} → offer_sent`)
+
+    sendToAgency(
+      agencyId,
+      '📲 Offre envoyée',
+      `${vehicleName} à ${priceTotal} MAD — en attente de la réponse du client.`,
+      { type: 'lead', id: leadId, status: 'offer_sent' }
+    ).catch(() => {})
 
     res.json({ sent: true })
   } catch (err) {

@@ -3,6 +3,8 @@ import { requireAuth } from '../middleware/auth.js'
 import rateLimit from 'express-rate-limit'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { appendConversation } from '../lib/conversation.js'
+import { escapeHtml } from '../lib/contractSigning.js'
+import { sendToAgency } from '../lib/pushNotifications.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -71,8 +73,15 @@ router.post('/send-offer', emailLimit, async (req, res) => {
     const vehicleName = `${vehicle.brand} ${vehicle.model}`.trim()
     const to = lead.sender_id  // Gmail leads store the email address in sender_id
 
+    // SECURITY: validate priceTotal is numeric (req.body) and escape DB-sourced
+    // names before interpolating into HTML.
+    const priceNum = Number(priceTotal)
+    if (!Number.isFinite(priceNum) || priceNum < 0 || priceNum > 10_000_000) {
+      return res.status(400).json({ error: 'priceTotal must be a non-negative number' })
+    }
+    const safeVehicle = escapeHtml(vehicleName)
     const subject = `Offre de location — ${vehicleName}`
-    const html = `<p>Bonjour,</p><p>Suite à votre demande, nous vous proposons une <strong>${vehicleName}</strong> pour <strong>${priceTotal} MAD</strong> au total.</p><p>Répondez à cet email pour confirmer ou décliner l'offre.</p><p>Cordialement,<br/>RentaFlow</p>`
+    const html = `<p>Bonjour,</p><p>Suite à votre demande, nous vous proposons une <strong>${safeVehicle}</strong> pour <strong>${priceNum} MAD</strong> au total.</p><p>Répondez à cet email pour confirmer ou décliner l'offre.</p><p>Cordialement,<br/>RentaFlow</p>`
 
     if (process.env.RESEND_API_KEY) {
       const { Resend } = await import('resend')
@@ -92,6 +101,13 @@ router.post('/send-offer', emailLimit, async (req, res) => {
       .eq('id', leadId)
 
     if (updateErr) console.error('[Email/send-offer] update error:', updateErr.message)
+
+    sendToAgency(
+      agencyId,
+      '📧 Offre envoyée',
+      `${vehicleName} à ${priceNum} MAD — en attente de la réponse du client.`,
+      { type: 'lead', id: leadId, status: 'offer_sent' }
+    ).catch(() => {})
 
     res.json({ sent: true })
   } catch (err) {

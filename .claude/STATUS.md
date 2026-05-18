@@ -6,8 +6,7 @@
 
 ## Pending Tasks
 - Wire Resend email provider (`server/routes/email.js` — needs `RESEND_API_KEY`)
-- Wire Resend email provider (`server/routes/email.js` — needs `RESEND_API_KEY`)
-- **Law 09-08 compliance:** Phase 5 in progress — 5a (v1.10.6) + 5b (v1.10.7) shipped. Frontend now hits `/clients` API for all client CRUD. Remaining: 5c (v1.10.8) = run `npm run migrate:clients-encrypt` against prod, set `ENCRYPT_PII=true` in Railway env, soak 2 weeks, then drop plaintext columns. See [.claude/PHASE_PLAN.md](PHASE_PLAN.md).
+- **Law 09-08 compliance:** Phase 5 in progress — 5a (v1.10.6) + 5b (v1.10.7) shipped. Frontend now hits `/clients` API for all client CRUD. **5c (v1.10.8) deferred until pre-prod cutover** — no real PII exists yet, so the 2-week-soak flip-flag procedure is theatrical on staging. At prod cutover: set `ENCRYPT_PII=true` in Railway from day one + ship a single migration that drops the plaintext columns before launch. Skip the backfill (`npm run migrate:clients-encrypt`) and the soak. Optional dress rehearsal: run the backfill once against staging Supabase to confirm it executes cleanly. See [.claude/PHASE_PLAN.md](PHASE_PLAN.md).
 - **Railway cron:** schedule `cleanup:pending` daily at 03:00 UTC in Railway dashboard (Phase 2)
 
 ---

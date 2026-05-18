@@ -152,6 +152,23 @@ router.post('/', async (req, res, next) => {
     const agencyId = req.user.agency_id ?? await resolveAgencyId(req.user.id)
     if (!agencyId) return res.status(403).json({ error: 'No agency on profile' })
 
+    // SECURITY: if a client id is supplied, verify it already belongs to this
+    // agency before upserting. Without this check, an authenticated user from
+    // agency A could pass agency B's client id and the upsert's
+    // onConflict='id' would UPDATE that row, rewriting its agency_id.
+    const incomingId = req.body?.id
+    if (incomingId) {
+      const { data: existing, error: ownErr } = await supabaseAdmin
+        .from('clients')
+        .select('id, agency_id')
+        .eq('id', incomingId)
+        .maybeSingle()
+      if (ownErr) return next(ownErr)
+      if (existing && existing.agency_id !== agencyId) {
+        return res.status(403).json({ error: 'Forbidden' })
+      }
+    }
+
     const dbRow = clientToDb(req.body || {})
     Object.keys(dbRow).forEach(k => dbRow[k] === undefined && delete dbRow[k])
     dbRow.agency_id = agencyId

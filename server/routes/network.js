@@ -15,6 +15,7 @@
 import { Router } from 'express'
 import { requireAuth, requireAdmin } from '../middleware/auth.js'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
+import { sendToAgency } from '../lib/pushNotifications.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -263,6 +264,15 @@ router.post('/requests', async (req, res, next) => {
       .single()
 
     if (rErr) return next(rErr)
+
+    // Push the owning agency about the new incoming request
+    sendToAgency(
+      vehicle.agency_id,
+      '🚗 Nouvelle demande inter-agence',
+      `${days} jour${days > 1 ? 's' : ''} demandés${agreedPrice ? ` · ${agreedPrice} MAD` : ''}.`,
+      { type: 'network_request_incoming', id: request.id }
+    ).catch(() => {})
+
     res.status(201).json({ request })
   } catch (err) {
     next(err)
@@ -403,6 +413,23 @@ router.patch('/requests/:id/status', async (req, res, next) => {
           .update({ status: 'available' })
           .eq('id', request.vehicle_id)
       }
+    }
+
+    // Notify the counterparty about the status change.
+    const counterpartyId = isOwner ? request.requesting_agency_id : request.owning_agency_id
+    const LABEL = {
+      APPROVED:  '✅ Demande approuvée',
+      REJECTED:  '❌ Demande refusée',
+      COMPLETED: '🏁 Demande terminée',
+      CANCELLED: '↩️ Demande annulée',
+    }
+    if (LABEL[newStatus]) {
+      sendToAgency(
+        counterpartyId,
+        LABEL[newStatus],
+        `Demande inter-agence du ${request.start_date} au ${request.end_date}.`,
+        { type: 'network_request_status', id, status: newStatus }
+      ).catch(() => {})
     }
 
     res.json({ request: updated })

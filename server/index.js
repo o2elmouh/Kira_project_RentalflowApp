@@ -45,14 +45,25 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5174',
 ].filter(Boolean)
 
+// Optional: allowlist of Vercel preview hosts owned by this project.
+// Set VERCEL_PREVIEW_PREFIX to e.g. "rentaflow" so only
+// https://rentaflow-*.vercel.app preview URLs are accepted instead of
+// every *.vercel.app on the internet.
+const VERCEL_PREFIX = process.env.VERCEL_PREVIEW_PREFIX || ''
+const vercelHostRe = VERCEL_PREFIX
+  ? new RegExp(`^https://${VERCEL_PREFIX}[A-Za-z0-9._-]*\\.vercel\\.app$`)
+  : null
+
 app.use(cors({
   origin: (origin, cb) => {
     // Allow requests with no origin (server-to-server, mobile, curl)
     if (!origin) return cb(null, true)
     // Always allow explicitly configured origins
     if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true)
-    // Allow Vercel preview deployments (*.vercel.app)
-    if (/\.vercel\.app$/.test(origin)) return cb(null, true)
+    // Allow Vercel preview deployments only when a project-specific prefix
+    // is configured (otherwise an attacker could deploy any *.vercel.app
+    // and bypass CORS with credentials).
+    if (vercelHostRe && vercelHostRe.test(origin)) return cb(null, true)
     // In development, also allow localhost on any port
     if (process.env.NODE_ENV !== 'production' && /^https?:\/\/localhost(:\d+)?$/.test(origin)) {
       return cb(null, true)
@@ -63,8 +74,11 @@ app.use(cors({
 }))
 
 // ── Body parsing ──────────────────────────────────────────
-app.use(express.json({ limit: '50mb' }))
-app.use(express.urlencoded({ extended: false })) // for Twilio webhooks (form-encoded)
+// 15 MB is enough for our largest legitimate payload (base64-encoded PDFs in
+// the signing flow are capped at ~15 MB in contractSigning.js). The previous
+// 50 MB ceiling allowed cheap DoS via oversized JSON.
+app.use(express.json({ limit: '15mb' }))
+app.use(express.urlencoded({ extended: false, limit: '256kb' })) // Twilio webhooks are tiny
 
 // ── Global rate limit ─────────────────────────────────────
 app.use(rateLimit({

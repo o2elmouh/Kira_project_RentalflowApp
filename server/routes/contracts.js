@@ -6,6 +6,7 @@ import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { sendWhatsAppMessage } from '../lib/twilioClient.js'
 import { SIGN_TOKEN_TTL_HOURS, prepareSignableContract, escapeHtml } from '../lib/contractSigning.js'
 import { buildUnsignedContractPdf } from '../lib/unsignedContractPdf.js'
+import { sendToAgency } from '../lib/pushNotifications.js'
 
 const SIGNED_URL_TTL_SECONDS = 60 // short-lived presigned URL for downloads
 
@@ -566,6 +567,13 @@ publicContractsRouter.post('/sign/:token/sign-native', signWrite, async (req, re
       })
       .eq('id', contract.id)
     if (updateErr) return next(updateErr)
+
+    sendToAgency(
+      contract.agency_id,
+      '📝 Contrat signé',
+      `Le contrat ${contract.contract_number || ''} vient d'être signé par le client.`.trim(),
+      { type: 'contract_signed', id: contract.id }
+    ).catch(() => {})
 
     res.json({ success: true })
   } catch (err) {

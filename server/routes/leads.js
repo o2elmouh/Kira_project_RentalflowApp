@@ -21,6 +21,7 @@ import { detectLanguage, translateToFrench, preFilter, handleAmbiguous } from '.
 // route (Phase 5) and the leads pipeline share one AES-256-GCM implementation.
 // Re-exported here to preserve any existing import paths.
 import { encrypt, decrypt } from '../lib/encryption.js'
+import { sendToAgency } from '../lib/pushNotifications.js'
 export { encrypt, decrypt }
 
 const router = Router()
@@ -196,7 +197,16 @@ async function findMatchingDemand(agencyId, senderIdOrName, extractedData) {
 // SECURITY: This endpoint is internal-only. Block external calls via a shared secret.
 function requireInternalSecret(req, res, next) {
   const secret = process.env.INTERNAL_WEBHOOK_SECRET
-  if (!secret) return next() // skip in dev if not configured
+  if (!secret) {
+    // Fail closed in production: if the secret isn't configured, refuse the
+    // request rather than accepting anonymous lead injections. Dev still
+    // skips the check so local testing doesn't require the env var.
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[pipeline:gmail-wh] ✗ INTERNAL_WEBHOOK_SECRET missing in production — rejecting')
+      return res.status(503).json({ error: 'Webhook secret not configured' })
+    }
+    return next()
+  }
   const provided = req.headers['x-internal-secret']
   if (provided !== secret) {
     console.warn('[pipeline:gmail-wh] ✗ invalid or missing X-Internal-Secret header')
@@ -334,7 +344,19 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
       classification: extractedData?.classification || null,
     }).select('id').maybeSingle()
     if (error) console.error('[pipeline:gmail-wh] ✗ insert error:', error.message)
-    else console.log(`[pipeline:gmail-wh] ✓ lead inserted id=${inserted?.id}`)
+    else {
+      console.log(`[pipeline:gmail-wh] ✓ lead inserted id=${inserted?.id}`)
+      if (inserted?.id) {
+        const summary = extractedData?.summary_for_agent
+          || (bodyText || subject || '').slice(0, 120)
+          || `Nouveau message de ${senderEmail}`
+        sendToAgency(agencyId, 'Nouvelle demande Gmail', summary, {
+          type: 'lead',
+          id: inserted.id,
+          source: 'gmail',
+        }).catch(() => {})
+      }
+    }
   }
 
   res.json({ ok: true })
@@ -345,9 +367,16 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
 // Security: only Supabase Storage URLs are forwarded (SSRF prevention).
 router.get('/media', async (req, res) => {
   const { url } = req.query
-  if (!url || !url.startsWith('https://')) return res.status(400).end()
+  if (!url || typeof url !== 'string' || !url.startsWith('https://')) return res.status(400).end()
+  // Fail closed: if SUPABASE_URL is not configured, refuse to proxy anything
+  // rather than accept arbitrary https targets (SSRF). Also verify origin
+  // matches exactly to prevent `https://supabase.co.attacker.com/...` tricks.
   const supabaseUrl = process.env.SUPABASE_URL
-  if (supabaseUrl && !url.startsWith(supabaseUrl)) return res.status(403).end()
+  if (!supabaseUrl) return res.status(503).end()
+  let parsed
+  try { parsed = new URL(url) } catch { return res.status(400).end() }
+  const allowedHost = new URL(supabaseUrl).host
+  if (parsed.host !== allowedHost) return res.status(403).end()
   try {
     const upstream = await fetch(url)
     if (!upstream.ok) return res.status(upstream.status).end()
@@ -479,7 +508,7 @@ router.get('/', async (req, res) => {
 
   let query = supabaseAdmin
     .from('pending_demands')
-    .select('id, agency_id, sender_id, channel, status, classification, extracted_data, summary_for_agent, offered_vehicle_id, offered_price_total, media_urls, created_at, updated_at')
+    .select('id, agency_id, sender_id, source, status, classification, extracted_data, summary_for_agent, offered_vehicle_id, offered_price_total, media_urls, created_at, updated_at')
     .eq('agency_id', req.user.agency_id)
     .order('created_at', { ascending: false })
     .limit(100)
@@ -499,7 +528,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const { data, error } = await supabaseAdmin
     .from('pending_demands')
-    .select('id, agency_id, sender_id, channel, status, classification, extracted_data, summary_for_agent, offered_vehicle_id, offered_price_total, media_urls, conversation, created_at, updated_at')
+    .select('id, agency_id, sender_id, source, status, classification, extracted_data, summary_for_agent, offered_vehicle_id, offered_price_total, media_urls, conversation, created_at, updated_at')
     .eq('id', req.params.id)
     .eq('agency_id', req.user.agency_id)
     .maybeSingle()
@@ -801,7 +830,19 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       classification: extractedData?.classification || null,
     }).select('id').maybeSingle()
     if (error) console.error('[pipeline:wa] ✗ insert error:', error.message)
-    else console.log(`[pipeline:wa] ✓ lead inserted id=${inserted?.id}`)
+    else {
+      console.log(`[pipeline:wa] ✓ lead inserted id=${inserted?.id}`)
+      if (inserted?.id) {
+        const summary = extractedData?.summary_for_agent
+          || (bodyText || '').slice(0, 120)
+          || `Nouveau message WhatsApp`
+        sendToAgency(agencyId, 'Nouvelle demande WhatsApp', summary, {
+          type: 'lead',
+          id: inserted.id,
+          source: 'whatsapp',
+        }).catch(() => {})
+      }
+    }
   }
 }
 
@@ -884,6 +925,15 @@ export async function handleQuoteReply(agencyId, senderJid, text) {
       .eq('id', matched.id)
 
     console.log(`[leads/handleQuoteReply] lead ${matched.id} → ${newStatus} (intent: ${intent})`)
+
+    if (intent === 'accepted') {
+      sendToAgency(
+        agencyId,
+        '✅ Offre acceptée',
+        `Le client a accepté votre devis : « ${text.slice(0, 80)} »`,
+        { type: 'lead', id: matched.id, status: 'accepted' }
+      ).catch(() => {})
+    }
     return matched.id
   } catch (err) {
     console.error('[leads/handleQuoteReply] error:', err.message)
