@@ -233,7 +233,7 @@ router.post('/:id/send-whatsapp', async (req, res, next) => {
       `Lien valable ${SIGN_TOKEN_TTL_HOURS}h.`
 
     try {
-      await sendWhatsAppMessage(phone, body)
+      await sendWhatsAppMessage(phone, body, req.user.agency_id)
     } catch (waErr) {
       console.error(`[contracts/send-whatsapp] threw contract=${prep.contract.id} err="${waErr.message}"`)
       return res.status(502).json({
@@ -371,10 +371,11 @@ router.post('/:id/send-final', async (req, res, next) => {
       try {
         await sendWhatsAppMessage(
           phone,
-          `Bonjour ${fullName}, voici votre contrat finalisé ${contract.contract_number}. Vous trouverez le PDF en pièce jointe.`
+          `Bonjour ${fullName}, voici votre contrat finalisé ${contract.contract_number}. Vous trouverez le PDF en pièce jointe.`,
+          req.user.agency_id
         )
-        // Note: Twilio sandbox doesn't accept attachments easily — PDF link would require Storage.
-        // For now we send the message; the agent can also download/forward the file.
+        // Baileys does not currently send attachments here — the message itself acts as the
+        // notification; the agent or recipient can fetch the PDF from the contract page.
         return res.json({ success: true, channel: 'whatsapp' })
       } catch (waErr) {
         return res.status(502).json({ error: 'WhatsApp delivery failed', detail: waErr.message })
