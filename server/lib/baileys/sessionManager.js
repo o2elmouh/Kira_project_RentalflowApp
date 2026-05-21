@@ -9,6 +9,7 @@ import pino from 'pino'
 import QRCode from 'qrcode'
 import { useSupabaseAuthState } from './authState.js'
 import { handleInboundWhatsApp } from '../../routes/leads.js'
+import { transcribeAudio } from '../transcribe.js'
 import supabaseAdmin from '../supabaseAdmin.js'
 
 // No backend endpoint deletes agencies — they're removed via Supabase dashboard
@@ -186,7 +187,7 @@ export async function startSession(agencyId) {
         if (!msg.message)   continue
 
         const senderJid = jidNormalizedUser(msg.key.remoteJid)
-        const bodyText  =
+        let bodyText =
           msg.message?.conversation ||
           msg.message?.extendedTextMessage?.text ||
           msg.message?.imageMessage?.caption ||
@@ -204,6 +205,29 @@ export async function startSession(agencyId) {
             mimeType = msg.message.imageMessage.mimetype || 'image/jpeg'
           } catch (err) {
             console.error(`[baileys] media download failed agency=${agencyId}:`, err.message)
+          }
+        }
+
+        // Voice notes (ptt) and regular audio attachments — transcribe via Whisper
+        // so the text flows through the normal triage + classification pipeline.
+        const audioNode = msg.message?.audioMessage || msg.message?.pttMessage
+        if (audioNode && !bodyText.trim()) {
+          try {
+            const audioBuffer = await downloadMediaMessage(msg, 'buffer', {}, {
+              logger,
+              reuploadRequest: sock.updateMediaMessage,
+            })
+            const audioMime = audioNode.mimetype || 'audio/ogg'
+            console.log(`[baileys] audio received agency=${agencyId} | mime=${audioMime} | bytes=${audioBuffer?.length || 0}`)
+            const transcript = await transcribeAudio(audioBuffer, audioMime)
+            if (transcript) {
+              bodyText = transcript
+              console.log(`[baileys] audio transcribed agency=${agencyId} | "${transcript.slice(0, 80)}"`)
+            } else {
+              console.warn(`[baileys] audio transcription returned empty agency=${agencyId}`)
+            }
+          } catch (err) {
+            console.error(`[baileys] audio download/transcribe failed agency=${agencyId}:`, err.message)
           }
         }
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api } from '../lib/api.js'
 import SmartQuotePanel from './SmartQuotePanel.jsx'
+import { formatPhone } from '../utils/phoneFormat.js'
 
 const CONF_COLOR = (score) => {
   if (score == null) return 'var(--text-secondary)'
@@ -85,11 +86,6 @@ export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) 
     .filter(u => u.startsWith('http') || u.startsWith('data:image/'))
     .map(u => u.startsWith('data:') ? u : `${API_URL}/leads/media?url=${encodeURIComponent(u)}`)
 
-  // Strip WhatsApp JID suffix
-  function formatSenderId(id) {
-    return id ? id.replace(/@.*$/, '') : id
-  }
-
   const SOURCE_LABELS = { whatsapp: 'WhatsApp', gmail: 'Gmail' }
 
   return (
@@ -115,10 +111,10 @@ export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) 
             <span style={{ fontWeight: 600 }}>
               {(extracted.firstName || extracted.lastName)
                 ? `${extracted.firstName || ''} ${extracted.lastName || ''}`.trim()
-                : formatSenderId(lead.sender_id)}
+                : formatPhone(lead.sender_id)}
             </span>
             <span style={{ marginLeft: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
-              {SOURCE_LABELS[lead.source] || lead.source} · {lead.sender_id}
+              {SOURCE_LABELS[lead.source] || lead.source} · {formatPhone(lead.sender_id)}
             </span>
             {lead.match_score && (
               <span style={{ marginLeft: 8, fontSize: 11, color: '#f59e0b', background: '#f59e0b22', borderRadius: 4, padding: '2px 6px' }}>
@@ -254,8 +250,8 @@ export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) 
           >
             {saving ? 'Enregistrement…' : 'Sauvegarder'}
           </button>
-          {/* Préparer Devis — available for pending/new_lead to queue a quote offer */}
-          {localStatus === 'pending' && extracted.classification === 'new_lead' && (
+          {/* Préparer Devis — available for any pending lead (including escalated alerts) */}
+          {localStatus === 'pending' && (
             <>
               {prepareError && (
                 <div style={{ fontSize: 12, color: '#ef4444', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)' }}>

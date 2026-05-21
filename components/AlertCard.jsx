@@ -1,8 +1,5 @@
 import { useState } from 'react'
-
-function formatSenderId(id) {
-  return id ? id.replace(/@.*$/, '') : id
-}
+import { formatPhone } from '../utils/phoneFormat.js'
 
 // TODO: wire timeAgo strings via i18n (components use useTranslation but this is a plain util)
 function timeAgo(dateStr) {
@@ -43,7 +40,7 @@ export default function AlertCard({ alert, onEscalate, onIgnore }) {
 
       {/* Sender */}
       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#141413' }}>
-        {formatSenderId(alert.sender_id)}
+        {formatPhone(alert.sender_id)}
       </div>
 
       {/* Summary */}

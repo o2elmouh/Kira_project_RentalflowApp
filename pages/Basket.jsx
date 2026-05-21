@@ -12,6 +12,7 @@ import { useLeads } from '../hooks/useLeads.js'
 import { buildRentalPrefill } from '../utils/leadToRental.js'
 import LeadModal from '../components/LeadModal.jsx'
 import AlertSection from '../components/AlertSection.jsx'
+import { formatPhone } from '../utils/phoneFormat.js'
 
 const STATUS_LABELS = {
   pending:    'En attente',
@@ -23,11 +24,6 @@ const STATUS_LABELS = {
   converted:  'Converti',
 }
 const SOURCE_LABELS  = { whatsapp: 'WhatsApp', gmail: 'Gmail' }
-
-// Strip WhatsApp JID suffix: "212XXXXXXX@s.whatsapp.net" → "212XXXXXXX"
-function formatSenderId(id) {
-  return id ? id.replace(/@.*$/, '') : id
-}
 
 // ── Confidence badge (used by LeadCard) ───────────────────
 function ConfBadge({ score }) {
@@ -76,7 +72,7 @@ function LeadCard({ lead, onClick }) {
       </div>
 
       <div style={{ fontWeight: 600, marginBottom: 4 }}>
-        {hasName ? `${ex.firstName || ''} ${ex.lastName || ''}`.trim() : formatSenderId(lead.sender_id)}
+        {hasName ? `${ex.firstName || ''} ${ex.lastName || ''}`.trim() : formatPhone(lead.sender_id)}
       </div>
 
       {ex.classification ? (
