@@ -79,7 +79,7 @@ app.use(cors({
 // the signing flow are capped at ~15 MB in contractSigning.js). The previous
 // 50 MB ceiling allowed cheap DoS via oversized JSON.
 app.use(express.json({ limit: '15mb' }))
-app.use(express.urlencoded({ extended: false, limit: '256kb' })) // Twilio webhooks are tiny
+app.use(express.urlencoded({ extended: false, limit: '256kb' }))
 
 // ── Global rate limit ─────────────────────────────────────
 app.use(rateLimit({
