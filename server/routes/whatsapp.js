@@ -1,11 +1,13 @@
 /**
- * WhatsApp outbound via Twilio REST API.
+ * WhatsApp outbound via Baileys (per-agency QR-scanned session).
  *
- * Inbound webhooks (read receipts, replies) are handled separately
- * once deployed to Railway — ngrok is not available locally.
+ * Inbound messages arrive via Baileys events handled in
+ * server/lib/baileys/sessionManager.js → handleInboundWhatsApp().
  *
  * Routes:
- *   GET  /whatsapp/status              — always returns { status: 'twilio', connected: true }
+ *   GET  /whatsapp/status              — current Baileys session state for this agency
+ *   POST /whatsapp/connect             — start (or re-start) the agency's session
+ *   POST /whatsapp/disconnect          — log out and drop the session
  *   POST /whatsapp/contract
  *   POST /whatsapp/invoice
  *   POST /whatsapp/payment
@@ -18,6 +20,7 @@ import rateLimit from 'express-rate-limit'
 import { requireAuth } from '../middleware/auth.js'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { sendWhatsAppMessage } from '../lib/twilioClient.js'
+import * as sessionManager from '../lib/baileys/sessionManager.js'
 import { appendConversation } from '../lib/conversation.js'
 import { sendToAgency } from '../lib/pushNotifications.js'
 
@@ -27,18 +30,26 @@ router.use(requireAuth)
 const whatsappLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 20, keyGenerator: r => r.ip })
 const paymentLimit  = rateLimit({ windowMs: 60 * 60 * 1000, max: 5,  keyGenerator: r => r.ip })
 
-// ── Status/session stubs — Twilio is stateless, no QR or sessions needed ──
+// ── Session lifecycle (Baileys per-agency socket) ─────────
 
 router.get('/status', (req, res) => {
-  res.json({ status: 'twilio', connected: true })
+  const agencyId = req.user.agency_id
+  if (!agencyId) return res.status(403).json({ error: 'No agency' })
+  res.json(sessionManager.getStatus(agencyId))
 })
 
-router.post('/connect', whatsappLimit, (req, res) => {
-  res.json({ status: 'twilio', connected: true })
+router.post('/connect', whatsappLimit, async (req, res) => {
+  const agencyId = req.user.agency_id
+  if (!agencyId) return res.status(403).json({ error: 'No agency' })
+  await sessionManager.startSession(agencyId)
+  res.json({ started: true })
 })
 
-router.post('/disconnect', whatsappLimit, (req, res) => {
-  res.json({ ok: true })
+router.post('/disconnect', whatsappLimit, async (req, res) => {
+  const agencyId = req.user.agency_id
+  if (!agencyId) return res.status(403).json({ error: 'No agency' })
+  await sessionManager.disconnectSession(agencyId)
+  res.json({ disconnected: true })
 })
 
 // ── Outbound routes ───────────────────────────────────────
@@ -49,7 +60,7 @@ router.post('/contract', whatsappLimit, async (req, res) => {
     return res.status(400).json({ error: 'Missing required fields' })
   try {
     const body = `Bonjour ${clientName}, votre contrat de location *${contractNumber}* pour le véhicule *${vehicleName}* du ${startDate} au ${endDate} a bien été enregistré.`
-    await sendWhatsAppMessage(to, body)
+    await sendWhatsAppMessage(to, body, req.user.agency_id)
     res.json({ sent: true })
   } catch (err) {
     console.error('[WA/contract]', err.message)
@@ -63,7 +74,7 @@ router.post('/invoice', whatsappLimit, async (req, res) => {
     return res.status(400).json({ error: 'Missing required fields' })
   try {
     const body = `Bonjour ${clientName}, votre facture *${invoiceNumber}* d'un montant de *${totalTTC} MAD* a bien été générée.`
-    await sendWhatsAppMessage(to, body)
+    await sendWhatsAppMessage(to, body, req.user.agency_id)
     res.json({ sent: true })
   } catch (err) {
     console.error('[WA/invoice]', err.message)
@@ -77,7 +88,7 @@ router.post('/payment', paymentLimit, async (req, res) => {
     return res.status(400).json({ error: 'Missing required fields' })
   try {
     const body = `Bonjour ${clientName}, pour régler votre location ${contractNumber} (${amount} MAD), cliquez sur ce lien de paiement sécurisé CMI : ${paymentLink}`
-    await sendWhatsAppMessage(to, body)
+    await sendWhatsAppMessage(to, body, req.user.agency_id)
     res.json({ sent: true })
   } catch (err) {
     console.error('[WA/payment]', err.message)
@@ -93,7 +104,7 @@ router.post('/restitution', whatsappLimit, async (req, res) => {
     const body = totalExtraFees > 0
       ? `Bonjour ${clientName}, votre PV de restitution pour le contrat ${contractNumber} a été établi. Frais supplémentaires : ${totalExtraFees} MAD.`
       : `Bonjour ${clientName}, votre PV de restitution pour le contrat ${contractNumber} a été établi. Aucun frais supplémentaire.`
-    await sendWhatsAppMessage(to, body)
+    await sendWhatsAppMessage(to, body, req.user.agency_id)
     res.json({ sent: true })
   } catch (err) {
     console.error('[WA/restitution]', err.message)
@@ -142,8 +153,8 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
     if (notes) body += `\n\n${notes}`
     body += `\n\nÊtes-vous intéressé(e) ? Répondez *Oui* pour confirmer ou *Non* pour décliner.`
 
-    await sendWhatsAppMessage(phone, body)
-    console.log(`[pipeline:offer] → Twilio message sent to ${phone}`)
+    await sendWhatsAppMessage(phone, body, agencyId)
+    console.log(`[pipeline:offer] → Baileys message sent to ${phone}`)
 
     appendConversation(leadId, { role: 'agent', type: 'offer', text: body, vehicleName, priceTotal })
       .catch(err => console.error('[pipeline:offer] conv log error:', err.message))
