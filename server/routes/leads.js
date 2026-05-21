@@ -1,6 +1,6 @@
 /**
  * POST /leads/webhook/gmail      — Called by the Gmail poller when a new message arrives
- * POST /leads/webhook/whatsapp   — Twilio inbound webhook (set in Twilio console)
+ * (WhatsApp inbound is handled by Baileys sessionManager — no HTTP webhook needed)
  * GET  /leads                   — List pending demands for the authenticated agency
  * PATCH /leads/:id/status       — Update status (processed / ignored)
  * GET  /leads/:id               — Get single demand
@@ -390,103 +390,6 @@ router.get('/media', async (req, res) => {
     res.status(500).end()
   }
 })
-
-// ── POST /leads/webhook/whatsapp — Twilio inbound webhook ─
-// Twilio console config: each agency's Twilio number → "When a message comes in" → POST <RAILWAY_URL>/leads/webhook/whatsapp
-// Agency is resolved by matching the Twilio `To` number against agencies.phone.
-//
-// SECURITY: Verify Twilio signature if AUTH_TOKEN is configured.
-// Prevents attackers from injecting fake leads by spoofing webhook calls.
-async function verifyTwilioSignature(req, res, next) {
-  const authToken = process.env.TWILIO_AUTH_TOKEN
-  if (!authToken) return next() // skip in dev if no token set
-
-  const signature = req.headers['x-twilio-signature']
-  if (!signature) {
-    console.warn('[pipeline:twilio] ✗ missing X-Twilio-Signature header — rejecting')
-    return res.status(403).send('<Response/>')
-  }
-
-  try {
-    const twilio = await import('twilio')
-    const validateRequest = twilio.default.validateRequest || twilio.validateRequest
-    const webhookUrl = `${process.env.RAILWAY_PUBLIC_URL || process.env.BASE_URL || 'https://localhost:3001'}/leads/webhook/whatsapp`
-    const valid = validateRequest(authToken, signature, webhookUrl, req.body || {})
-    if (!valid) {
-      console.warn('[pipeline:twilio] ✗ invalid Twilio signature — rejecting')
-      return res.status(403).send('<Response/>')
-    }
-  } catch (err) {
-    console.error('[pipeline:twilio] ✗ signature validation error:', err.message)
-    // Fail open only if twilio module not available (shouldn't happen in prod)
-  }
-  next()
-}
-
-router.post('/webhook/whatsapp', verifyTwilioSignature, async (req, res) => {
-  // Respond immediately so Twilio doesn't retry
-  res.set('Content-Type', 'text/xml')
-  res.send('<Response/>')
-
-  const from      = req.body.From || ''
-  const to        = req.body.To   || ''
-  const bodyText  = req.body.Body || ''
-  const numMedia  = parseInt(req.body.NumMedia || '0', 10)
-  const mediaUrl  = req.body.MediaUrl0 || null
-  const mediaMime = req.body.MediaContentType0 || 'image/jpeg'
-
-  // SECURITY: mask phone numbers in logs to protect PII
-  const maskedFrom = from ? from.slice(0, -4).replace(/\d/g, '*') + from.slice(-4) : '?'
-  console.log(`[pipeline:twilio] ← inbound | from=${maskedFrom} | to=${to} | media=${numMedia} | textLen=${bodyText.length}`)
-
-  if (!from || !to) { console.warn('[pipeline:twilio] ✗ missing From/To — ignored'); return }
-
-  const senderJid    = from.replace(/^whatsapp:/i, '')
-  const toNormalized = normalizePhoneDigits(to.replace(/^whatsapp:/i, ''))
-
-  // Match agency by their registered phone number (agencies.phone).
-  // Sandbox testing: set agencies.phone = +14155238886 for the agency under test.
-  // Production: each agency sets their real WhatsApp number.
-  const { data: agencyRows } = await supabaseAdmin
-    .from('agencies')
-    .select('id, phone')
-    .not('phone', 'is', null)
-
-  const agency = agencyRows?.find(a => normalizePhoneDigits(a.phone) === toNormalized) || null
-
-  if (!agency) {
-    console.error(`[pipeline:twilio] ✗ no agency for To=${to} — update agencies.phone to match this number`)
-    return
-  }
-  console.log(`[pipeline:twilio] → agency resolved: ${agency.id}`)
-
-  let imageBuffer = null
-  if (numMedia > 0 && mediaUrl) {
-    try {
-      const creds = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64')
-      const mediaRes = await fetch(mediaUrl, { headers: { Authorization: `Basic ${creds}` } })
-      if (mediaRes.ok) {
-        imageBuffer = Buffer.from(await mediaRes.arrayBuffer())
-        console.log(`[pipeline:twilio] → media downloaded (${imageBuffer.length} bytes, ${mediaMime})`)
-      } else {
-        console.warn(`[pipeline:twilio] → media download failed: HTTP ${mediaRes.status}`)
-      }
-    } catch (err) {
-      console.error('[pipeline:twilio] ✗ media download error:', err.message)
-    }
-  }
-
-  handleInboundWhatsApp(agency.id, senderJid, imageBuffer, mediaMime, bodyText)
-    .catch(err => console.error('[pipeline:twilio] ✗ handler error:', err.message))
-})
-
-// Strips all non-digit chars and normalises Moroccan 06/07 → 212XXXXXXXXX
-function normalizePhoneDigits(phone) {
-  let p = (phone || '').replace(/[\s\-\(\)\+]/g, '')
-  if (p.startsWith('00')) p = p.slice(2)
-  if ((p.startsWith('06') || p.startsWith('07')) && p.length === 10) p = '212' + p.slice(1)
-  return p
-}
 
 // ── Authenticated routes (premium required) ───────────────
 router.use(requireAuth, requirePremium)
