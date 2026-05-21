@@ -15,7 +15,6 @@ import { Router } from 'express'
 import Anthropic from '@anthropic-ai/sdk'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { requireAuth } from '../middleware/auth.js'
-import { requirePremium } from '../middleware/premium.js'
 import { detectLanguage, translateToFrench, preFilter, handleAmbiguous } from '../lib/triage.js'
 // Encryption helpers moved to server/lib/encryption.js so the new clients
 // route (Phase 5) and the leads pipeline share one AES-256-GCM implementation.
@@ -391,8 +390,8 @@ router.get('/media', async (req, res) => {
   }
 })
 
-// ── Authenticated routes (premium required) ───────────────
-router.use(requireAuth, requirePremium)
+// ── Authenticated routes ──────────────────────────────────
+router.use(requireAuth)
 
 // GET /leads — list pending demands
 router.get('/', async (req, res) => {

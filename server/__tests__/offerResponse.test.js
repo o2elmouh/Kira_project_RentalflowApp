@@ -72,9 +72,6 @@ vi.mock('../lib/supabaseAdmin.js', () => ({
 vi.mock('../middleware/auth.js', () => ({
   requireAuth: (req, _res, next) => { req.user = { id: 'u1', agency_id: 'a1' }; next() },
 }))
-vi.mock('../middleware/premium.js', () => ({
-  requirePremium: (_req, _res, next) => next(),
-}))
 vi.mock('../lib/triage.js', () => ({
   detectLanguage: vi.fn().mockResolvedValue('fr'),
   translateToFrench: vi.fn().mockImplementation((t) => t),

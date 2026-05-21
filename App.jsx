@@ -179,7 +179,6 @@ export default function App() {
 
   const role = profile?.role ?? 'staff'
   const isAdmin = role === 'admin'
-  const isPremium = profile?.agencies?.plan === 'premium'
 
   const renderPage = () => {
     switch (page) {
@@ -214,7 +213,6 @@ export default function App() {
       case 'network':  return <Network />
       case 'privacy-policy': return <PrivacyPolicy onBack={() => setPage('dashboard')} />
       case 'basket':
-        if (!isPremium) { setTimeout(() => setPage('dashboard'), 0); return null }
         return <Basket onNavigate={handleNav} initialTab={basketInitialTab} />
       case 'restitution-picker':
         return <RestitutionPicker onPick={handleRestitution} onCancel={() => setPage('contracts')} />
@@ -258,7 +256,7 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <UserContext.Provider value={{ user, profile, role, isAdmin, isPremium }}>
+      <UserContext.Provider value={{ user, profile, role, isAdmin }}>
         <div className="app-shell">
           <Sidebar
             active={page}

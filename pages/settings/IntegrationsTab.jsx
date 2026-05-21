@@ -1,6 +1,5 @@
 /**
  * Integrations tab — WhatsApp (Baileys, per-agency QR) + Gmail App Password
- * (visible only on premium plan)
  */
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -96,9 +95,6 @@ export default function IntegrationsTab() {
     <div style={{ maxWidth: 600 }}>
       <p style={{ color: 'var(--text-secondary)', marginTop: 0, marginBottom: 24, fontSize: 14 }}>
         {t('integrations.intro')}
-        <span style={{ marginLeft: 8, fontSize: 11, background: 'var(--accent)', color: '#fff', borderRadius: 4, padding: '2px 7px', fontWeight: 600 }}>
-          PREMIUM
-        </span>
       </p>
 
       {/* WhatsApp — Baileys (per-agency QR scan) */}

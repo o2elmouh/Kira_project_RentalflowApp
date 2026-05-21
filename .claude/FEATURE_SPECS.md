@@ -669,7 +669,7 @@ export default function Settings() {
 - Test: `pages/__tests__/Basket.test.jsx`
 
 ### Requirements
-1. Add Basket to staff access (currently admin-only via `premium: true`)
+1. Add Basket to staff access (currently admin-only; premium gate was removed in v1.12.0 — RBAC is now the only restriction)
 2. Staff and manager can see Basket tab in Sidebar
 3. Filter leads visible to staff:
    - Show: New incoming requests (incoming_requests classification)
@@ -680,9 +680,9 @@ export default function Settings() {
 
 ### Sidebar Update: `components/Sidebar.jsx`
 ```javascript
-// Before: { id: 'basket', key: 'basket', icon: Inbox, premium: true }
+// Before (v1.12.0 removed the `premium: true` flag, leaving: { id: 'basket', key: 'basket', icon: Inbox })
 
-// After: Use staffAccess flag instead of premium
+// After: Use staffAccess flag
 const NAV_IDS = [
   { id: 'dashboard', key: 'dashboard', icon: LayoutDashboard },
   { id: 'new-rental', key: 'newRental', icon: PlusCircle },
@@ -691,7 +691,7 @@ const NAV_IDS = [
   { id: 'clients', key: 'clients', icon: Users },
   { id: 'documents', key: 'documents', icon: FolderOpen },
   { id: 'calendar', key: 'calendar', icon: CalendarDays },
-  { id: 'basket', key: 'basket', icon: Inbox, staffAccess: true }, // Changed from premium
+  { id: 'basket', key: 'basket', icon: Inbox, staffAccess: true },
   { id: 'network', key: 'network', icon: Globe },
   { id: 'settings', key: 'settings', icon: Settings },
 ]

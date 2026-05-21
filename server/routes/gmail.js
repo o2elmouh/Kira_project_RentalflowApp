@@ -1,7 +1,7 @@
 /**
  * Gmail IMAP Poller
  *
- * POST /gmail/poll        — Manually trigger a poll for an agency (authenticated + premium)
+ * POST /gmail/poll        — Manually trigger a poll for an agency (authenticated)
  * POST /gmail/credentials — Save/update Gmail credentials for the agency (encrypted AES-256)
  * GET  /gmail/status      — Return integration status (connected / last poll time)
  *
@@ -20,7 +20,6 @@ import { Router } from 'express'
 import { createRequire } from 'module'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { requireAuth } from '../middleware/auth.js'
-import { requirePremium } from '../middleware/premium.js'
 import { encrypt, decrypt } from './leads.js'
 
 const require = createRequire(import.meta.url)
@@ -162,7 +161,6 @@ export function startGmailPoller() {
       const { data: agencies } = await supabaseAdmin
         .from('agencies')
         .select('id, gmail_address, gmail_app_password')
-        .eq('plan', 'premium')
         .not('gmail_address', 'is', null)
         .not('gmail_app_password', 'is', null)
 
@@ -186,7 +184,7 @@ export function startGmailPoller() {
 }
 
 // ── Authenticated routes ──────────────────────────────────
-router.use(requireAuth, requirePremium)
+router.use(requireAuth)
 
 // POST /gmail/credentials — save encrypted Gmail credentials
 router.post('/credentials', async (req, res) => {

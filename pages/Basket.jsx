@@ -1,14 +1,13 @@
 /**
- * Basket of Cases — Premium feature
+ * Basket of Cases
  * Lists inbound leads from WhatsApp/Gmail.
  * Opens a comparison modal: image(s) left, AI-extracted fields right.
  * "Convert to Rental" pre-fills the NewRental wizard.
  */
-import { useState, useContext } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../lib/api.js'
 import { supabase } from '../lib/supabase.js'
-import { UserContext } from '../lib/UserContext.js'
 import { useLeads } from '../hooks/useLeads.js'
 import { buildRentalPrefill } from '../utils/leadToRental.js'
 import LeadModal from '../components/LeadModal.jsx'
@@ -140,7 +139,6 @@ function LeadCard({ lead, onClick }) {
 // ── Main page ──────────────────────────────────────────────
 export default function Basket({ onNavigate, initialTab = null }) {
   const { t } = useTranslation('common')
-  const { isPremium } = useContext(UserContext)
   const [activeTab, setActiveTab]   = useState(initialTab === 'alertes' ? 'alertes' : 'leads')
   const [statusFilter, setStatusFilter] = useState('pending')
   const [selectedLead, setSelectedLead] = useState(null)
@@ -151,26 +149,6 @@ export default function Basket({ onNavigate, initialTab = null }) {
     const prefill = buildRentalPrefill(lead, extractedData)
     api.updateLeadStatus(lead.id, 'processed').catch(() => {})
     onNavigate('new-rental', { prefilledLead: prefill })
-  }
-
-  // ── Upgrade wall ───────────────────────────────────────
-  if (!isPremium) {
-    return (
-      <div style={{ padding: 40, textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-        <h2 style={{ marginBottom: 8 }}>Fonctionnalité Premium</h2>
-        <p style={{ color: 'var(--text-secondary)', maxWidth: 420, margin: '0 auto 24px' }}>
-          La Corbeille de Dossiers est disponible avec le plan Premium.
-          Recevez et traitez automatiquement les demandes WhatsApp et Gmail.
-        </p>
-        <button
-          onClick={() => onNavigate('settings')}
-          style={{ padding: '10px 24px', borderRadius: 8, background: 'var(--accent)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}
-        >
-          Voir les plans →
-        </button>
-      </div>
-    )
   }
 
   const SUB_FILTERS = [

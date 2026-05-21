@@ -13,7 +13,7 @@ const NAV_IDS = [
   { id: 'documents',         key: 'documents',   icon: FolderOpen },
   { id: 'calendar',          key: 'calendar',    icon: CalendarDays },
   { id: 'reservations',      key: 'reservations', icon: ClipboardList },
-  { id: 'basket',            key: 'basket',      icon: Inbox,  premium: true },
+  { id: 'basket',            key: 'basket',      icon: Inbox },
   { id: 'network',           key: 'network',     icon: Globe },
   { id: 'settings',          key: 'settings',    icon: Settings },
 ]
@@ -75,7 +75,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
 
       {/* Nav */}
       <nav className="sidebar-nav">
-        {visibleNav.map(({ id, key, icon: Icon, premium }) => {
+        {visibleNav.map(({ id, key, icon: Icon }) => {
           const navTarget = id === 'restitution-quick' ? 'restitution-picker' : id
           const isActive  = active === id
           return (
@@ -106,22 +106,6 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
                   }}
                 >
                   {basketUnread > 99 ? '99+' : basketUnread}
-                </span>
-              )}
-              {premium && (
-                <span style={{
-                  marginLeft: id === 'basket' && basketUnread > 0 ? 6 : 'auto',
-                  fontSize: 9,
-                  fontWeight: 700,
-                  background: '#141413',
-                  color: '#F3F0EE',
-                  borderRadius: 999,
-                  padding: '1px 6px',
-                  lineHeight: 1.6,
-                  letterSpacing: 0.4,
-                  textTransform: 'uppercase',
-                }}>
-                  PRO
                 </span>
               )}
             </button>
@@ -183,7 +167,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
                 color: 'var(--text-muted)',
                 fontFamily: 'DM Mono, monospace',
               }}>
-                v1.11.1
+                v1.12.0
               </span>
             </div>
           )}
