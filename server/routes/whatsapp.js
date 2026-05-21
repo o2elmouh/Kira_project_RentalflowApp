@@ -144,7 +144,7 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
     if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' })
 
     const vehicleName = `${vehicle.brand} ${vehicle.model}`.trim()
-    const phone = lead.sender_id.replace(/@.*$/, '').replace(/\D/g, '')
+    const phone = lead.sender_id.replace(/:[\d]+@/, '@').replace(/@.*$/, '').replace(/\D/g, '')
 
     console.log(`[pipeline:offer] → sending to ${phone} | vehicle="${vehicleName}" | ${startDate}→${endDate}`)
 

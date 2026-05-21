@@ -2,6 +2,7 @@ import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
   downloadMediaMessage,
+  jidNormalizedUser,
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 import pino from 'pino'
@@ -184,7 +185,7 @@ export async function startSession(agencyId) {
         if (msg.key.fromMe) continue
         if (!msg.message)   continue
 
-        const senderJid = msg.key.remoteJid
+        const senderJid = jidNormalizedUser(msg.key.remoteJid)
         const bodyText  =
           msg.message?.conversation ||
           msg.message?.extendedTextMessage?.text ||
