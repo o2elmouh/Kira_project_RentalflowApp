@@ -21,6 +21,7 @@ import networkRouter from './routes/network.js'
 import adminRouter from './routes/admin.js'
 import clientsRouter from './routes/clients.js'
 import reservationsRouter from './routes/reservations.js'
+import { initAllSessions } from './lib/baileys/sessionManager.js'
 import cron from 'node-cron'
 import { cleanupPendingDemands } from './scripts/cleanupPendingDemands.js'
 import { purgeSignedPdfs } from './scripts/purgeSignedPdfs.js'
@@ -161,4 +162,5 @@ app.listen(PORT, () => {
   console.log(`✅ RentaFlow API running on port ${PORT}`)
   console.log(`   ENV: ${process.env.NODE_ENV || 'development'}`)
   console.log(`   Allowed origins: ${ALLOWED_ORIGINS.join(', ')}`)
+  initAllSessions().catch(err => console.error('[baileys] initAllSessions error:', err.message))
 })
