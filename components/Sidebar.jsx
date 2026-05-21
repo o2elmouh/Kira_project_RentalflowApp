@@ -28,11 +28,16 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
   const visibleNav = NAV_IDS.filter(({ id }) => isAdmin || !ADMIN_ONLY_PAGES.includes(id))
 
   // ── Unread Basket count ──────────────────────────────────
-  // Counts leads in the agency's "pending" pool — i.e. brand-new
-  // requests that nobody has triaged yet — and exposes the number as
-  // a small badge on the Basket nav item. Both staff and admin see
-  // the same count because they all work the same agency inbox.
-  // The Realtime subscription keeps the badge live without polling.
+  // Counts every row in the agency's `leads` table with status='pending' —
+  // that includes brand-new leads, triaged-but-untouched alerts (classification='alert'),
+  // and escalated alerts (classification='lead'). The single number tells the agent
+  // "you have N things to look at in Corbeille".
+  //
+  // Two refresh paths run in parallel:
+  //   (1) Supabase Realtime postgres_changes — fires instantly when a row changes,
+  //       but can silently fall behind if the websocket drops.
+  //   (2) 5-second polling fallback — guarantees the badge converges even when
+  //       Realtime is unavailable (e.g. websocket blocked by network).
   const agencyId = profile?.agency_id
   const [basketUnread, setBasketUnread] = useState(0)
 
@@ -59,8 +64,11 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
       )
       .subscribe()
 
+    const pollId = setInterval(refresh, 5000)
+
     return () => {
       cancelled = true
+      clearInterval(pollId)
       supabase.removeChannel(channel)
     }
   }, [agencyId])
@@ -167,7 +175,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
                 color: 'var(--text-muted)',
                 fontFamily: 'DM Mono, monospace',
               }}>
-                v1.12.1
+                v1.12.2
               </span>
             </div>
           )}

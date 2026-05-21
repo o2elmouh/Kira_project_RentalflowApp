@@ -237,7 +237,15 @@ export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) 
         {/* Footer */}
         <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <button
-            onClick={async () => { setIgnoring(true); await onStatusChange(lead.id, 'ignored'); setIgnoring(false) }}
+            onClick={async () => {
+              setIgnoring(true)
+              try {
+                await onStatusChange(lead.id, 'ignored')
+                onClose()
+              } finally {
+                setIgnoring(false)
+              }
+            }}
             disabled={ignoring}
             style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', cursor: ignoring ? 'not-allowed' : 'pointer', fontSize: 13, opacity: ignoring ? 0.6 : 1 }}
           >
