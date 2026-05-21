@@ -61,7 +61,14 @@ vi.mock('../lib/supabaseAdmin.js', () => ({
   },
 }))
 
-vi.mock('pdf-lib', () => ({ PDFDocument: {} }))
+vi.mock('pdf-lib', () => ({
+  PDFDocument:   {},
+  // unsignedContractPdf.js imports { PDFDocument, StandardFonts, rgb } at module
+  // load — all three must be present even though the test never exercises the
+  // unsigned-PDF path. rgb returns a stub object; StandardFonts is enum-shaped.
+  StandardFonts: { Helvetica: 'Helvetica', HelveticaBold: 'HelveticaBold' },
+  rgb:           (r, g, b) => ({ r, g, b }),
+}))
 vi.mock('../lib/twilioClient.js', () => ({ sendWhatsAppMessage: vi.fn().mockResolvedValue({}) }))
 vi.mock('../middleware/auth.js', () => ({
   requireAuth: (req, _res, next) => { req.user = { id: 'u1', agency_id: 'agency-A' }; next() },
