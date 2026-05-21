@@ -265,7 +265,27 @@ export async function sendMessage(agencyId, jid, text) {
   // Anti-ban (2): randomised 2–5s delay so we don't look like a sub-second bot.
   await randomDelay()
 
-  await entry.sock.sendMessage(jid, { text })
+  // Pre-flight check: confirm the JID is actually registered on WhatsApp.
+  // Baileys' sock.sendMessage() does NOT throw when the recipient is invalid
+  // (e.g. an @lid privacy JID with no resolvable phone, or a phone number
+  // that's not on WhatsApp) — it just queues the message and WA drops it.
+  // onWhatsApp() resolves the canonical JID + tells us if the user exists.
+  let resolvedJid = jid
+  try {
+    const result = await entry.sock.onWhatsApp(jid)
+    const hit = Array.isArray(result) ? result[0] : null
+    if (hit?.exists && hit.jid) {
+      resolvedJid = hit.jid
+    } else {
+      console.warn(`[baileys] ⚠ recipient not on WhatsApp jid=${jid} agency=${agencyId} | onWhatsApp result=${JSON.stringify(result)}`)
+    }
+  } catch (err) {
+    console.warn(`[baileys] onWhatsApp lookup failed jid=${jid} agency=${agencyId}: ${err.message}`)
+  }
+
+  console.log(`[baileys] → sock.sendMessage agency=${agencyId} | requested=${jid} | resolved=${resolvedJid} | bytes=${text.length}`)
+  const sendResult = await entry.sock.sendMessage(resolvedJid, { text })
+  console.log(`[baileys] ← sock.sendMessage ack agency=${agencyId} | msgId=${sendResult?.key?.id || 'none'} | status=${sendResult?.status ?? 'n/a'}`)
 }
 
 /**

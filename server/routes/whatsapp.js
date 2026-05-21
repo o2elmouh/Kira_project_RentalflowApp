@@ -144,17 +144,23 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
     if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' })
 
     const vehicleName = `${vehicle.brand} ${vehicle.model}`.trim()
-    const phone = lead.sender_id.replace(/:[\d]+@/, '@').replace(/@.*$/, '').replace(/\D/g, '')
+    // Pass the raw sender_id through. formatWhatsAppNumber handles both bare phones
+    // and pre-formatted JIDs (including @lid). Stripping to digits here used to produce
+    // an invalid "@s.whatsapp.net" JID for @lid leads — message silently dropped.
+    const recipient = lead.sender_id
 
-    console.log(`[pipeline:offer] → sending to ${phone} | vehicle="${vehicleName}" | ${startDate}→${endDate}`)
+    console.log(`[pipeline:offer] → sending to sender_id=${recipient} | vehicle="${vehicleName}" | ${startDate}→${endDate}`)
+    if (recipient && recipient.endsWith('@lid')) {
+      console.warn(`[pipeline:offer] ⚠ lead has @lid JID — Baileys delivery to @lid may fail. lead=${leadId}`)
+    }
 
     let body = `Bonjour ! 🚗 Suite à votre demande, nous vous proposons une *${vehicleName}* pour *${priceTotal} MAD* au total.`
     if (startDate && endDate) body += `\n📅 Du *${startDate}* au *${endDate}*`
     if (notes) body += `\n\n${notes}`
     body += `\n\nÊtes-vous intéressé(e) ? Répondez *Oui* pour confirmer ou *Non* pour décliner.`
 
-    await sendWhatsAppMessage(phone, body, agencyId)
-    console.log(`[pipeline:offer] → Baileys message sent to ${phone}`)
+    await sendWhatsAppMessage(recipient, body, agencyId)
+    console.log(`[pipeline:offer] → Baileys message sent to ${recipient}`)
 
     appendConversation(leadId, { role: 'agent', type: 'offer', text: body, vehicleName, priceTotal })
       .catch(err => console.error('[pipeline:offer] conv log error:', err.message))
