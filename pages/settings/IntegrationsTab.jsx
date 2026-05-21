@@ -1,10 +1,11 @@
 /**
- * Integrations tab — WhatsApp (Twilio) + Gmail App Password
+ * Integrations tab — WhatsApp (Baileys, per-agency QR) + Gmail App Password
  * (visible only on premium plan)
  */
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api.js'
+import WhatsAppPanel from './WhatsAppPanel.jsx'
 
 export default function IntegrationsTab() {
   const { t } = useTranslation('settings')
@@ -100,23 +101,8 @@ export default function IntegrationsTab() {
         </span>
       </p>
 
-      {/* WhatsApp — Twilio */}
-      <div style={sectionStyle}>
-        <h3 style={{ margin: '0 0 4px', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 20 }}>📱</span> WhatsApp
-          <span style={{ fontSize: 11, background: 'rgba(34,197,94,0.15)', color: '#22c55e', borderRadius: 4, padding: '2px 7px', fontWeight: 600 }}>
-            {t('integrations.waConnected')}
-          </span>
-        </h3>
-        <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4, marginBottom: 16 }}>
-          {t('integrations.waDesc')}
-        </p>
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', background: 'var(--bg-secondary)', borderRadius: 8, padding: '12px 16px', lineHeight: 1.7 }}>
-          <div>🔑 <strong style={{ color: 'var(--text-primary)' }}>TWILIO_ACCOUNT_SID</strong> — configuré sur Railway</div>
-          <div>🔑 <strong style={{ color: 'var(--text-primary)' }}>TWILIO_AUTH_TOKEN</strong> — configuré sur Railway</div>
-          <div>📞 <strong style={{ color: 'var(--text-primary)' }}>TWILIO_WHATSAPP_NUMBER</strong> — configuré sur Railway</div>
-        </div>
-      </div>
+      {/* WhatsApp — Baileys (per-agency QR scan) */}
+      <WhatsAppPanel />
 
       {/* Gmail section */}
       <div style={sectionStyle}>

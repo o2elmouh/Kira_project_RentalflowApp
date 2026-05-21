@@ -161,7 +161,7 @@
     "syncTriggered": "Synchronisation déclenchée.",
     "intro": "Connectez vos canaux de communication pour recevoir automatiquement les demandes de location.",
     "waConnected": "Connecté via Twilio",
-    "waDesc": "Les messages WhatsApp sont envoyés via l'API Twilio. Aucune configuration supplémentaire requise.",
+    "waDesc": "Connectez votre numéro WhatsApp Business en scannant un QR code. Aucune carte bancaire requise, aucun coût par message.",
     "gmailConnected": "Connecté",
     "gmailImap": "Sondage IMAP toutes les 5 minutes. Utilisez un",
     "gmailAppPwdLink": "mot de passe d'application Google",
@@ -176,7 +176,17 @@
     "disconnect": "Déconnecter",
     "disconnectConfirm": "Déconnecter Gmail ?",
     "disconnected": "Gmail déconnecté.",
-    "saved": "Intégration Gmail enregistrée."
+    "saved": "Intégration Gmail enregistrée.",
+    "waNotConnected": "Non connecté",
+    "waConnect": "Connecter WhatsApp",
+    "waConnecting": "Connexion en cours…",
+    "waDisconnect": "Déconnecter",
+    "waDisconnectConfirm": "Déconnecter WhatsApp ? Vous devrez scanner à nouveau le QR code pour reconnecter.",
+    "waScanHint": "Ouvrez WhatsApp Business sur votre téléphone → Paramètres → Appareils connectés → Connecter un appareil, puis scannez ce code.",
+    "waQrExpires": "Le QR code expire après environ 20 secondes — patientez si nécessaire, un nouveau code apparaîtra automatiquement.",
+    "waWarmupTitle": "Période de rodage (3 premiers jours)",
+    "waWarmupBody": "Pour éviter le blocage par WhatsApp, utilisez ce numéro normalement pendant les premiers jours : échangez avec vos collègues, vos clients réguliers, vos proches. Évitez les envois automatisés en masse tant que le compte n'est pas « réchauffé ».",
+    "waDailyCounter": "Envois aujourd'hui : {{count}} / {{limit}}"
   },
   "telemetrics": {
     "deviceId": "ID boîtier",
