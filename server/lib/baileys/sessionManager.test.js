@@ -100,6 +100,43 @@ describe('sessionManager', () => {
     expect(makeWASocketMock).toHaveBeenCalledTimes(2)
   })
 
+  it('reapOrphanedSessions disconnects sessions for agencies that no longer exist', async () => {
+    const supabaseAdmin = (await import('../supabaseAdmin.js')).default
+
+    // First call (during startSession): maybeSingle for auth_state lookup
+    // Second call (during reaper): agencies .select('id').in('id', [...])
+    // Third call (during disconnectSession): delete on whatsapp_sessions
+    let callIdx = 0
+    supabaseAdmin.from.mockImplementation((table) => {
+      callIdx++
+      if (table === 'agencies') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          in: vi.fn().mockResolvedValue({ data: [{ id: 'live-agency' }], error: null }),
+        }
+      }
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq:     vi.fn().mockReturnThis(),
+        delete: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnThis(),
+        upsert: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+      }
+    })
+
+    // Seed two in-memory sessions
+    await sessionManager.startSession('live-agency')
+    await sessionManager.startSession('dead-agency')
+    await new Promise(resolve => setImmediate(resolve))
+
+    await sessionManager.reapOrphanedSessions()
+
+    // dead-agency should be gone; live-agency remains
+    expect(sessionManager.getStatus('dead-agency').status).toBe('idle')
+    expect(sessionManager.getStatus('live-agency').status).not.toBe('idle')
+  })
+
   it('parsePhoneFromJid handles device-suffixed and bad JIDs', () => {
     const { parsePhoneFromJid } = sessionManager
     expect(parsePhoneFromJid('212600000001:42@s.whatsapp.net')).toBe('212600000001')

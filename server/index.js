@@ -21,7 +21,7 @@ import networkRouter from './routes/network.js'
 import adminRouter from './routes/admin.js'
 import clientsRouter from './routes/clients.js'
 import reservationsRouter from './routes/reservations.js'
-import { initAllSessions } from './lib/baileys/sessionManager.js'
+import { initAllSessions, reapOrphanedSessions } from './lib/baileys/sessionManager.js'
 import cron from 'node-cron'
 import { cleanupPendingDemands } from './scripts/cleanupPendingDemands.js'
 import { purgeSignedPdfs } from './scripts/purgeSignedPdfs.js'
@@ -156,6 +156,14 @@ cron.schedule('30 4 1 * *', () => {
   enforceRetention()
     .then(({ anonymized }) => console.log(`[cron] enforce:retention — ${anonymized} anonymized`))
     .catch(err => console.error('[cron] enforce:retention failed:', err))
+})
+
+// Every 30 minutes — disconnect Baileys sessions whose agency was deleted
+// out-of-band (Supabase dashboard, manual SQL). No backend endpoint deletes
+// agencies, so this is the only reliable cleanup path.
+cron.schedule('*/30 * * * *', () => {
+  reapOrphanedSessions()
+    .catch(err => console.error('[cron] baileys:reaper failed:', err.message))
 })
 
 app.listen(PORT, () => {

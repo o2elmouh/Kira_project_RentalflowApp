@@ -10,11 +10,10 @@ import { useSupabaseAuthState } from './authState.js'
 import { handleInboundWhatsApp } from '../../routes/leads.js'
 import supabaseAdmin from '../supabaseAdmin.js'
 
-// TODO(agency-delete hook): if/when an admin endpoint to delete an agency
-// is added to the backend, it must call `disconnectSession(agencyId)` BEFORE
-// the agencies row is deleted — otherwise this in-memory socket keeps trying
-// to upsert into a cascade-deleted whatsapp_sessions row. No such endpoint
-// exists at time of writing.
+// No backend endpoint deletes agencies — they're removed via Supabase dashboard
+// or manual SQL when needed. `reapOrphanedSessions()` (scheduled in server/index.js)
+// catches any session whose agency was deleted out-of-band and disconnects the
+// in-memory socket so it stops trying to upsert into a cascade-deleted row.
 
 // Logger level is env-driven so prod debugging is possible without a redeploy.
 // Default 'warn' surfaces real problems without spamming on every key rotation.
@@ -293,6 +292,41 @@ export async function disconnectSession(agencyId) {
     .delete()
     .eq('agency_id', agencyId)
   console.log(`[baileys] session removed agency=${agencyId}`)
+}
+
+/**
+ * Reaper — finds in-memory sessions whose agency no longer exists and
+ * disconnects them. Called on a cron from server/index.js.
+ *
+ * Catches the case where an agency is deleted via Supabase dashboard or
+ * manual SQL (no backend endpoint exists). The cascade drops the
+ * whatsapp_sessions row, but the in-memory socket survives until reaped.
+ */
+export async function reapOrphanedSessions() {
+  if (!supabaseAdmin) return
+  if (sessions.size === 0) return
+
+  const inMemoryIds = Array.from(sessions.keys())
+  const { data, error } = await supabaseAdmin
+    .from('agencies')
+    .select('id')
+    .in('id', inMemoryIds)
+  if (error) {
+    console.error('[baileys:reaper] agency lookup failed:', error.message)
+    return
+  }
+  const liveIds = new Set((data || []).map(row => row.id))
+  const orphans = inMemoryIds.filter(id => !liveIds.has(id))
+
+  for (const orphanId of orphans) {
+    console.warn(`[baileys:reaper] disconnecting orphaned session — agency ${orphanId} no longer exists`)
+    await disconnectSession(orphanId).catch(err =>
+      console.error(`[baileys:reaper] disconnect failed agency=${orphanId}:`, err.message)
+    )
+  }
+  if (orphans.length > 0) {
+    console.log(`[baileys:reaper] reaped ${orphans.length} orphaned session(s)`)
+  }
 }
 
 /**
