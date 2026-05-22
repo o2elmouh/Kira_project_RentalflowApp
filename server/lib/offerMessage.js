@@ -39,3 +39,29 @@ export function buildOfferMessage({ vehicleName, priceTotal, startDate, endDate,
 
   return lines.join('\n')
 }
+
+/**
+ * Build the auto-acknowledgment message sent after the client accepts the offer.
+ * @param {object} args
+ * @param {boolean} args.needsCIN     — true when CIN photo not yet captured
+ * @param {boolean} args.needsPermis  — true when permis photo not yet captured
+ * @returns {string} the message body
+ */
+export function buildAcknowledgmentMessage({ needsCIN, needsPermis } = {}) {
+  if (!needsCIN && !needsPermis) {
+    return [
+      'Parfait ! ✅ Nous avons tous vos documents.',
+      'Nous préparons votre contrat et revenons vers vous dans quelques minutes.',
+    ].join('\n')
+  }
+
+  const lines = []
+  lines.push('Parfait ! ✅ Nous préparons votre contrat.')
+  lines.push('')
+  lines.push('Pour finaliser, merci de nous envoyer :')
+  if (needsCIN)    lines.push('📄 Photo recto-verso de votre CIN')
+  if (needsPermis) lines.push('🚗 Photo de votre permis de conduire')
+  lines.push('')
+  lines.push('Nous vous recontactons dès réception.')
+  return lines.join('\n')
+}

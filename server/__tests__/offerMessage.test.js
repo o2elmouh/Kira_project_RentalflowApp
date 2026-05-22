@@ -3,7 +3,7 @@
  * @vitest-environment node
  */
 import { test, expect, describe } from 'vitest'
-import { buildOfferMessage } from '../lib/offerMessage.js'
+import { buildOfferMessage, buildAcknowledgmentMessage } from '../lib/offerMessage.js'
 
 describe('buildOfferMessage', () => {
   const base = {
@@ -53,5 +53,33 @@ describe('buildOfferMessage', () => {
   test('ends with the Oui/Non prompt', () => {
     const msg = buildOfferMessage(base)
     expect(msg.trim().endsWith('Répondez *Oui* pour confirmer ou *Non* pour décliner.')).toBe(true)
+  })
+})
+
+describe('buildAcknowledgmentMessage', () => {
+  test('both missing → asks for CIN and permis', () => {
+    const msg = buildAcknowledgmentMessage({ needsCIN: true, needsPermis: true })
+    expect(msg).toContain('Nous préparons votre contrat')
+    expect(msg).toContain('Photo recto-verso de votre CIN')
+    expect(msg).toContain('Photo de votre permis de conduire')
+  })
+
+  test('only CIN missing → asks for CIN only', () => {
+    const msg = buildAcknowledgmentMessage({ needsCIN: true, needsPermis: false })
+    expect(msg).toContain('Photo recto-verso de votre CIN')
+    expect(msg).not.toContain('permis de conduire')
+  })
+
+  test('only permis missing → asks for permis only', () => {
+    const msg = buildAcknowledgmentMessage({ needsCIN: false, needsPermis: true })
+    expect(msg).toContain('Photo de votre permis de conduire')
+    expect(msg).not.toContain('CIN')
+  })
+
+  test('nothing missing → no CTA, only confirmation', () => {
+    const msg = buildAcknowledgmentMessage({ needsCIN: false, needsPermis: false })
+    expect(msg).toContain('Nous avons tous vos documents')
+    expect(msg).not.toContain('CIN')
+    expect(msg).not.toContain('permis')
   })
 })
