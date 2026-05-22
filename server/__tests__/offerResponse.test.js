@@ -36,8 +36,15 @@ vi.mock('../lib/supabaseAdmin.js', () => ({
     from: (table) => ({
       select: () => ({
         eq: (_col1, _val1) => ({
+          // New: findActiveLeadByPhone uses .in('status', ['offer_sent', 'accepted'])
+          in: (_col, _vals) => {
+            const resolved = { data: _offerLead ? [_offerLead] : [] }
+            return {
+              order: () => ({ limit: () => Promise.resolve(resolved) }),
+            }
+          },
           eq: (_col2, val2) => {
-            // Offer-sent lead lookup — returns configured _offerLead
+            // Legacy path: offer-sent lead lookup (still used by Gmail / findOfferSentLeadByEmail)
             if (val2 === 'offer_sent') {
               const resolved = { data: _offerLead ? [_offerLead] : [] }
               const orderLimit = {

@@ -545,22 +545,22 @@ async function classifyTextMessage(bodyText, clientStatus) {
 
 // ── Offer-response pre-triage helpers ────────────────────
 
-async function findOfferSentLeadByPhone(agencyId, senderJid) {
+async function findActiveLeadByPhone(agencyId, senderJid) {
   try {
     const digits9 = (senderJid || '').replace(/\D/g, '').slice(-9)
     if (!digits9) return null
     const { data: leads } = await supabaseAdmin
       .from('pending_demands')
-      .select('id, sender_id, raw_payload, extracted_data')
+      .select('id, sender_id, status, raw_payload, extracted_data, docs_completed_at, media_urls')
       .eq('agency_id', agencyId)
-      .eq('status', 'offer_sent')
+      .in('status', ['offer_sent', 'accepted'])
       .order('created_at', { ascending: false })
       .limit(20)
     return (leads || []).find(l =>
       (l.sender_id || '').replace(/\D/g, '').slice(-9) === digits9
     ) || null
   } catch (err) {
-    console.error('[leads/findOfferSentLeadByPhone] error:', err.message)
+    console.error('[leads/findActiveLeadByPhone] error:', err.message)
     return null
   }
 }
@@ -613,9 +613,9 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
   let extractedData = null
 
   // Pre-triage: if sender has an offer_sent lead, bypass keyword triage
-  const offerLead = await findOfferSentLeadByPhone(agencyId, senderJid)
-  if (offerLead) {
-    await handleOfferResponse(agencyId, senderJid, bodyText, offerLead, 'whatsapp')
+  const activeLead = await findActiveLeadByPhone(agencyId, senderJid)
+  if (activeLead) {
+    await handleOfferResponse(agencyId, senderJid, bodyText, activeLead, 'whatsapp')
     return
   }
 
