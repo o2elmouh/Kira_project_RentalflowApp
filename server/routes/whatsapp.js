@@ -23,6 +23,7 @@ import { sendWhatsAppMessage } from '../lib/twilioClient.js'
 import * as sessionManager from '../lib/baileys/sessionManager.js'
 import { appendConversation } from '../lib/conversation.js'
 import { sendToAgency } from '../lib/pushNotifications.js'
+import { buildOfferMessage } from '../lib/offerMessage.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -154,10 +155,14 @@ router.post('/send-offer', whatsappLimit, async (req, res) => {
       console.warn(`[pipeline:offer] ⚠ lead has @lid JID — Baileys delivery to @lid may fail. lead=${leadId}`)
     }
 
-    let body = `Bonjour ! 🚗 Suite à votre demande, nous vous proposons une *${vehicleName}* pour *${priceTotal} MAD* au total.`
-    if (startDate && endDate) body += `\n📅 Du *${startDate}* au *${endDate}*`
-    if (notes) body += `\n\n${notes}`
-    body += `\n\nÊtes-vous intéressé(e) ? Répondez *Oui* pour confirmer ou *Non* pour décliner.`
+    const body = buildOfferMessage({
+      vehicleName,
+      priceTotal,
+      startDate,
+      endDate,
+      notes,
+      publicAppUrl: process.env.PUBLIC_APP_URL,
+    })
 
     await sendWhatsAppMessage(recipient, body, agencyId)
     console.log(`[pipeline:offer] → Baileys message sent to ${recipient}`)
