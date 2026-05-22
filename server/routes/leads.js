@@ -15,7 +15,9 @@ import { Router } from 'express'
 import Anthropic from '@anthropic-ai/sdk'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { requireAuth } from '../middleware/auth.js'
-import { detectLanguage, translateToFrench, preFilter, handleAmbiguous } from '../lib/triage.js'
+import { detectLanguage, translateToFrench, preFilter, handleAmbiguous, detectMissingDocs } from '../lib/triage.js'
+import { buildAcknowledgmentMessage, mergeExtractedData } from '../lib/offerMessage.js'
+import { sendWhatsAppMessage } from '../lib/twilioClient.js'
 // Encryption helpers moved to server/lib/encryption.js so the new clients
 // route (Phase 5) and the leads pipeline share one AES-256-GCM implementation.
 // Re-exported here to preserve any existing import paths.
@@ -584,20 +586,82 @@ async function findOfferSentLeadByEmail(agencyId, senderEmail) {
 
 async function handleOfferResponse(agencyId, senderId, text, lead, source) {
   console.log(`[pipeline:${source}] → offer response | lead=${lead.id} | sender=${senderId}`)
+
   const intent = text?.trim() ? await analyzeQuoteReply(text) : 'question'
   const existingReplies = lead.raw_payload?.replies || []
   const newReply = { text: (text || '').slice(0, 500), intent, timestamp: new Date().toISOString() }
+  const baseUpdate = {
+    last_client_note: (text || '').slice(0, 500),
+    raw_payload: { ...(lead.raw_payload || {}), replies: [...existingReplies, newReply].slice(-50) },
+  }
+
+  if (intent === 'accepted') {
+    const acceptedAt = new Date().toISOString()
+    const { error } = await supabaseAdmin
+      .from('pending_demands')
+      .update({ ...baseUpdate, status: 'accepted', accepted_at: acceptedAt })
+      .eq('id', lead.id)
+      .eq('agency_id', agencyId)
+    if (error) {
+      console.error(`[pipeline:${source}] ✗ accepted update error:`, error.message)
+      return
+    }
+    console.log(`[pipeline:${source}] ✓ lead ${lead.id} → accepted`)
+
+    sendToAgency(
+      agencyId,
+      '✅ Offre acceptée',
+      `Le client a accepté votre devis : « ${(text || '').slice(0, 80)} »`,
+      { type: 'lead', id: lead.id, status: 'accepted' }
+    ).catch(() => {})
+
+    // Auto-ack only on WhatsApp; Gmail clients don't expect WA replies.
+    if (source === 'whatsapp') {
+      const { needsCIN, needsPermis } = detectMissingDocs(lead.extracted_data)
+      const ackBody = buildAcknowledgmentMessage({ needsCIN, needsPermis })
+      try {
+        await sendWhatsAppMessage(senderId, ackBody, agencyId)
+        console.log(`[pipeline:${source}] → auto-ack sent | lead=${lead.id} | needsCIN=${needsCIN} needsPermis=${needsPermis}`)
+      } catch (err) {
+        console.error(`[pipeline:${source}] ✗ auto-ack send error:`, err.message)
+      }
+    }
+    return
+  }
+
+  if (intent === 'rejected') {
+    const { error } = await supabaseAdmin
+      .from('pending_demands')
+      .update({ ...baseUpdate, status: 'ignored' })
+      .eq('id', lead.id)
+      .eq('agency_id', agencyId)
+    if (error) console.error(`[pipeline:${source}] ✗ rejected update error:`, error.message)
+    else console.log(`[pipeline:${source}] ✓ lead ${lead.id} → ignored`)
+
+    sendToAgency(
+      agencyId,
+      '❌ Offre refusée',
+      `Le client a décliné : « ${(text || '').slice(0, 80)} »`,
+      { type: 'lead', id: lead.id, status: 'ignored' }
+    ).catch(() => {})
+    return
+  }
+
+  // intent === 'question' — keep status unchanged
   const { error } = await supabaseAdmin
     .from('pending_demands')
-    .update({
-      status: 'waiting',
-      last_client_note: (text || '').slice(0, 500),
-      raw_payload: { ...(lead.raw_payload || {}), replies: [...existingReplies, newReply].slice(-50) },
-    })
+    .update(baseUpdate)
     .eq('id', lead.id)
     .eq('agency_id', agencyId)
-  if (error) console.error(`[pipeline:${source}] ✗ offer response update error:`, error.message)
-  else console.log(`[pipeline:${source}] ✓ offer response | lead=${lead.id} → waiting | intent=${intent}`)
+  if (error) console.error(`[pipeline:${source}] ✗ question update error:`, error.message)
+  else console.log(`[pipeline:${source}] ✓ lead ${lead.id} | question noted`)
+
+  sendToAgency(
+    agencyId,
+    '💬 Question sur l\'offre',
+    (text || '').slice(0, 160),
+    { type: 'lead', id: lead.id, status: lead.status }
+  ).catch(() => {})
 }
 
 /**
