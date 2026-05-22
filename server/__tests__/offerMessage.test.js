@@ -3,7 +3,7 @@
  * @vitest-environment node
  */
 import { test, expect, describe } from 'vitest'
-import { buildOfferMessage, buildAcknowledgmentMessage } from '../lib/offerMessage.js'
+import { buildOfferMessage, buildAcknowledgmentMessage, mergeExtractedData } from '../lib/offerMessage.js'
 
 describe('buildOfferMessage', () => {
   const base = {
@@ -81,5 +81,73 @@ describe('buildAcknowledgmentMessage', () => {
     expect(msg).toContain('Nous avons tous vos documents')
     expect(msg).not.toContain('CIN')
     expect(msg).not.toContain('permis')
+  })
+})
+
+describe('mergeExtractedData', () => {
+  test('returns new object — does not mutate input', () => {
+    const existing = { cin: '' }
+    const result = mergeExtractedData(existing, { cin: 'AB123' })
+    expect(existing.cin).toBe('')
+    expect(result.cin).toBe('AB123')
+  })
+
+  test('fills empty fields from incoming', () => {
+    const result = mergeExtractedData(
+      { cin: '', permis: '' },
+      { cin: 'AB123', permis: 'P-987' }
+    )
+    expect(result).toMatchObject({ cin: 'AB123', permis: 'P-987' })
+  })
+
+  test('does NOT overwrite existing non-empty field when no confidence info', () => {
+    const result = mergeExtractedData(
+      { cin: 'OLD-VALUE' },
+      { cin: 'NEW-VALUE' }
+    )
+    expect(result.cin).toBe('OLD-VALUE')
+  })
+
+  test('overwrites when incoming confidence is strictly higher', () => {
+    const result = mergeExtractedData(
+      { cin: 'OLD', confidenceScores: { cin: 0.5 } },
+      { cin: 'NEW', confidenceScores: { cin: 0.9 } }
+    )
+    expect(result.cin).toBe('NEW')
+    expect(result.confidenceScores.cin).toBe(0.9)
+  })
+
+  test('does NOT overwrite when incoming confidence equal or lower', () => {
+    const result = mergeExtractedData(
+      { cin: 'OLD', confidenceScores: { cin: 0.9 } },
+      { cin: 'NEW', confidenceScores: { cin: 0.5 } }
+    )
+    expect(result.cin).toBe('OLD')
+    expect(result.confidenceScores.cin).toBe(0.9)
+  })
+
+  test('ignores empty incoming values', () => {
+    const result = mergeExtractedData({ cin: 'KEEP' }, { cin: '', permis: '' })
+    expect(result.cin).toBe('KEEP')
+    expect(result.permis).toBeUndefined()
+  })
+
+  test('preserves unrelated existing fields', () => {
+    const result = mergeExtractedData(
+      { firstName: 'Ahmed', cin: '' },
+      { cin: 'AB123' }
+    )
+    expect(result.firstName).toBe('Ahmed')
+    expect(result.cin).toBe('AB123')
+  })
+
+  test('handles null existing', () => {
+    const result = mergeExtractedData(null, { cin: 'AB123' })
+    expect(result).toEqual({ cin: 'AB123' })
+  })
+
+  test('handles null incoming', () => {
+    const result = mergeExtractedData({ cin: 'AB123' }, null)
+    expect(result).toEqual({ cin: 'AB123' })
   })
 })

@@ -65,3 +65,44 @@ export function buildAcknowledgmentMessage({ needsCIN, needsPermis } = {}) {
   lines.push('Nous vous recontactons dès réception.')
   return lines.join('\n')
 }
+
+/**
+ * Non-destructive merge of OCR / classification output into an existing
+ * extracted_data object. Rules:
+ *  - Empty incoming values are ignored.
+ *  - Existing non-empty values are preserved UNLESS the incoming value
+ *    carries a strictly-higher confidenceScores[field] than the existing.
+ *  - Unrelated existing fields are preserved.
+ *  - Returns a new object (input is not mutated).
+ *
+ * @param {object|null} existing
+ * @param {object|null} incoming
+ * @returns {object}
+ */
+export function mergeExtractedData(existing, incoming) {
+  const out = { ...(existing || {}) }
+  if (!incoming) return out
+
+  const existingConf = (existing && existing.confidenceScores) || {}
+  const incomingConf = incoming.confidenceScores || {}
+  const mergedConf = { ...existingConf }
+
+  for (const [key, value] of Object.entries(incoming)) {
+    if (key === 'confidenceScores') continue
+    if (value === null || value === undefined || value === '') continue
+
+    const existingValue = out[key]
+    const isExistingEmpty = existingValue === null || existingValue === undefined || existingValue === ''
+
+    if (isExistingEmpty) {
+      out[key] = value
+      if (incomingConf[key] !== undefined) mergedConf[key] = incomingConf[key]
+    } else if (incomingConf[key] !== undefined && existingConf[key] !== undefined && incomingConf[key] > existingConf[key]) {
+      out[key] = value
+      mergedConf[key] = incomingConf[key]
+    }
+  }
+
+  if (Object.keys(mergedConf).length > 0) out.confidenceScores = mergedConf
+  return out
+}
