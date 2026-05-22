@@ -679,6 +679,68 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
   // Pre-triage: if sender has an offer_sent lead, bypass keyword triage
   const activeLead = await findActiveLeadByPhone(agencyId, senderJid)
   if (activeLead) {
+    // Image from an active lead → OCR + merge into existing lead (no duplicate row).
+    if (imageBuffer && process.env.ANTHROPIC_API_KEY) {
+      console.log(`[pipeline:wa] → active-lead image | lead=${activeLead.id} status=${activeLead.status}`)
+      try {
+        const imageBlock = { type: 'image', source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: imageBuffer.toString('base64') } }
+        const incoming = await extractWithClaude([imageBlock], bodyText)
+        if (incoming) {
+          const merged = mergeExtractedData(activeLead.extracted_data, incoming)
+          const update = { extracted_data: merged }
+
+          const { needsCIN, needsPermis } = detectMissingDocs(merged)
+          const wasIncomplete = !activeLead.docs_completed_at
+          const isNowComplete = !needsCIN && !needsPermis
+          if (wasIncomplete && isNowComplete) {
+            update.docs_completed_at = new Date().toISOString()
+          }
+
+          const { error } = await supabaseAdmin
+            .from('pending_demands')
+            .update(update)
+            .eq('id', activeLead.id)
+            .eq('agency_id', agencyId)
+          if (error) console.error('[pipeline:wa] ✗ active-lead merge error:', error.message)
+          else console.log(`[pipeline:wa] ✓ active-lead merged | lead=${activeLead.id} docs_complete=${isNowComplete}`)
+
+          if (update.docs_completed_at) {
+            sendToAgency(
+              agencyId,
+              '📂 Documents complets',
+              'Le client a envoyé tous les documents requis — prêt à convertir.',
+              { type: 'lead', id: activeLead.id, status: activeLead.status }
+            ).catch(() => {})
+          }
+        }
+      } catch (err) {
+        console.error('[pipeline:wa] ✗ active-lead OCR error:', err.message)
+      }
+      return
+    }
+
+    // Text on an accepted lead → log only, no triage fall-through.
+    if (activeLead.status === 'accepted') {
+      const existingReplies = activeLead.raw_payload?.replies || []
+      const newReply = { text: (bodyText || '').slice(0, 500), intent: 'post-accept-note', timestamp: new Date().toISOString() }
+      await supabaseAdmin
+        .from('pending_demands')
+        .update({
+          last_client_note: (bodyText || '').slice(0, 500),
+          raw_payload: { ...(activeLead.raw_payload || {}), replies: [...existingReplies, newReply].slice(-50) },
+        })
+        .eq('id', activeLead.id)
+        .eq('agency_id', agencyId)
+      sendToAgency(
+        agencyId,
+        '💬 Message client',
+        (bodyText || '').slice(0, 160),
+        { type: 'lead', id: activeLead.id, status: 'accepted' }
+      ).catch(() => {})
+      return
+    }
+
+    // Text on an offer_sent lead → intent branching (Task 9).
     await handleOfferResponse(agencyId, senderJid, bodyText, activeLead, 'whatsapp')
     return
   }
