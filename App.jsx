@@ -22,6 +22,7 @@ import Calendar  from './pages/Calendar'
 import Basket from './pages/Basket'
 import Network from './pages/Network'
 import PrivacyPolicy from './pages/legal/PrivacyPolicy'
+import Confidentialite from './pages/Confidentialite'
 import Reservations from './pages/Reservations'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './src/lib/queryClient'
@@ -212,6 +213,7 @@ export default function App() {
         return <Settings />
       case 'network':  return <Network />
       case 'privacy-policy': return <PrivacyPolicy onBack={() => setPage('dashboard')} />
+      case 'confidentialite': return <Confidentialite />
       case 'basket':
         return <Basket onNavigate={handleNav} initialTab={basketInitialTab} />
       case 'restitution-picker':
@@ -227,6 +229,9 @@ export default function App() {
   }
 
   if (signToken) return <SignContract token={signToken} />
+
+  // Public CNDP confidentialite page — no auth required (linked from outbound offer messages)
+  if (PAGE_PARAM === 'confidentialite') return <Confidentialite />
 
   if (PREVIEW === 'onboarding')
     return <OnboardingPage user={{ id: 'preview', email: 'preview@rentaflow.ma' }} />
