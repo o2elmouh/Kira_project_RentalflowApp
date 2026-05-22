@@ -6,8 +6,9 @@ export default function SmartQuotePanel({ lead, onSent }) {
   const [vehicles, setVehicles]   = useState([])
   const [vehicleId, setVehicleId] = useState('')
   const [price, setPrice]         = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate]     = useState('')
+  const ex = lead?.extracted_data || {}
+  const [startDate, setStartDate] = useState(ex.start_date || '')
+  const [endDate, setEndDate]     = useState(ex.end_date || '')
   const [notes, setNotes]         = useState('')
   const [sending, setSending]     = useState(false)
   const [error, setError]         = useState(null)
