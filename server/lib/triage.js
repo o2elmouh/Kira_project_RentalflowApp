@@ -173,3 +173,21 @@ export async function handleAmbiguous({ agencyId, senderId, source, originalText
 
   if (error) console.error(`[triage/handleAmbiguous] insert error:`, error.message)
 }
+
+// ── detectMissingDocs ───────────────────────────────────────
+/**
+ * Inspect a lead's extracted_data to determine which of the two
+ * Moroccan rental documents (CIN, permis) have not yet been captured.
+ *
+ * @param {object|null|undefined} extractedData
+ * @returns {{ needsCIN: boolean, needsPermis: boolean }}
+ */
+export function detectMissingDocs(extractedData) {
+  const ex = extractedData || {}
+  const hasCIN = Boolean(
+    ex.cin ||
+    (ex.documentType === 'cin' && ex.documentNumber)
+  )
+  const hasPermis = Boolean(ex.permis)
+  return { needsCIN: !hasCIN, needsPermis: !hasPermis }
+}
