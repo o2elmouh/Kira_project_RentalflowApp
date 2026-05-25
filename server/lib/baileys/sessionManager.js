@@ -108,7 +108,14 @@ export async function startSession(agencyId) {
 
     // `printQRInTerminal` is deprecated in recent Baileys — we render the QR
     // ourselves from the `qr` payload in connection.update, so it's omitted.
-    const sock = makeWASocket({ version, auth: state, logger })
+    //
+    // `fireInitQueries: false` skips Baileys' post-connect chats.js init batch
+    // (fetchProps + fetchBlocklist + fetchPrivacySettings) that achieves parity
+    // with WA Web but is not used by us. fetchProps in particular times out
+    // semi-regularly against WhatsApp's servers and the rejection is thrown
+    // from inside Baileys' EventBuffer listener — un-catchable from our side,
+    // surfaces as a noisy `Timed Out` pino error log every reconnect.
+    const sock = makeWASocket({ version, auth: state, logger, fireInitQueries: false })
     sessions.get(agencyId).sock = sock
 
     sock.ev.on('creds.update', saveCreds)
