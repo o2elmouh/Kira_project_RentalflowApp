@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LayoutDashboard, PlusCircle, Car, Users, FolderOpen, CalendarDays, Settings, LogOut, RotateCcw, Inbox, Globe, Shield, ClipboardList } from 'lucide-react'
 import LanguageSelector from './LanguageSelector'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api.js'
 
 const NAV_IDS = [
   { id: 'dashboard',         key: 'dashboard',  icon: LayoutDashboard },
@@ -28,16 +28,11 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
   const visibleNav = NAV_IDS.filter(({ id }) => isAdmin || !ADMIN_ONLY_PAGES.includes(id))
 
   // ── Unread Basket count ──────────────────────────────────
-  // Counts every row in the agency's `leads` table with status='pending' —
-  // that includes brand-new leads, triaged-but-untouched alerts (classification='alert'),
-  // and escalated alerts (classification='lead'). The single number tells the agent
-  // "you have N things to look at in Corbeille".
-  //
-  // Two refresh paths run in parallel:
-  //   (1) Supabase Realtime postgres_changes — fires instantly when a row changes,
-  //       but can silently fall behind if the websocket drops.
-  //   (2) 1-second polling — guarantees the badge converges within a second
-  //       even when Realtime is unavailable (e.g. websocket blocked by network).
+  // Counts every pending row the Corbeille page would show (leads + alerts).
+  // Uses the same /leads backend endpoints the Basket page uses so the badge
+  // always matches what the agent sees — no RLS surprises from going direct
+  // to Supabase from the anon client.
+  // Polls every 1s so new arrivals surface within a second.
   const agencyId = profile?.agency_id
   const [basketUnread, setBasketUnread] = useState(0)
 
@@ -46,30 +41,24 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
     let cancelled = false
 
     const refresh = async () => {
-      const { count } = await supabase
-        .from('leads')
-        .select('id', { count: 'exact', head: true })
-        .eq('agency_id', agencyId)
-        .eq('status', 'pending')
-      if (!cancelled) setBasketUnread(count || 0)
+      try {
+        const [leads, alerts] = await Promise.all([
+          api.getLeads('pending'),
+          api.getAlerts(),
+        ])
+        if (cancelled) return
+        const pendingAlerts = (alerts || []).filter(a => a.status === 'pending').length
+        setBasketUnread((leads?.length || 0) + pendingAlerts)
+      } catch (err) {
+        if (!cancelled) console.error('[Sidebar] basket count fetch failed:', err)
+      }
     }
     refresh()
-
-    const channel = supabase
-      .channel(`sidebar-basket-${agencyId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'leads', filter: `agency_id=eq.${agencyId}` },
-        () => { refresh() }
-      )
-      .subscribe()
-
     const pollId = setInterval(refresh, 1000)
 
     return () => {
       cancelled = true
       clearInterval(pollId)
-      supabase.removeChannel(channel)
     }
   }, [agencyId])
 
@@ -175,7 +164,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
                 color: 'var(--text-muted)',
                 fontFamily: 'DM Mono, monospace',
               }}>
-                v1.12.5
+                v1.12.6
               </span>
             </div>
           )}
