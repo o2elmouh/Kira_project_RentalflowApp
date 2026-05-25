@@ -59,7 +59,6 @@ function FieldRow({ label, fieldKey, value, confidence, onChange }) {
 export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
   const [extracted, setExtracted] = useState(lead.extracted_data || {})
   const [saving, setSaving] = useState(false)
-  const [ignoring, setIgnoring] = useState(false)
   const [preparing, setPreparing] = useState(false)
   const [prepareError, setPrepareError] = useState(null)
   const [localStatus, setLocalStatus] = useState(lead.status)
@@ -237,19 +236,14 @@ export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) 
         {/* Footer */}
         <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <button
-            onClick={async () => {
-              setIgnoring(true)
-              try {
-                await onStatusChange(lead.id, 'ignored')
-                onClose()
-              } finally {
-                setIgnoring(false)
-              }
+            onClick={() => {
+              onClose()
+              Promise.resolve(onStatusChange(lead.id, 'ignored'))
+                .catch(err => console.error('[LeadModal] ignore failed:', err))
             }}
-            disabled={ignoring}
-            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', cursor: ignoring ? 'not-allowed' : 'pointer', fontSize: 13, opacity: ignoring ? 0.6 : 1 }}
+            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', cursor: 'pointer', fontSize: 13 }}
           >
-            {ignoring ? 'Suppression…' : 'Ignorer'}
+            Ignorer
           </button>
           <button
             onClick={handleSave}

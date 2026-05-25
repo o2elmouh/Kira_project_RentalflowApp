@@ -36,8 +36,8 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
   // Two refresh paths run in parallel:
   //   (1) Supabase Realtime postgres_changes — fires instantly when a row changes,
   //       but can silently fall behind if the websocket drops.
-  //   (2) 5-second polling fallback — guarantees the badge converges even when
-  //       Realtime is unavailable (e.g. websocket blocked by network).
+  //   (2) 1-second polling — guarantees the badge converges within a second
+  //       even when Realtime is unavailable (e.g. websocket blocked by network).
   const agencyId = profile?.agency_id
   const [basketUnread, setBasketUnread] = useState(0)
 
@@ -64,7 +64,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
       )
       .subscribe()
 
-    const pollId = setInterval(refresh, 5000)
+    const pollId = setInterval(refresh, 1000)
 
     return () => {
       cancelled = true
@@ -175,7 +175,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
                 color: 'var(--text-muted)',
                 fontFamily: 'DM Mono, monospace',
               }}>
-                v1.12.4
+                v1.12.5
               </span>
             </div>
           )}
