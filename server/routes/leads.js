@@ -239,6 +239,12 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
     return res.json({ ok: true, offer_response: true })
   }
 
+  // When the keyword pre-filter is `ambiguous`, we defer the alert and let
+  // Claude classify the message. If Claude returns a real intent (new_lead,
+  // prolongation, support_issue) → it becomes a regular lead. If Claude calls
+  // it `other` or fails → we fall back to this payload to write the alert.
+  let ambiguousAlertFallback = null
+
   if (textForTriage) {
     const lang = detectLanguage(textForTriage)
     const CORE = new Set(['fra', 'ara', 'eng'])
@@ -256,16 +262,21 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
     }
 
     if (result === 'ambiguous') {
-      console.log(`[pipeline:gmail-wh] → ambiguous — creating alert`)
-      await handleAmbiguous({
+      const ambiguousPayload = {
         agencyId,
         senderId: senderEmail,
         source: 'gmail',
         originalText: textForTriage,
         translatedText,
         rawPayload: { subject, bodyText: (bodyText || '').slice(0, 2000) },
-      })
-      return res.json({ ok: true, alert: true })
+      }
+      if (!process.env.ANTHROPIC_API_KEY) {
+        console.log(`[pipeline:gmail-wh] → ambiguous — no Claude key, creating alert`)
+        await handleAmbiguous(ambiguousPayload)
+        return res.json({ ok: true, alert: true })
+      }
+      console.log(`[pipeline:gmail-wh] → ambiguous — deferring to Claude classifier`)
+      ambiguousAlertFallback = ambiguousPayload
     }
   }
 
@@ -292,6 +303,11 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
         // Skip messages classified as "other" — not rental-related
         if (classification.classification === 'other') {
           console.log(`[pipeline:gmail-wh] ✗ rejected — classified as "other" (${classification.confidence})`)
+          if (ambiguousAlertFallback) {
+            console.log(`[pipeline:gmail-wh] → ambiguous + Claude="other" → alert fallback`)
+            await handleAmbiguous(ambiguousAlertFallback)
+            return res.json({ ok: true, alert: true })
+          }
           return res.json({ ok: true, dropped: true })
         }
         extractedData = {
@@ -303,9 +319,19 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
         console.log(`[pipeline:gmail-wh] → classification: ${classification.classification} (${classification.confidence}) | summary="${(classification.summary_for_agent || '').slice(0, 60)}"`)
       } else {
         console.warn(`[pipeline:gmail-wh] → classification returned null`)
+        if (ambiguousAlertFallback) {
+          console.log(`[pipeline:gmail-wh] → ambiguous + null classification → alert fallback`)
+          await handleAmbiguous(ambiguousAlertFallback)
+          return res.json({ ok: true, alert: true })
+        }
       }
     } catch (err) {
       console.error('[pipeline:gmail-wh] ✗ text classification error:', err.message)
+      if (ambiguousAlertFallback) {
+        console.log(`[pipeline:gmail-wh] → ambiguous + classify error → alert fallback`)
+        await handleAmbiguous(ambiguousAlertFallback)
+        return res.json({ ok: true, alert: true })
+      }
     }
   }
 
@@ -745,6 +771,9 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
     return
   }
 
+  // Deferred ambiguous-alert fallback — see Gmail handler above for rationale.
+  let ambiguousAlertFallback = null
+
   if (bodyText?.trim()) {
     const lang = detectLanguage(bodyText)
     const CORE = new Set(['fra', 'ara', 'eng'])
@@ -762,16 +791,21 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
     }
 
     if (result === 'ambiguous') {
-      console.log(`[pipeline:wa] → ambiguous — creating alert`)
-      await handleAmbiguous({
+      const ambiguousPayload = {
         agencyId,
         senderId: senderJid,
         source: 'whatsapp',
         originalText: bodyText,
         translatedText,
         rawPayload: { body: bodyText, from: senderJid },
-      })
-      return
+      }
+      if (!process.env.ANTHROPIC_API_KEY) {
+        console.log(`[pipeline:wa] → ambiguous — no Claude key, creating alert`)
+        await handleAmbiguous(ambiguousPayload)
+        return
+      }
+      console.log(`[pipeline:wa] → ambiguous — deferring to Claude classifier`)
+      ambiguousAlertFallback = ambiguousPayload
     }
   }
 
@@ -813,6 +847,10 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
         // Skip messages classified as "other" — not rental-related
         if (classification.classification === 'other') {
           console.log(`[pipeline:wa] ✗ rejected — classified as "other" (${classification.confidence})`)
+          if (ambiguousAlertFallback) {
+            console.log(`[pipeline:wa] → ambiguous + Claude="other" → alert fallback`)
+            await handleAmbiguous(ambiguousAlertFallback)
+          }
           return
         }
         extractedData = {
@@ -824,9 +862,19 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
         console.log(`[pipeline:wa] → classification: ${classification.classification} (${classification.confidence}) | summary="${(classification.summary_for_agent || '').slice(0, 60)}"`)
       } else {
         console.warn(`[pipeline:wa] → classification returned null`)
+        if (ambiguousAlertFallback) {
+          console.log(`[pipeline:wa] → ambiguous + null classification → alert fallback`)
+          await handleAmbiguous(ambiguousAlertFallback)
+          return
+        }
       }
     } catch (err) {
       console.error('[pipeline:wa] ✗ classify error:', err.message)
+      if (ambiguousAlertFallback) {
+        console.log(`[pipeline:wa] → ambiguous + classify error → alert fallback`)
+        await handleAmbiguous(ambiguousAlertFallback)
+        return
+      }
     }
   }
 
