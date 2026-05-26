@@ -82,9 +82,12 @@ app.use(express.json({ limit: '15mb' }))
 app.use(express.urlencoded({ extended: false, limit: '256kb' }))
 
 // ── Global rate limit ─────────────────────────────────────
+// Sidebar polls the basket badge every 1s (= 60 req/min just from one tab),
+// so the 15-min window must absorb at least ~900 polls plus normal CRUD. The
+// limit is still per-IP — abuse from a single host still trips it quickly.
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,   // 15 min
-  max: 300,
+  max: 2000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests — please retry later.' },
