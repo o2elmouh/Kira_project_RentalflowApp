@@ -12,6 +12,7 @@ export default function PrivacyTab() {
   const [modal, setModal] = useState(null)   // { clientId, name }
   const [reason, setReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [modalError, setModalError] = useState(null)
   // Retention period (Phase 4) — controls the monthly auto-anonymization cron.
   const [retentionYears, setRetentionYears] = useState(10)
   const [retentionDirty, setRetentionDirty] = useState(false)
@@ -54,6 +55,7 @@ export default function PrivacyTab() {
 
   async function handleAnonymize() {
     setSubmitting(true)
+    setModalError(null)
     try {
       await api.anonymizeClient(modal.clientId, reason)
       setClients(prev => prev.map(c =>
@@ -63,6 +65,9 @@ export default function PrivacyTab() {
       ))
       setModal(null)
       setReason('')
+    } catch (err) {
+      console.error('[anonymize] failed:', err)
+      setModalError(err?.message || 'Erreur inconnue')
     } finally {
       setSubmitting(false)
     }
@@ -204,9 +209,24 @@ export default function PrivacyTab() {
               placeholder={t('privacy.reasonPlaceholder')}
               style={{ width: '100%', minHeight: 80, padding: 8, borderRadius: 4, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }}
             />
+            {modalError && (
+              <div style={{
+                marginTop: 12,
+                padding: '8px 10px',
+                borderRadius: 4,
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid var(--danger, #ef4444)',
+                color: 'var(--danger, #ef4444)',
+                fontSize: 12,
+                lineHeight: 1.4,
+                wordBreak: 'break-word',
+              }}>
+                {modalError}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
               <button
-                onClick={() => { setModal(null); setReason('') }}
+                onClick={() => { setModal(null); setReason(''); setModalError(null) }}
                 style={{ padding: '7px 18px', borderRadius: 4, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: 13 }}
               >
                 {t('privacy.cancel')}
