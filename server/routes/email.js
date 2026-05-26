@@ -60,6 +60,17 @@ router.post('/send-offer', emailLimit, async (req, res) => {
     if (leadErr) return res.status(500).json({ error: leadErr.message })
     if (!lead)   return res.status(404).json({ error: 'Lead not found' })
 
+    // Pull the agency's connected Gmail so we can route client replies back
+    // to the inbox the IMAP poller is watching. Without this, replies go to
+    // the Resend FROM address (e.g. noreply@kiraflow.ma) and disappear —
+    // the acceptance webhook never fires.
+    const { data: agency } = await supabaseAdmin
+      .from('agencies')
+      .select('gmail_address')
+      .eq('id', agencyId)
+      .maybeSingle()
+    const agencyGmail = agency?.gmail_address || null
+
     const { data: vehicle, error: vehErr } = await supabaseAdmin
       .from('vehicles')
       .select('id, brand, model')
@@ -86,7 +97,14 @@ router.post('/send-offer', emailLimit, async (req, res) => {
     if (process.env.RESEND_API_KEY) {
       const { Resend } = await import('resend')
       const resend = new Resend(process.env.RESEND_API_KEY)
-      await resend.emails.send({ from: process.env.RESEND_FROM || 'onboarding@resend.dev', to, subject, html })
+      await resend.emails.send({
+        from: process.env.RESEND_FROM || 'onboarding@resend.dev',
+        to,
+        subject,
+        html,
+        ...(agencyGmail ? { reply_to: agencyGmail } : {}),
+      })
+      console.log(`[Email/send-offer] sent to=${to} replyTo=${agencyGmail || '(none — agency has no gmail_address)'}`)
     } else {
       console.log(`[Email/send-offer] No RESEND_API_KEY — would send to ${to}: ${subject}`)
     }
