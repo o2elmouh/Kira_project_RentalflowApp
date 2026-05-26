@@ -75,11 +75,22 @@ function matchesKeyword(lowerText, word) {
   return new RegExp(`\\b${escaped}\\b`, 'i').test(lowerText)
 }
 
+// ── Strip URLs and email addresses ────────────────────────
+// Tracking parameters (e.g. `&auto=true`) and email-address labels routinely
+// contain keywords from the dictionary and produce false-positive triage hits.
+// Replace with whitespace so word boundaries on either side are preserved.
+function stripUrlsAndEmails(text) {
+  return text
+    .replace(/https?:\/\/\S+/gi, ' ')
+    .replace(/\bmailto:\S+/gi, ' ')
+    .replace(/\S+@\S+\.\S+/g, ' ')
+}
+
 // ── preFilter ─────────────────────────────────────────────
 export function preFilter(text) {
   if (!text?.trim()) return { result: 'fail', matchedKeywords: [] }
 
-  const lower = text.toLowerCase()
+  const lower = stripUrlsAndEmails(text).toLowerCase()
   const matched = { high: [], medium: [], low: [] }
 
   for (const word of KEYWORDS.high) {

@@ -53,6 +53,17 @@ I'll make sure yours lands there too. ~ Joel at ngrok`
     expect(preFilter('Please discard this draft and start over.').result).toBe('fail')
   })
 
+  it('fails on a Google I/O marketing email — keywords inside URLs/emails must be ignored', () => {
+    const email = `Gemini just got a major upgrade Meet the latest innovations we announced at Google I/O 2026.
+Come see what's new<<https://c.gle/AOExmq3dhvH5UCoyzGJxqS6HMtNeJ7A1>>
+Fast and more efficient. Crush your to-do list and handle challenging projects quickly.
+Try our latest model<<https://c.gle/AOExmq1JShNJi65jcfj3vc4K2Pd7_F-uyjjNNMQzjyg4Y-12TeSVe46_cbisTkF8YQos>>
+Add google-gemini-noreply@google.com to your address book to ensure you receive Gemini emails.
+This message was sent to kira.boost.ai@gmail.com to keep you up to date.
+unsubscribe here<https://myaccount.google.com/communication-preferences/unsubscribe/gt/AOExmq19hyXcMY50ekoaJvaY15NgveVizdY5xd6CuBW3?utm_source=gm&utm_medium=email&auto=true>.`
+    expect(preFilter(email).result).toBe('fail')
+  })
+
   // ── AMBIGUOUS cases ──────────────────────────────────────
   it('marks ambiguous when one medium keyword is present as a standalone word', () => {
     expect(preFilter('My car broke down yesterday').result).toBe('ambiguous')
