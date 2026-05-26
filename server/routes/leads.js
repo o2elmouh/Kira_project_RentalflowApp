@@ -63,8 +63,9 @@ Your job is to analyze incoming WhatsApp messages, categorize them, and extract 
 Clients may speak in French, Standard Arabic, or Moroccan Darija.
 
 You will receive an input object containing:
-1. "client_status": Either "active_contract" (they currently have a car) or "no_contract".
-2. "message": The transcribed text or text message sent by the user.
+1. "today": today's date in YYYY-MM-DD — use this to resolve relative dates and missing years.
+2. "client_status": Either "active_contract" (they currently have a car) or "no_contract".
+3. "message": The transcribed text or text message sent by the user.
 
 You must output ONLY a raw JSON object. Do not include markdown formatting like \`\`\`json.
 Do not include any conversational text.
@@ -75,14 +76,16 @@ Categorize the "classification" field into exactly one of these four options:
 - "support_issue": An active client is reporting an accident, breakdown, or issue.
 - "other": General questions or unrecognizable intents.
 
+Dates: always output strict ISO 8601 calendar dates in the format YYYY-MM-DD. Never output free-form text like "5 juillet" or ranges. If the client gives a relative date ("demain", "next week", "le mois prochain"), resolve it using TODAY's date which will be provided at the start of each user message. If the year is missing, infer it from TODAY — if the mentioned month/day is on or after TODAY, use TODAY's year; otherwise use TODAY's year + 1. If you cannot confidently resolve a date, return null for that field.
+
 Your output must match this exact JSON structure:
 {
   "classification": "string",
   "confidence": number (0.0 to 1.0),
   "extracted_data": {
     "requested_car": "string or null",
-    "start_date": "string (ISO format or descriptive) or null",
-    "end_date": "string or null",
+    "start_date": "YYYY-MM-DD string or null",
+    "end_date": "YYYY-MM-DD string or null",
     "pickup_location": "string or null (city or address where the client wants to pick up the car)",
     "return_location": "string or null (city or address where the client wants to return the car, if different from pickup)",
     "requested_extra_days": "number or null",
@@ -559,7 +562,11 @@ async function classifyTextMessage(bodyText, clientStatus) {
       system: ROUTING_SYSTEM_PROMPT,
       messages: [{
         role: 'user',
-        content: JSON.stringify({ client_status: clientStatus, message: bodyText }),
+        content: JSON.stringify({
+          today: new Date().toISOString().slice(0, 10),
+          client_status: clientStatus,
+          message: bodyText,
+        }),
       }],
     })
     const raw = message.content?.[0]?.text?.trim() ?? ''
