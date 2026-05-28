@@ -25,6 +25,8 @@ let _classifyResponse = null         // returned by classifyTextMessage (routing
 let _quoteIntentResponse = 'question' // returned by analyzeQuoteReply
 const _updateCalls = []
 const _insertCalls = []
+let _waClientsByPhone = []
+let _waActiveContracts = []
 
 // ── Anthropic mock — differentiates the two prompts by inspecting `system` ───
 vi.mock('@anthropic-ai/sdk', () => ({
@@ -48,47 +50,77 @@ vi.mock('@anthropic-ai/sdk', () => ({
 // ── supabaseAdmin mock — captures inserts + updates, returns offer lead ──────
 vi.mock('../lib/supabaseAdmin.js', () => ({
   default: {
-    from: (table) => ({
-      select: () => ({
-        eq: (_col1, _val1) => ({
-          // findActiveLeadByPhone uses .in('status', ['offer_sent', 'accepted'])
-          in: (_col, _vals) => {
-            const resolved = { data: _offerLead ? [_offerLead] : [] }
-            return {
-              order: () => ({ limit: () => Promise.resolve(resolved) }),
-            }
-          },
-          eq: (_col2, val2) => {
-            if (val2 === 'offer_sent') {
-              const resolved = { data: _offerLead ? [_offerLead] : [] }
-              const orderLimit = {
-                order: () => ({ limit: () => Promise.resolve(resolved) }),
-              }
-              return { ...orderLimit, eq: () => orderLimit }
-            }
-            // findMatchingDemand (status=pending) → no recent match
-            return {
-              gte: () => ({
-                order: () => ({ limit: () => Promise.resolve({ data: [] }) }),
-              }),
-            }
-          },
-        }),
-      }),
-      update: (payload) => {
-        _updateCalls.push({ table, payload })
-        return { eq: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }) }
-      },
-      insert: (payload) => {
-        _insertCalls.push({ table, payload })
+    from: (table) => {
+      if (table === 'clients') {
         return {
           select: () => ({
-            maybeSingle: () => Promise.resolve({ data: { id: 'new-lead-id' }, error: null }),
+            eq: () => ({
+              in: () => ({
+                limit: () => Promise.resolve({ data: _waClientsByPhone }),
+              }),
+            }),
           }),
         }
-      },
-      not: () => Promise.resolve({ data: [] }),
-    }),
+      }
+      if (table === 'contracts') {
+        const buildTerminal = () => ({
+          then: (r) => r({ data: _waActiveContracts }),
+          order: () => Promise.resolve({ data: _waActiveContracts }),
+        })
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                eq: () => buildTerminal(),
+              }),
+            }),
+          }),
+        }
+      }
+      // Default branch — preserves the existing 6 tests' behavior for
+      // pending_demands and any other table they touch.
+      return {
+        select: () => ({
+          eq: (_col1, _val1) => ({
+            // findActiveLeadByPhone uses .in('status', ['offer_sent', 'accepted'])
+            in: (_col, _vals) => {
+              const resolved = { data: _offerLead ? [_offerLead] : [] }
+              return {
+                order: () => ({ limit: () => Promise.resolve(resolved) }),
+              }
+            },
+            eq: (_col2, val2) => {
+              if (val2 === 'offer_sent') {
+                const resolved = { data: _offerLead ? [_offerLead] : [] }
+                const orderLimit = {
+                  order: () => ({ limit: () => Promise.resolve(resolved) }),
+                }
+                return { ...orderLimit, eq: () => orderLimit }
+              }
+              // findMatchingDemand (status=pending) → no recent match
+              return {
+                gte: () => ({
+                  order: () => ({ limit: () => Promise.resolve({ data: [] }) }),
+                }),
+              }
+            },
+          }),
+        }),
+        update: (payload) => {
+          _updateCalls.push({ table, payload })
+          return { eq: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }) }
+        },
+        insert: (payload) => {
+          _insertCalls.push({ table, payload })
+          return {
+            select: () => ({
+              maybeSingle: () => Promise.resolve({ data: { id: 'new-lead-id' }, error: null }),
+            }),
+          }
+        },
+        not: () => Promise.resolve({ data: [] }),
+      }
+    },
   },
 }))
 
@@ -142,6 +174,8 @@ function resetState() {
   _quoteIntentResponse = 'question'
   _updateCalls.length = 0
   _insertCalls.length = 0
+  _waClientsByPhone = []
+  _waActiveContracts = []
   sendToAgencyMock.mockClear()
   sendWhatsAppMessageMock.mockClear()
 }
@@ -190,6 +224,10 @@ test('sender with open offer + prolongation → NEW lead inserted with classific
     summary_for_agent: 'Client veut prolonger de 5 jours',
     extracted_data: { requested_extra_days: 5 },
   }
+  // Provide an active contract so the prolongation linkage does not downgrade
+  // classification to 'new_lead' (0-contract path).
+  _waClientsByPhone = [{ id: 'cli-existing' }]
+  _waActiveContracts = [{ id: 'ctr-existing', client_id: 'cli-existing' }]
 
   await handleInboundWhatsApp(AGENCY_ID, SENDER_JID, null, 'image/jpeg', 'salam, je voudrais prolonger ma location de 5 jours')
 
@@ -263,4 +301,22 @@ test('sender with open offer + support_issue → NEW lead inserted', async () =>
 
   expect(_insertCalls.length).toBe(1)
   expect(_insertCalls[0].payload.classification).toBe('support_issue')
+})
+
+test('no active lead + prolongation + 1 active contract → new lead with target id set', async () => {
+  _offerLead = null
+  _classifyResponse = {
+    classification: 'prolongation',
+    confidence: 0.9,
+    summary_for_agent: 'extend',
+    extracted_data: { end_date: '2026-09-15' },
+  }
+  _waClientsByPhone = [{ id: 'cli-wa-1' }]
+  _waActiveContracts = [{ id: 'ctr-wa-1', client_id: 'cli-wa-1' }]
+
+  await handleInboundWhatsApp(AGENCY_ID, SENDER_JID, null, 'image/jpeg', 'je veux prolonger jusqu\'au 15 septembre')
+
+  expect(_insertCalls.length).toBe(1)
+  expect(_insertCalls[0].payload.classification).toBe('prolongation')
+  expect(_insertCalls[0].payload.prolongation_target_contract_id).toBe('ctr-wa-1')
 })

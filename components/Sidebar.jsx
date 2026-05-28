@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LayoutDashboard, PlusCircle, Car, Users, FolderOpen, CalendarDays, Settings, LogOut, RotateCcw, Inbox, Globe, Shield, ClipboardList } from 'lucide-react'
 import LanguageSelector from './LanguageSelector'
@@ -27,10 +27,10 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
 
   const visibleNav = NAV_IDS.filter(({ id }) => isAdmin || !ADMIN_ONLY_PAGES.includes(id))
 
-  // ── Unread Basket count ──────────────────────────────────
+  // â”€â”€ Unread Basket count â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Counts every pending row the Corbeille page would show (leads + alerts).
   // Uses the same /leads backend endpoints the Basket page uses so the badge
-  // always matches what the agent sees — no RLS surprises from going direct
+  // always matches what the agent sees â€” no RLS surprises from going direct
   // to Supabase from the anon client.
   // Polls every 1s so new arrivals surface within a second.
   const agencyId = profile?.agency_id
@@ -66,7 +66,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
     <aside className="sidebar">
       {/* Logo */}
       <div className="sidebar-logo">
-        <span className="logo-icon">🚗</span>
+        <span className="logo-icon">ðŸš—</span>
         <span className="logo-text">RentaFlow</span>
       </div>
 
@@ -83,7 +83,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
             >
               <Icon size={15} />
               <span>{t(`nav.${key}`)}</span>
-              {/* Live unread-count badge — only on Basket, only when > 0.
+              {/* Live unread-count badge â€” only on Basket, only when > 0.
                   Pushed to the trailing edge with marginLeft:auto so it
                   sits next to (or replaces) the static PRO badge. */}
               {id === 'basket' && basketUnread > 0 && (
@@ -164,7 +164,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
                 color: 'var(--text-muted)',
                 fontFamily: 'DM Mono, monospace',
               }}>
-                v1.13.8
+                v1.13.9
               </span>
             </div>
           )}

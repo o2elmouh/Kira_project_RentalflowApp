@@ -1031,6 +1031,31 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
     }
   }
 
+  // ── Prolongation linkage (mirror of Gmail webhook) ─────────
+  let waProlongationTargetContractId = null
+  if (extractedData?.classification === 'prolongation') {
+    const digits = senderJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
+    const localVariants = [digits, digits.replace(/^212/, '0')]
+    const { data: waClients } = await supabaseAdmin
+      .from('clients')
+      .select('id')
+      .eq('agency_id', agencyId)
+      .in('phone', localVariants)
+      .limit(1)
+    const matchedClientId = waClients?.[0]?.id || null
+    const active = matchedClientId ? await findActiveContractsForClient(agencyId, matchedClientId) : []
+    if (active.length === 0) {
+      console.log(`[pipeline:wa] → prolongation downgraded to new_lead (0 active contracts)`)
+      extractedData.classification = 'new_lead'
+    } else if (active.length === 1) {
+      waProlongationTargetContractId = active[0].id
+      console.log(`[pipeline:wa] → prolongation linked to contract ${active[0].id}`)
+    } else {
+      extractedData.prolongation_candidates = active.map(c => c.id)
+      console.log(`[pipeline:wa] → prolongation has ${active.length} candidates (deferred to agent)`)
+    }
+  }
+
   const match = await findMatchingDemand(agencyId, senderJid, extractedData)
   console.log(`[pipeline:wa] → match: ${match ? `${match.type} (score=${match.score}) id=${match.demand.id}` : 'none — new lead'}`)
 
@@ -1042,6 +1067,7 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       match_score: match.score,
       raw_payload: { ...match.demand.raw_payload, latestBody: bodyText },
       ...(extractedData?.classification ? { classification: extractedData.classification } : {}),
+      ...(waProlongationTargetContractId ? { prolongation_target_contract_id: waProlongationTargetContractId } : {}),
     }).eq('id', match.demand.id)
     if (error) console.error('[pipeline:wa] ✗ update error:', error.message)
     else console.log(`[pipeline:wa] ✓ lead updated id=${match.demand.id}`)
@@ -1057,6 +1083,7 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       match_score: match?.score || null,
       merged_with_id: match?.type === 'potential' ? match.demand.id : null,
       classification: extractedData?.classification || null,
+      prolongation_target_contract_id: waProlongationTargetContractId,
     }).select('id').maybeSingle()
     if (error) console.error('[pipeline:wa] ✗ insert error:', error.message)
     else {
