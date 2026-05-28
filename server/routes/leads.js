@@ -235,9 +235,19 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
 
   const textForTriage = [subject, bodyText].filter(Boolean).join('\n\n')
 
-  // Pre-triage: if sender has an offer_sent lead, bypass keyword triage
+  // Lookup any open offer_sent lead from this sender. We do NOT short-circuit here:
+  // a brand-new inquiry from a sender who happens to have a prior offer must still
+  // be triaged and surfaced in the corbeille as a new lead. The offer-response
+  // merge is only triggered later, after classification, when the message is
+  // ambiguous / classified as "other" — i.e. a likely reply to the existing offer
+  // (accept / refuse / question). See decision matrix below.
   const gmailOfferLead = await findOfferSentLeadByEmail(agencyId, senderEmail)
   if (gmailOfferLead) {
+    console.log(`[pipeline:gmail-wh] → sender has open offer_sent lead=${gmailOfferLead.id} (decision deferred until classification)`)
+  }
+
+  const routeGmailToOfferResponse = async (reason) => {
+    console.log(`[pipeline:gmail-wh] → ${reason} → routing to offer-response | lead=${gmailOfferLead.id}`)
     await handleOfferResponse(agencyId, senderEmail, textForTriage, gmailOfferLead, 'gmail')
     return res.json({ ok: true, offer_response: true })
   }
@@ -260,6 +270,9 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
     console.log(`[pipeline:gmail-wh] → triage | lang=${lang} | result=${result} | keywords=[${matchedKeywords.join(',')}]`)
 
     if (result === 'fail') {
+      if (gmailOfferLead) {
+        return routeGmailToOfferResponse('triage failed (no rental keywords) but sender has open offer')
+      }
       console.log(`[pipeline:gmail-wh] ✗ dropped — no rental keywords`)
       return res.json({ ok: true, dropped: true })
     }
@@ -304,10 +317,16 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
       const classification = await classifyTextMessage(textToClassify, 'no_contract')
       if (classification) {
         // Skip messages classified as "other" — not rental-related
-        if (classification.classification === 'other') {
-          console.log(`[pipeline:gmail-wh] ✗ rejected — classified as "other" (${classification.confidence})`)
+        const cls = classification.classification
+        const unclassified = !cls || cls === 'other'
+        if (unclassified) {
+          console.log(`[pipeline:gmail-wh] → unclassified or "other" (${classification.confidence})`)
+          if (gmailOfferLead) {
+            return routeGmailToOfferResponse('unclassified/"other" + open offer (likely reply to quote)')
+          }
+          console.log(`[pipeline:gmail-wh] ✗ rejected — unclassified/"other" and no open offer`)
           if (ambiguousAlertFallback) {
-            console.log(`[pipeline:gmail-wh] → ambiguous + Claude="other" → alert fallback`)
+            console.log(`[pipeline:gmail-wh] → ambiguous + unclassified → alert fallback`)
             await handleAmbiguous(ambiguousAlertFallback)
             return res.json({ ok: true, alert: true })
           }
@@ -322,6 +341,9 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
         console.log(`[pipeline:gmail-wh] → classification: ${classification.classification} (${classification.confidence}) | summary="${(classification.summary_for_agent || '').slice(0, 60)}"`)
       } else {
         console.warn(`[pipeline:gmail-wh] → classification returned null`)
+        if (gmailOfferLead) {
+          return routeGmailToOfferResponse('null classification + open offer')
+        }
         if (ambiguousAlertFallback) {
           console.log(`[pipeline:gmail-wh] → ambiguous + null classification → alert fallback`)
           await handleAmbiguous(ambiguousAlertFallback)
@@ -330,6 +352,9 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
       }
     } catch (err) {
       console.error('[pipeline:gmail-wh] ✗ text classification error:', err.message)
+      if (gmailOfferLead) {
+        return routeGmailToOfferResponse('classify error + open offer')
+      }
       if (ambiguousAlertFallback) {
         console.log(`[pipeline:gmail-wh] → ambiguous + classify error → alert fallback`)
         await handleAmbiguous(ambiguousAlertFallback)
@@ -773,9 +798,24 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       return
     }
 
-    // Text on an offer_sent lead → intent branching (Task 9).
-    await handleOfferResponse(agencyId, senderJid, bodyText, activeLead, 'whatsapp')
-    return
+    // Empty body on offer_sent lead → preserve "question noted" behavior. There is
+    // nothing classifiable; treat the ping as a quote-thread reply.
+    if (activeLead.status === 'offer_sent' && !bodyText?.trim()) {
+      await handleOfferResponse(agencyId, senderJid, bodyText, activeLead, 'whatsapp')
+      return
+    }
+
+    // Text on an offer_sent lead: do NOT short-circuit here. A brand-new inquiry
+    // from this sender must still be triaged and surfaced in the corbeille as a
+    // new lead. Only short messages that fail triage or classify as "other" are
+    // treated as a reply to the existing offer — see decision matrix below.
+    // (Fall through to triage / classification block.)
+  }
+
+  const offerSentLead = activeLead?.status === 'offer_sent' ? activeLead : null
+  const routeWaToOfferResponse = async (reason) => {
+    console.log(`[pipeline:wa] → ${reason} → routing to offer-response | lead=${offerSentLead.id}`)
+    await handleOfferResponse(agencyId, senderJid, bodyText, offerSentLead, 'whatsapp')
   }
 
   // Deferred ambiguous-alert fallback — see Gmail handler above for rationale.
@@ -793,6 +833,10 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
     console.log(`[pipeline:wa] → triage | lang=${lang} | result=${result} | keywords=[${matchedKeywords.join(',')}]`)
 
     if (result === 'fail') {
+      if (offerSentLead) {
+        await routeWaToOfferResponse('triage failed (no rental keywords) but sender has open offer')
+        return
+      }
       console.log(`[pipeline:wa] ✗ dropped — no rental keywords`)
       return
     }
@@ -852,10 +896,17 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       const classification = await classifyTextMessage(bodyText, clientStatus)
       if (classification) {
         // Skip messages classified as "other" — not rental-related
-        if (classification.classification === 'other') {
-          console.log(`[pipeline:wa] ✗ rejected — classified as "other" (${classification.confidence})`)
+        const cls = classification.classification
+        const unclassified = !cls || cls === 'other'
+        if (unclassified) {
+          console.log(`[pipeline:wa] → unclassified or "other" (${classification.confidence})`)
+          if (offerSentLead) {
+            await routeWaToOfferResponse('unclassified/"other" + open offer (likely reply to quote)')
+            return
+          }
+          console.log(`[pipeline:wa] ✗ rejected — unclassified/"other" and no open offer`)
           if (ambiguousAlertFallback) {
-            console.log(`[pipeline:wa] → ambiguous + Claude="other" → alert fallback`)
+            console.log(`[pipeline:wa] → ambiguous + unclassified → alert fallback`)
             await handleAmbiguous(ambiguousAlertFallback)
           }
           return
@@ -869,6 +920,10 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
         console.log(`[pipeline:wa] → classification: ${classification.classification} (${classification.confidence}) | summary="${(classification.summary_for_agent || '').slice(0, 60)}"`)
       } else {
         console.warn(`[pipeline:wa] → classification returned null`)
+        if (offerSentLead) {
+          await routeWaToOfferResponse('null classification + open offer')
+          return
+        }
         if (ambiguousAlertFallback) {
           console.log(`[pipeline:wa] → ambiguous + null classification → alert fallback`)
           await handleAmbiguous(ambiguousAlertFallback)
@@ -877,6 +932,10 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       }
     } catch (err) {
       console.error('[pipeline:wa] ✗ classify error:', err.message)
+      if (offerSentLead) {
+        await routeWaToOfferResponse('classify error + open offer')
+        return
+      }
       if (ambiguousAlertFallback) {
         console.log(`[pipeline:wa] → ambiguous + classify error → alert fallback`)
         await handleAmbiguous(ambiguousAlertFallback)
