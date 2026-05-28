@@ -576,6 +576,39 @@ async function getClientStatus(agencyId, senderJid) {
   }
 }
 
+/**
+ * Email-equivalent of getClientStatus(). Looks up a client by exact email,
+ * then checks for any active contract. Used by the Gmail webhook so the
+ * classifier knows whether the sender is a known active-contract client.
+ *
+ * @returns 'active_contract' | 'no_contract'
+ */
+export async function getClientStatusByEmail(agencyId, senderEmail) {
+  try {
+    if (!senderEmail) return 'no_contract'
+    const normalized = String(senderEmail).trim().toLowerCase()
+    const { data: clients } = await supabaseAdmin
+      .from('clients')
+      .select('id')
+      .eq('agency_id', agencyId)
+      .eq('email', normalized)
+      .limit(1)
+
+    if (!clients?.length) return 'no_contract'
+
+    const { data: contracts } = await supabaseAdmin
+      .from('contracts')
+      .select('id')
+      .eq('agency_id', agencyId)
+      .eq('client_id', clients[0].id)
+      .eq('status', 'active')
+
+    return contracts?.length ? 'active_contract' : 'no_contract'
+  } catch {
+    return 'no_contract'
+  }
+}
+
 // ── Text message classifier ───────────────────────────────
 async function classifyTextMessage(bodyText, clientStatus) {
   if (!process.env.ANTHROPIC_API_KEY) return null
