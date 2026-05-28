@@ -4,6 +4,7 @@ import { getContractById, getVehicle } from '../lib/db'
 import { generateContractBuffer } from '../utils/pdf'
 import { getAgency } from '../lib/db'
 import { api } from '../lib/api'
+import { describeSignatureState } from '../utils/contractSuccess'
 import PostFinalSendModal from './rental/review/PostFinalSendModal'
 
 export default function ContractSuccess({ contractId, onDone }) {
@@ -41,16 +42,26 @@ export default function ContractSuccess({ contractId, onDone }) {
     return () => { cancelled = true }
   }, [contractId])
 
-  // Mints a fresh 60s signed URL on demand — no long-lived URLs in the DB.
-  const fetchSignedUrl = async () => {
-    const { url } = await api.getSignedPdfUrl(contractId)
-    return url
+  // Resolve the PDF source to a URL the browser can open.
+  //   - Electronic-signature flow: signed PDF lives in storage → mint a fresh
+  //     60s signed URL (no long-lived URLs in the DB).
+  //   - In-person flow: no signed PDF exists. Build the unsigned print-ready
+  //     contract client-side, expose it as an object URL for download / print.
+  const getPdfUrl = async () => {
+    const hasSigned = Boolean(contract?.signedPdfPath || contract?.signed_pdf_path)
+    if (hasSigned) {
+      const { url } = await api.getSignedPdfUrl(contractId)
+      return url
+    }
+    const buffer = await generateContractBuffer(contract, client, vehicle, agency)
+    const blob = new Blob([buffer], { type: 'application/pdf' })
+    return URL.createObjectURL(blob)
   }
 
   const downloadSignedPdf = async () => {
     setDownloading(true)
     try {
-      const url = await fetchSignedUrl()
+      const url = await getPdfUrl()
       window.open(url, '_blank', 'noopener')
     } catch (err) {
       alert('Impossible de récupérer le PDF: ' + err.message)
@@ -79,7 +90,7 @@ export default function ContractSuccess({ contractId, onDone }) {
   const handlePrint = async () => {
     setDownloading(true)
     try {
-      const url = await fetchSignedUrl()
+      const url = await getPdfUrl()
       const w = window.open(url, '_blank', 'noopener')
       if (w) w.addEventListener('load', () => { try { w.print() } catch {} })
     } catch (err) {
@@ -103,18 +114,13 @@ export default function ContractSuccess({ contractId, onDone }) {
     )
   }
 
-  const hasSignedPdf = Boolean(contract?.signedPdfPath || contract?.signed_pdf_path)
+  const { heading, subline } = describeSignatureState(contract)
 
   return (
     <div className="page-body" style={{ padding: 40, maxWidth: 700, margin: '0 auto', textAlign: 'center' }}>
       <CheckCircle size={56} color="#16a34a" style={{ margin: '0 auto 12px', display: 'block' }} />
-      <h1 style={{ marginBottom: 8 }}>Contrat signé</h1>
-      <p style={{ color: 'var(--text2)', marginBottom: 24 }}>
-        Le client a signé le contrat
-        {contract?.signedAt || contract?.signed_at
-          ? ` le ${new Date(contract.signedAt || contract.signed_at).toLocaleString('fr-FR')}`
-          : ''}.
-      </p>
+      <h1 style={{ marginBottom: 8 }}>{heading}</h1>
+      <p style={{ color: 'var(--text2)', marginBottom: 24 }}>{subline}</p>
 
       <div className="card mb-3" style={{ padding: 16, textAlign: 'left' }}>
         <div><strong>Client:</strong> {client ? `${client.firstName} ${client.lastName}` : '—'}</div>
@@ -123,10 +129,10 @@ export default function ContractSuccess({ contractId, onDone }) {
       </div>
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', margin: '24px 0' }}>
-        <button className="btn-ink" style={{ fontSize: 14 }} disabled={!hasSignedPdf || downloading} onClick={downloadSignedPdf}>
+        <button className="btn-ink" style={{ fontSize: 14 }} disabled={downloading} onClick={downloadSignedPdf}>
           <Download size={15} /> {downloading ? 'Préparation…' : 'Télécharger le contrat'}
         </button>
-        <button className="btn-outline-ink" style={{ fontSize: 14 }} disabled={!hasSignedPdf || downloading} onClick={handlePrint}>
+        <button className="btn-outline-ink" style={{ fontSize: 14 }} disabled={downloading} onClick={handlePrint}>
           <Printer size={15} /> Imprimer le contrat
         </button>
         <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={() => setSendOpen(true)}>
@@ -141,12 +147,6 @@ export default function ContractSuccess({ contractId, onDone }) {
         defaultEmail={client?.email}
         defaultPhone={client?.phone}
       />
-
-      {!hasSignedPdf && (
-        <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16 }}>
-          Le PDF signé est en cours de génération — réessayez dans un instant.
-        </p>
-      )}
 
       <button className="btn-ink" style={{ fontSize: 15, marginTop: 16 }} onClick={onDone}>
         <Home size={15} /> Terminer
