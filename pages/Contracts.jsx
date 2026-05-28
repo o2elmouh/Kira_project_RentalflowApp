@@ -3,13 +3,13 @@ import { useTranslation } from 'react-i18next'
 import { FileText, Download, X, Link, Copy, Check, MessageCircle, CreditCard } from 'lucide-react'
 import { createSigningToken, getSigningUrl } from '../lib/signing'
 import {
-  getContracts, updateContract,
-  getInvoices, saveInvoice, updateInvoice,
+  getContracts,
   getFleet,
   getAgency,
 } from '../lib/db'
 import { generateContract } from '../utils/pdf'
 import { api } from '../lib/api'
+import ProlongationDialog from '../components/ProlongationDialog'
 
 // ─────────────────────────────────────────────────────────
 // Helpers
@@ -73,7 +73,6 @@ export default function Contracts({ onRestitution }) {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
   const [showProlonger, setShowProlonger] = useState(false)
-  const [prolongForm, setProlongForm] = useState({ newEndDate: '', newDailyRate: '' })
   const [prolongMsg, setProlongMsg] = useState(null)
   const [signingUrl, setSigningUrl] = useState(null)   // string | null
   const [urlCopied, setUrlCopied] = useState(false)
@@ -174,71 +173,9 @@ export default function Contracts({ onRestitution }) {
     }
   }
 
-  const openProlonger = (contract) => {
-    const vehicle = getVehicle(contract.vehicleId)
-    setProlongForm({
-      newEndDate: '',
-      newDailyRate: contract.dailyRate || vehicle.dailyRate || '',
-    })
+  const openProlonger = (_contract) => {
     setProlongMsg(null)
     setShowProlonger(true)
-  }
-
-  const confirmProlongation = async (contract) => {
-    const { newEndDate, newDailyRate } = prolongForm
-    if (!newEndDate) return
-    const extraDays = daysBetween(contract.endDate, newEndDate)
-    if (extraDays <= 0) return
-    const rate = Number(newDailyRate)
-    const extraAmount = extraDays * rate
-    const newTotalTTC = (Number(contract.totalTTC) || 0) + extraAmount
-    const newTotalHT = newTotalTTC / 1.20
-    const newTva = newTotalTTC - newTotalHT
-    try {
-      await updateContract({
-        ...contract,
-        endDate: newEndDate,
-        days: (contract.days || daysBetween(contract.startDate, contract.endDate)) + extraDays,
-        totalTTC: Math.round(newTotalTTC * 100) / 100,
-        totalHT: Math.round(newTotalHT * 100) / 100,
-        tva: Math.round(newTva * 100) / 100,
-      })
-      const originalRate = Number(contract.dailyRate) || 0
-      const rateChanged = rate !== originalRate && originalRate > 0
-      if (rateChanged) {
-        await saveInvoice({
-          clientId: contract.clientId,
-          clientName: contract.clientName,
-          contractId: contract.id,
-          contractNumber: contract.contractNumber,
-          vehicleName: contract.vehicleName,
-          items: [{ label: `Prolongation ${extraDays} jour(s)`, qty: extraDays, unitPrice: rate }],
-          totalHT: Math.round((extraAmount / 1.20) * 100) / 100,
-          tva: Math.round((extraAmount - extraAmount / 1.20) * 100) / 100,
-          totalTTC: Math.round(extraAmount * 100) / 100,
-          notes: 'Facture de prolongation',
-        })
-        setProlongMsg(t('panel.extendSuccess'))
-      } else {
-        const invoices = await getInvoices()
-        const existing = invoices.find(i => i.contractId === contract.id)
-        if (existing) {
-          await updateInvoice({
-            ...existing,
-            totalTTC: Math.round(((existing.totalTTC || 0) + extraAmount) * 100) / 100,
-            totalHT: Math.round(((existing.totalHT || 0) + extraAmount / 1.20) * 100) / 100,
-            tva: Math.round(((existing.tva || 0) + extraAmount - extraAmount / 1.20) * 100) / 100,
-          })
-        }
-        setProlongMsg(t('panel.extendSuccessUpdated'))
-      }
-      const refreshed = await getContracts()
-      setContracts(refreshed)
-      setShowProlonger(false)
-    } catch (err) {
-      console.error('[Contracts] confirmProlongation', err)
-      setProlongMsg(t('panel.extendError', { defaultValue: 'Erreur lors de la prolongation. Veuillez réessayer.' }))
-    }
   }
 
   const panelContract = selected ? contracts.find(c => c.id === selected) : null
@@ -393,68 +330,17 @@ export default function Contracts({ onRestitution }) {
                   {prolongMsg}
                 </div>
               )}
-              {showProlonger && (
-                <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 16, background: 'var(--bg2)', marginBottom: 4 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{t('extend.title')}</div>
-                  <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 12 }}>
-                    {t('extend.currentEnd')} <strong>{fmtDate(panelContract.endDate)}</strong>
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 10 }}>
-                    <label className="form-label" style={{ fontSize: 12 }}>{t('extend.newEnd')}</label>
-                    <input
-                      className="form-input"
-                      type="date"
-                      min={(() => {
-                        const d = new Date(panelContract.endDate)
-                        if (isNaN(d.getTime())) return ''
-                        d.setDate(d.getDate() + 1)
-                        return d.toISOString().slice(0, 10)
-                      })()}
-                      value={prolongForm.newEndDate}
-                      onChange={e => setProlongForm(p => ({ ...p, newEndDate: e.target.value }))}
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 12 }}>
-                    <label className="form-label" style={{ fontSize: 12 }}>Tarif journalier</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <input
-                        className="form-input"
-                        type="number"
-                        min={0}
-                        value={prolongForm.newDailyRate}
-                        onChange={e => setProlongForm(p => ({ ...p, newDailyRate: e.target.value }))}
-                        style={{ width: 100 }}
-                      />
-                      <span style={{ fontSize: 13, color: 'var(--text2)' }}>MAD/jour</span>
-                    </div>
-                  </div>
-                  {prolongForm.newEndDate && (() => {
-                    const extra = daysBetween(panelContract.endDate, prolongForm.newEndDate)
-                    const amount = extra * Number(prolongForm.newDailyRate)
-                    return extra > 0 ? (
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)', marginBottom: 12 }}>
-                        Prolongation : {extra} jour{extra > 1 ? 's' : ''} · +{amount} MAD
-                      </div>
-                    ) : null
-                  })()}
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ flex: 1 }}
-                      onClick={() => { setShowProlonger(false); setProlongMsg(null) }}
-                    >
-                      Annuler
-                    </button>
-                    <button
-                      className="btn btn-primary"
-                      style={{ flex: 2 }}
-                      onClick={() => confirmProlongation(panelContract)}
-                      disabled={!prolongForm.newEndDate || daysBetween(panelContract.endDate, prolongForm.newEndDate) <= 0}
-                    >
-                      Confirmer la prolongation
-                    </button>
-                  </div>
-                </div>
+              {showProlonger && panelContract && (
+                <ProlongationDialog
+                  contract={panelContract}
+                  vehicle={panelVehicle}
+                  onClose={() => setShowProlonger(false)}
+                  onConfirmed={async () => {
+                    const refreshed = await getContracts()
+                    setContracts(refreshed)
+                    setShowProlonger(false)
+                  }}
+                />
               )}
               {panelContract.status === 'active' && onRestitution && (
                 <button
