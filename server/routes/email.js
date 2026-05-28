@@ -102,7 +102,10 @@ router.post('/send-offer', emailLimit, async (req, res) => {
         to,
         subject,
         html,
-        ...(agencyGmail ? { reply_to: agencyGmail } : {}),
+        // Resend SDK v6 uses `replyTo` (camelCase) on emails.send — passing
+        // `reply_to` is silently dropped, leaving replies routed to the From
+        // address (noreply@…) which the IMAP poller never reads.
+        ...(agencyGmail ? { replyTo: agencyGmail } : {}),
       })
       console.log(`[Email/send-offer] sent to=${to} replyTo=${agencyGmail || '(none — agency has no gmail_address)'}`)
     } else {
