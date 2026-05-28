@@ -609,6 +609,29 @@ export async function getClientStatusByEmail(agencyId, senderEmail) {
   }
 }
 
+/**
+ * Returns all of a client's currently-active contracts (sorted newest first).
+ * Used after classification = 'prolongation' to decide whether to link the
+ * lead to one contract (1 row), let the agent pick (2+ rows), or downgrade
+ * the lead to 'new_lead' (0 rows).
+ */
+export async function findActiveContractsForClient(agencyId, clientId) {
+  try {
+    if (!agencyId || !clientId) return []
+    const { data: contracts } = await supabaseAdmin
+      .from('contracts')
+      .select('id, contract_number, vehicle_id, client_id, end_date, daily_rate, status, created_at')
+      .eq('agency_id', agencyId)
+      .eq('client_id', clientId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+    return contracts || []
+  } catch (err) {
+    console.error('[leads/findActiveContractsForClient] error:', err.message)
+    return []
+  }
+}
+
 // ── Text message classifier ───────────────────────────────
 async function classifyTextMessage(bodyText, clientStatus) {
   if (!process.env.ANTHROPIC_API_KEY) return null
