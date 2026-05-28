@@ -314,7 +314,8 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
     console.log(`[pipeline:gmail-wh] → Claude classification (text)`)
     try {
       const textToClassify = [subject, bodyText].filter(Boolean).join('\n\n')
-      const classification = await classifyTextMessage(textToClassify, 'no_contract')
+      const gmailClientStatus = await getClientStatusByEmail(agencyId, senderEmail)
+      const classification = await classifyTextMessage(textToClassify, gmailClientStatus)
       if (classification) {
         // Skip messages classified as "other" — not rental-related
         const cls = classification.classification
@@ -363,6 +364,34 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
     }
   }
 
+  // ── Prolongation linkage (Section 1 of design spec) ────────
+  // When classification is 'prolongation', find the sender's active contracts
+  // and decide where to link the lead:
+  //   - 0 contracts  → downgrade to 'new_lead' (lead still surfaces in corbeille)
+  //   - 1 contract   → set prolongation_target_contract_id
+  //   - 2+ contracts → store candidates in extracted_data, leave target null
+  let prolongationTargetContractId = null
+  if (extractedData?.classification === 'prolongation') {
+    const { data: gmailClients } = await supabaseAdmin
+      .from('clients')
+      .select('id')
+      .eq('agency_id', agencyId)
+      .eq('email', String(senderEmail).trim().toLowerCase())
+      .limit(1)
+    const matchedClientId = gmailClients?.[0]?.id || null
+    const active = matchedClientId ? await findActiveContractsForClient(agencyId, matchedClientId) : []
+    if (active.length === 0) {
+      console.log(`[pipeline:gmail-wh] → prolongation downgraded to new_lead (0 active contracts)`)
+      extractedData.classification = 'new_lead'
+    } else if (active.length === 1) {
+      prolongationTargetContractId = active[0].id
+      console.log(`[pipeline:gmail-wh] → prolongation linked to contract ${active[0].id}`)
+    } else {
+      extractedData.prolongation_candidates = active.map(c => c.id)
+      console.log(`[pipeline:gmail-wh] → prolongation has ${active.length} candidate contracts (deferred to agent)`)
+    }
+  }
+
   for (const a of (attachments || [])) {
     if (a.base64 && a.mimeType?.startsWith('image/')) {
       mediaUrls.push(`data:${a.mimeType};base64,${a.base64}`)
@@ -381,6 +410,7 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
         confidence_scores: extractedData?.confidenceScores || null,
         match_score: match.score,
         ...(extractedData?.classification ? { classification: extractedData.classification } : {}),
+        ...(prolongationTargetContractId ? { prolongation_target_contract_id: prolongationTargetContractId } : {}),
       })
       .eq('id', match.demand.id)
     if (error) console.error('[pipeline:gmail-wh] ✗ update error:', error.message)
@@ -397,6 +427,7 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
       match_score: match?.score || null,
       merged_with_id: match?.type === 'potential' ? match.demand.id : null,
       classification: extractedData?.classification || null,
+      prolongation_target_contract_id: prolongationTargetContractId,
     }).select('id').maybeSingle()
     if (error) console.error('[pipeline:gmail-wh] ✗ insert error:', error.message)
     else {
