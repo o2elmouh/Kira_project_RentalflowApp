@@ -9,6 +9,43 @@
  *   ANTHROPIC_API_KEY
  *   SUPABASE_SERVICE_ROLE_KEY
  *   ENCRYPTION_KEY  — 32-byte hex string for AES-256-GCM (openssl rand -hex 32)
+ *
+ * ── Entry-points map (jump-to anchors for code search) ────────────────
+ *
+ * Inbound pipeline
+ *   handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mimeType, bodyText)
+ *     The Baileys hot path. Runs triage → classification → prolongation
+ *     decision matrix → insert / merge into pending_demands. Exported.
+ *
+ * Gmail webhook
+ *   router.post('/webhook/gmail', requireInternalSecret, …)
+ *     Same pipeline as WhatsApp but driven by the Gmail IMAP poller.
+ *     Hardcoded `clientStatus='no_contract'` was the v1.13.x bug fixed
+ *     by getClientStatusByEmail in v1.13.9.
+ *
+ * Classification (Claude calls)
+ *   classifyTextMessage(bodyText, clientStatus) — ROUTING_SYSTEM_PROMPT
+ *   extractWithClaude(imageBlocks, textHint)    — GLOBAL_SYSTEM_PROMPT
+ *   analyzeQuoteReply(text)                     — "You analyze client replies…"
+ *
+ * Client / contract lookups (used by the prolongation decision matrix)
+ *   getClientStatus(agencyId, senderJid)              — phone-based
+ *   getClientStatusByEmail(agencyId, senderEmail)     — email-based (exported)
+ *   findActiveContractsForClient(agencyId, clientId)  — exported
+ *   findActiveLeadByPhone(agencyId, senderJid)
+ *   findOfferSentLeadByEmail(agencyId, senderEmail)
+ *   findMatchingDemand(agencyId, senderIdOrName, extractedData)
+ *
+ * Offer-response branching (Smart Quote)
+ *   handleOfferResponse(agencyId, senderId, text, lead, source)
+ *     Branches accepted | rejected | question via analyzeQuoteReply.
+ *
+ * Other helpers
+ *   nameMatchScore() / normaliseName() / levenshtein() — fuzzy matching
+ *   encrypt() / decrypt() — re-exported from ../lib/encryption.js
+ *
+ * See docs/superpowers/specs/2026-05-28-prolongation-flow-design.md for
+ * the decision matrix this file implements end-to-end.
  */
 
 import { Router } from 'express'

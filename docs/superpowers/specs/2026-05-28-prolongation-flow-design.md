@@ -269,3 +269,51 @@ Migration step 1 can be deployed alone safely; the column simply isn't read unti
 - Calendar/Dashboard surfacing (current scope is corbeille + contract card only).
 - Retroactive scan: a one-time script to re-classify existing `new_lead`s whose sender has an active contract.
 - Supplementary contract document / extension addendum PDF — currently extension is invoice-only.
+
+## Function reference index — landed in v1.13.8 → v1.14.2
+
+Code identifiers (with exact source paths) that implement this spec. Keep
+this list in sync with the actual exports so it's grep-friendly and
+graphify can build edges from this document into the code graph.
+
+### Backend
+- `getClientStatusByEmail(agencyId, senderEmail)` — `server/routes/leads.js`
+  Mirrors `getClientStatus` but matches `clients.email`. Returns
+  `'active_contract' | 'no_contract'`. Used by the Gmail webhook before
+  calling `classifyTextMessage`.
+- `findActiveContractsForClient(agencyId, clientId)` — `server/routes/leads.js`
+  Returns the client's active `contracts` rows newest-first. Drives the
+  0 / 1 / 2+ decision matrix.
+- `classifyTextMessage(bodyText, clientStatus)` — `server/routes/leads.js`
+  Runs `ROUTING_SYSTEM_PROMPT` against Claude haiku. Returns
+  `{classification, confidence, summary_for_agent, extracted_data}`.
+- `handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mimeType, bodyText)` — `server/routes/leads.js`
+  WhatsApp inbound entry point. Houses the WhatsApp half of the
+  decision matrix.
+
+### Frontend (shared)
+- `ProlongationDialog({ contract, vehicle, prefilledEndDate, onClose, onConfirmed })` — `components/ProlongationDialog.jsx`
+  Reusable dialog used by both the contract panel and the corbeille's
+  prolongation CTA.
+- `ContractDetailPanel({…})` — `components/ContractDetailPanel.jsx`
+  Side panel extracted from `pages/Contracts.jsx` so the panel state is
+  isolated and the page stays readable.
+- `ProlongationBanner({ leads, colSpan, onView })` — `components/ProlongationBanner.jsx`
+  The 🔔 row above each contract card that has a pending prolongation lead.
+- `acceptProlongationLeadsForContract(contractId, prolongLeadsByContract, api)` — `utils/contractActions.js`
+  Patches every linked prolongation lead to `status='accepted'` via
+  `api.updateLeadStatus`. Failures are logged, never re-thrown.
+- `describeSignatureState(contract)` — `utils/contractSuccess.js`
+  Helper for the `ContractSuccess` heading/subline (electronic vs in-person flow).
+
+### Database
+- `pending_demands.prolongation_target_contract_id UUID REFERENCES contracts(id) ON DELETE SET NULL`
+  Migration: `supabase/migrations/20260528_prolongation_target_contract.sql`.
+
+### Tests
+- `server/__tests__/prolongationMatching.test.js`
+- `server/__tests__/gmailProlongationClassify.test.js`
+- `server/__tests__/offerResponseTriageGate.test.js`
+- `src/test/prolongationDialog.test.jsx`
+- `src/test/leadModalProlongation.test.jsx`
+- `src/test/contractActions.test.js`

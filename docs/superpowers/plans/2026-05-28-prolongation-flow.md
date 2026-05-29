@@ -1735,3 +1735,32 @@ After all four phases ship:
 - Conversation-log audit tag for the `Refuser` action (distinct from `Ignorer`). The two buttons currently produce the same `status='ignored'` outcome — only the label differs. A future task can extend `onStatusChange` consumers to record the tag.
 
 These are tracked in the spec's "Open follow-ups" section.
+
+## Function reference index — what landed
+
+The exports added/touched by this plan, by exact identifier and source path.
+Use as grep targets when revisiting the feature.
+
+| Identifier | Path | Phase |
+|---|---|---|
+| `getClientStatusByEmail` | `server/routes/leads.js` | 2.1 |
+| `findActiveContractsForClient` | `server/routes/leads.js` | 2.2 |
+| Gmail webhook decision matrix (inside `router.post('/webhook/gmail')`) | `server/routes/leads.js` | 2.3 |
+| `handleInboundWhatsApp` decision matrix (inline mirror of Gmail) | `server/routes/leads.js` | 2.4 |
+| `ProlongationDialog` | `components/ProlongationDialog.jsx` | 3.1 |
+| `pages/Contracts.jsx` ← uses `ProlongationDialog` | `pages/Contracts.jsx` | 3.2 |
+| `LeadModal` prolongation variant + multi-candidate select | `components/LeadModal.jsx` | 4.2 |
+| `ProlongationBanner` + banner rendering in contracts list | `components/ProlongationBanner.jsx`, `pages/Contracts.jsx` | 4.3 |
+| `ContractDetailPanel` | `components/ContractDetailPanel.jsx` | v1.14.2 |
+| `acceptProlongationLeadsForContract` | `utils/contractActions.js` | v1.14.2 |
+| `daysBetween` / `fmtDate` / `statusBadgeClass` / `statusLabel` | `utils/contractFormatters.js` | v1.14.2 |
+| `SectionBlock` / `InfoRow` | `components/contractPanelParts.jsx` | v1.14.2 |
+| Schema column: `pending_demands.prolongation_target_contract_id` | `supabase/migrations/20260528_prolongation_target_contract.sql` | 1.1 |
+
+Test files added:
+- `server/__tests__/prolongationMatching.test.js` (helpers — 6 tests)
+- `server/__tests__/gmailProlongationClassify.test.js` (Gmail webhook end-to-end — 4 tests)
+- `server/__tests__/offerResponseTriageGate.test.js` (regression — extended by Phase 2.4)
+- `src/test/prolongationDialog.test.jsx` (dialog component — 5 tests including cancel)
+- `src/test/leadModalProlongation.test.jsx` (corbeille variant — 4 tests)
+- `src/test/contractActions.test.js` (helper — 4 tests)
