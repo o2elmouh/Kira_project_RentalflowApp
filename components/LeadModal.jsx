@@ -185,7 +185,7 @@ export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) 
                     background: extracted.classification === 'new_lead' ? 'rgba(34,197,94,0.12)' : extracted.classification === 'prolongation' ? 'rgba(59,130,246,0.12)' : extracted.classification === 'support_issue' ? 'rgba(239,68,68,0.12)' : 'rgba(148,163,184,0.12)',
                     color: extracted.classification === 'new_lead' ? '#16a34a' : extracted.classification === 'prolongation' ? '#2563eb' : extracted.classification === 'support_issue' ? '#dc2626' : '#64748b',
                   }}>
-                    {extracted.classification === 'new_lead' ? 'Nouveau lead' : extracted.classification === 'prolongation' ? 'Prolongation' : extracted.classification === 'support_issue' ? 'Incident' : 'Autre'}
+                    {extracted.classification === 'new_lead' ? 'Nouveau lead' : extracted.classification === 'prolongation' ? t('panel.prolongationBadge', { defaultValue: 'Prolongation' }) : extracted.classification === 'support_issue' ? 'Incident' : 'Autre'}
                   </span>
                   {extracted.confidence != null && <ConfBadge score={extracted.confidence} />}
                 </div>
@@ -238,9 +238,13 @@ export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) 
                           style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)' }}
                         >
                           <option value="">—</option>
-                          {extracted.prolongation_candidates.map(id => (
-                            <option key={id} value={id}>{id}</option>
-                          ))}
+                          {extracted.prolongation_candidates.map(c => {
+                            const id = typeof c === 'string' ? c : c.id
+                            const label = typeof c === 'string'
+                              ? id
+                              : `${c.contract_number || id}${c.end_date ? ` — fin ${c.end_date}` : ''}`
+                            return <option key={id} value={id}>{label}</option>
+                          })}
                         </select>
                       </div>
                     ) : null}
@@ -359,7 +363,7 @@ export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) 
                 }}
                 style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13 }}
               >
-                {t('panel.cancel', { defaultValue: 'Ignorer' })}
+                {t('panel.prolongationIgnore', { defaultValue: 'Ignorer' })}
               </button>
               <button
                 onClick={() => {

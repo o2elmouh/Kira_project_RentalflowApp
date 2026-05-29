@@ -43,9 +43,10 @@ vi.mock('../lib/supabaseAdmin.js', () => ({
         }
         return {
           select: () => ({
-            eq: () => ({
-              eq: () => ({
-                eq: () => buildTerminal(_clientsByEmail[0]?.id),
+            eq: (col1, _val1) => ({
+              // col1 is 'agency_id'; the next .eq is .eq('client_id', clientId)
+              eq: (_col2, clientIdVal) => ({
+                eq: () => buildTerminal(clientIdVal),
               }),
             }),
           }),
@@ -144,7 +145,10 @@ test('prolongation + 2 active contracts → target null, candidates stored in ex
   expect(_insertCalls.length).toBe(1)
   expect(_insertCalls[0].payload.classification).toBe('prolongation')
   expect(_insertCalls[0].payload.prolongation_target_contract_id).toBeFalsy()
-  expect(_insertCalls[0].payload.extracted_data.prolongation_candidates).toEqual(['ctr-1', 'ctr-2'])
+  expect(_insertCalls[0].payload.extracted_data.prolongation_candidates).toEqual([
+    { id: 'ctr-1', contract_number: undefined, end_date: undefined },
+    { id: 'ctr-2', contract_number: undefined, end_date: undefined },
+  ])
 })
 
 test('non-prolongation classification → no target set, unchanged behavior', async () => {

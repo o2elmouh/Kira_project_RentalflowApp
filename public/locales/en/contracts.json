@@ -52,7 +52,10 @@
     "prolongationView": "View",
     "prolongationRefuse": "Decline",
     "prolongationPickContract": "Which contract to extend?",
-    "prolongationRefContract": "Contract {{number}} — {{vehicle}} — {{client}}"
+    "prolongationRefContract": "Contract {{number}} — {{vehicle}} — {{client}}",
+    "prolongationPreview_one": "Extension: 1 day · +{{amount}} MAD",
+    "prolongationPreview_other": "Extension: {{count}} days · +{{amount}} MAD",
+    "prolongationIgnore": "Dismiss"
   },
   "extend": {
     "title": "Extend reservation",

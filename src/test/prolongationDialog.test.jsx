@@ -10,7 +10,13 @@ vi.mock('../../lib/db.js', () => ({
 }))
 
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (k, opts) => opts?.defaultValue || k }),
+  useTranslation: () => ({
+    t: (k, opts) => {
+      const str = opts?.defaultValue || k
+      if (!opts) return str
+      return str.replace(/\{\{(\w+)\}\}/g, (_, key) => (opts[key] !== undefined ? opts[key] : `{{${key}}}`))
+    },
+  }),
 }))
 
 import ProlongationDialog from '../../components/ProlongationDialog.jsx'
@@ -97,5 +103,23 @@ describe('ProlongationDialog', () => {
     fireEvent.change(rateInput, { target: { value: '250' } })
     fireEvent.click(screen.getByText(/confirmer/i))
     await waitFor(() => expect(db.saveInvoice).toHaveBeenCalled())
+  })
+
+  it('calls onClose without writing when Annuler is clicked', () => {
+    const onClose = vi.fn()
+    const onConfirmed = vi.fn()
+    render(
+      <ProlongationDialog
+        contract={baseContract}
+        vehicle={{ dailyRate: 200 }}
+        prefilledEndDate="2026-09-15"
+        onClose={onClose}
+        onConfirmed={onConfirmed}
+      />
+    )
+    fireEvent.click(screen.getByText(/annuler/i))
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onConfirmed).not.toHaveBeenCalled()
+    expect(db.updateContract).not.toHaveBeenCalled()
   })
 })

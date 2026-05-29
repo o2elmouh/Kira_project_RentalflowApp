@@ -387,7 +387,11 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
       prolongationTargetContractId = active[0].id
       console.log(`[pipeline:gmail-wh] → prolongation linked to contract ${active[0].id}`)
     } else {
-      extractedData.prolongation_candidates = active.map(c => c.id)
+      extractedData.prolongation_candidates = active.map(c => ({
+        id: c.id,
+        contract_number: c.contract_number,
+        end_date: c.end_date,
+      }))
       console.log(`[pipeline:gmail-wh] → prolongation has ${active.length} candidate contracts (deferred to agent)`)
     }
   }
@@ -1051,7 +1055,11 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       waProlongationTargetContractId = active[0].id
       console.log(`[pipeline:wa] → prolongation linked to contract ${active[0].id}`)
     } else {
-      extractedData.prolongation_candidates = active.map(c => c.id)
+      extractedData.prolongation_candidates = active.map(c => ({
+        id: c.id,
+        contract_number: c.contract_number,
+        end_date: c.end_date,
+      }))
       console.log(`[pipeline:wa] → prolongation has ${active.length} candidates (deferred to agent)`)
     }
   }

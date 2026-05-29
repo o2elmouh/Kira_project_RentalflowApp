@@ -52,7 +52,10 @@
     "prolongationView": "عرض",
     "prolongationRefuse": "رفض",
     "prolongationPickContract": "أي عقد تريد تمديده؟",
-    "prolongationRefContract": "عقد {{number}} — {{vehicle}} — {{client}}"
+    "prolongationRefContract": "عقد {{number}} — {{vehicle}} — {{client}}",
+    "prolongationPreview_one": "تمديد: يوم 1 · +{{amount}} درهم",
+    "prolongationPreview_other": "تمديد: {{count}} يوماً · +{{amount}} درهم",
+    "prolongationIgnore": "تجاهل"
   },
   "extend": {
     "title": "تمديد الحجز",

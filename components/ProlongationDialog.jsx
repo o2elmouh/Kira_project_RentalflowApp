@@ -133,7 +133,11 @@ export default function ProlongationDialog({
 
       {extra > 0 && (
         <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
-          Prolongation : {extra} jour{extra > 1 ? 's' : ''} · +{amount} MAD
+          {t('panel.prolongationPreview', {
+            defaultValue: 'Prolongation : {{count}} jour(s) · +{{amount}} MAD',
+            count: extra,
+            amount,
+          })}
         </div>
       )}
 

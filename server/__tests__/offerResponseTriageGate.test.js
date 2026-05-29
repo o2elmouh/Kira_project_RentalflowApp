@@ -320,3 +320,21 @@ test('no active lead + prolongation + 1 active contract → new lead with target
   expect(_insertCalls[0].payload.classification).toBe('prolongation')
   expect(_insertCalls[0].payload.prolongation_target_contract_id).toBe('ctr-wa-1')
 })
+
+test('no active lead + prolongation + 0 active contracts → downgraded to new_lead, no target', async () => {
+  _offerLead = null
+  _classifyResponse = {
+    classification: 'prolongation',
+    confidence: 0.9,
+    summary_for_agent: 'extend',
+    extracted_data: { end_date: '2026-09-15' },
+  }
+  _waClientsByPhone = [{ id: 'cli-wa-1' }]
+  _waActiveContracts = [] // no active contract → downgrade
+
+  await handleInboundWhatsApp(AGENCY_ID, SENDER_JID, null, 'image/jpeg', `je veux prolonger jusqu'au 15 septembre`)
+
+  expect(_insertCalls.length).toBe(1)
+  expect(_insertCalls[0].payload.classification).toBe('new_lead')
+  expect(_insertCalls[0].payload.prolongation_target_contract_id).toBeFalsy()
+})
