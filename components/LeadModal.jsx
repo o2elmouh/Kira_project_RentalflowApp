@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../lib/api.js'
 import SmartQuotePanel from './SmartQuotePanel.jsx'
 import { formatPhone } from '../utils/phoneFormat.js'
+import ProlongationDialog from './ProlongationDialog'
+import { getContractById, getVehicle } from '../lib/db'
 
 const CONF_COLOR = (score) => {
   if (score == null) return 'var(--text-secondary)'
@@ -57,11 +60,36 @@ function FieldRow({ label, fieldKey, value, confidence, onChange }) {
 
 // ── Comparison modal ───────────────────────────────────────
 export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) {
+  const { t } = useTranslation('contracts')
   const [extracted, setExtracted] = useState(lead.extracted_data || {})
   const [saving, setSaving] = useState(false)
   const [preparing, setPreparing] = useState(false)
   const [prepareError, setPrepareError] = useState(null)
   const [localStatus, setLocalStatus] = useState(lead.status)
+
+  // ── Prolongation state ─────────────────────────────────
+  const [showProlongDialog, setShowProlongDialog] = useState(false)
+  const [targetContract, setTargetContract] = useState(null)
+  const [targetVehicle, setTargetVehicle] = useState(null)
+  const [pickedContractId, setPickedContractId] = useState(
+    lead.prolongation_target_contract_id || ''
+  )
+
+  useEffect(() => {
+    const id = lead.prolongation_target_contract_id || pickedContractId
+    if (!id) return
+    let cancelled = false
+    ;(async () => {
+      const c = await getContractById(id)
+      if (cancelled || !c) return
+      setTargetContract(c)
+      if (c.vehicleId) {
+        const v = await getVehicle(c.vehicleId)
+        if (!cancelled) setTargetVehicle(v)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [lead.prolongation_target_contract_id, pickedContractId])
 
   const conf = lead.confidence_scores || {}
 
@@ -186,6 +214,38 @@ export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) 
                 {extracted.requested_extra_days != null && (
                   <FieldRow label="Jours supplémentaires" fieldKey="requested_extra_days" value={String(extracted.requested_extra_days)} confidence={null} onChange={handleChange} />
                 )}
+
+                {/* ── Prolongation contract reference block ── */}
+                {extracted.classification === 'prolongation' && (
+                  <div style={{ marginTop: 16, padding: 12, background: 'rgba(59,130,246,0.06)', borderRadius: 8, border: '1px solid rgba(59,130,246,0.15)' }}>
+                    {targetContract ? (
+                      <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>
+                        {t('panel.prolongationRefContract', {
+                          defaultValue: 'Contrat {{number}} — {{vehicle}} — {{client}}',
+                          number: targetContract.contractNumber,
+                          vehicle: targetContract.vehicleName,
+                          client: targetContract.clientName,
+                        })}
+                      </div>
+                    ) : extracted.prolongation_candidates?.length > 1 ? (
+                      <div>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                          {t('panel.prolongationPickContract', { defaultValue: 'Quel contrat prolonger ?' })}
+                        </div>
+                        <select
+                          value={pickedContractId}
+                          onChange={(e) => setPickedContractId(e.target.value)}
+                          style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)' }}
+                        >
+                          <option value="">—</option>
+                          {extracted.prolongation_candidates.map(id => (
+                            <option key={id} value={id}>{id}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
               </div>
             ) : (
               /* ── OCR lead (document image) ── */
@@ -235,59 +295,111 @@ export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) 
 
         {/* Footer */}
         <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => {
-              onClose()
-              Promise.resolve(onStatusChange(lead.id, 'ignored'))
-                .catch(err => console.error('[LeadModal] ignore failed:', err))
-            }}
-            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', cursor: 'pointer', fontSize: 13 }}
-          >
-            Ignorer
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13 }}
-          >
-            {saving ? 'Enregistrement…' : 'Sauvegarder'}
-          </button>
-          {/* Préparer Devis — available for any pending lead (including escalated alerts) */}
-          {localStatus === 'pending' && (
+          {extracted.classification !== 'prolongation' && (
             <>
-              {prepareError && (
-                <div style={{ fontSize: 12, color: '#ef4444', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)' }}>
-                  {prepareError}
-                </div>
+              <button
+                onClick={() => {
+                  onClose()
+                  Promise.resolve(onStatusChange(lead.id, 'ignored'))
+                    .catch(err => console.error('[LeadModal] ignore failed:', err))
+                }}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', cursor: 'pointer', fontSize: 13 }}
+              >
+                Ignorer
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13 }}
+              >
+                {saving ? 'Enregistrement…' : 'Sauvegarder'}
+              </button>
+              {/* Préparer Devis — available for any pending lead (including escalated alerts) */}
+              {localStatus === 'pending' && (
+                <>
+                  {prepareError && (
+                    <div style={{ fontSize: 12, color: '#ef4444', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)' }}>
+                      {prepareError}
+                    </div>
+                  )}
+                  <button
+                    onClick={async () => {
+                      setPreparing(true)
+                      setPrepareError(null)
+                      try {
+                        await api.updateLeadStatus(lead.id, 'waiting')
+                        setLocalStatus('waiting')
+                      } catch (err) {
+                        setPrepareError(err.message)
+                      } finally {
+                        setPreparing(false)
+                      }
+                    }}
+                    disabled={preparing}
+                    style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.4)', background: 'rgba(99,102,241,0.08)', color: '#818cf8', cursor: preparing ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}
+                  >
+                    {preparing ? 'Mise à jour…' : '💬 Préparer Devis'}
+                  </button>
+                </>
               )}
               <button
-                onClick={async () => {
-                  setPreparing(true)
-                  setPrepareError(null)
-                  try {
-                    await api.updateLeadStatus(lead.id, 'waiting')
-                    setLocalStatus('waiting')
-                  } catch (err) {
-                    setPrepareError(err.message)
-                  } finally {
-                    setPreparing(false)
-                  }
-                }}
-                disabled={preparing}
-                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.4)', background: 'rgba(99,102,241,0.08)', color: '#818cf8', cursor: preparing ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}
+                onClick={() => onConvert(lead, extracted)}
+                style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--accent)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
               >
-                {preparing ? 'Mise à jour…' : '💬 Préparer Devis'}
+                Convertir en contrat →
               </button>
             </>
           )}
-          <button
-            onClick={() => onConvert(lead, extracted)}
-            style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--accent)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
-          >
-            Convertir en contrat →
-          </button>
+          {extracted.classification === 'prolongation' && localStatus === 'pending' && (
+            <>
+              <button
+                onClick={() => {
+                  onClose()
+                  Promise.resolve(onStatusChange(lead.id, 'ignored')).catch(() => {})
+                }}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13 }}
+              >
+                {t('panel.cancel', { defaultValue: 'Ignorer' })}
+              </button>
+              <button
+                onClick={() => {
+                  onClose()
+                  Promise.resolve(onStatusChange(lead.id, 'ignored')).catch(() => {})
+                }}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', cursor: 'pointer', fontSize: 13 }}
+              >
+                {t('panel.prolongationRefuse', { defaultValue: 'Refuser' })}
+              </button>
+              <button
+                onClick={() => setShowProlongDialog(true)}
+                disabled={!targetContract}
+                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: targetContract ? 'pointer' : 'not-allowed', fontSize: 13, opacity: targetContract ? 1 : 0.5 }}
+              >
+                {t('panel.prolongationCTA', { defaultValue: 'Prolonger contrat →' })}
+              </button>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Prolongation dialog overlay */}
+      {showProlongDialog && targetContract && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ maxWidth: 480, width: '90%' }}>
+            <ProlongationDialog
+              contract={targetContract}
+              vehicle={targetVehicle}
+              prefilledEndDate={extracted.end_date || ''}
+              onClose={() => setShowProlongDialog(false)}
+              onConfirmed={() => {
+                setShowProlongDialog(false)
+                onClose()
+                Promise.resolve(onStatusChange(lead.id, 'accepted')).catch(() => {})
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
