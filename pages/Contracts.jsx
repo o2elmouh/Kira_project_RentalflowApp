@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { supabase } from '../lib/supabase'
 import { FileText, Download, X, Link, Copy, Check, MessageCircle, CreditCard } from 'lucide-react'
 import { createSigningToken, getSigningUrl } from '../lib/signing'
 import {
@@ -80,18 +81,38 @@ export default function Contracts({ onRestitution }) {
   const [waContractToast,   setWaContractToast]     = useState(null)   // 'success' | 'error' | null
   const [waPaymentSending,  setWaPaymentSending]    = useState(false)
   const [waPaymentToast,    setWaPaymentToast]      = useState(null)
+  const [prolongLeadsByContract, setProlongLeadsByContract] = useState({})
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     Promise.all([getContracts(), api.getClients(), getFleet(), getAgency()])
-      .then(([ct, cl, fl, ag]) => {
+      .then(async ([ct, cl, fl, ag]) => {
         if (cancelled) return
         setContracts(ct)
         setClients(cl)
         setFleet(fl)
         setAgency(ag)
         setLoading(false)
+        // Fetch pending prolongation leads grouped by contract id
+        const ids = ct.map(c => c.id)
+        if (!ids.length) return
+        const { data: leads } = await supabase
+          .from('pending_demands')
+          .select('id, prolongation_target_contract_id, extracted_data, created_at')
+          .eq('status', 'pending')
+          .eq('classification', 'prolongation')
+          .in('prolongation_target_contract_id', ids)
+          .order('created_at', { ascending: false })
+        if (cancelled) return
+        const byContract = {}
+        for (const l of (leads || [])) {
+          const cid = l.prolongation_target_contract_id
+          if (!cid) continue
+          if (!byContract[cid]) byContract[cid] = []
+          byContract[cid].push(l)
+        }
+        setProlongLeadsByContract(byContract)
       })
       .catch(err => {
         console.error('[Contracts] load error', err)
@@ -218,7 +239,41 @@ export default function Contracts({ onRestitution }) {
                     const cl = getClient(c.clientId)
                     const ve = getVehicle(c.vehicleId)
                     const days = c.days || daysBetween(c.startDate, c.endDate)
+                    const pendingLeads = prolongLeadsByContract[c.id]
                     return (
+                      <>
+                      {pendingLeads?.length > 0 && (
+                        <tr key={`banner-${c.id}`} style={{ background: 'rgba(59,130,246,0.04)' }}>
+                          <td colSpan={9} style={{ padding: '6px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', background: 'rgba(59,130,246,0.08)', borderRadius: 6, border: '1px solid rgba(59,130,246,0.2)', fontSize: 12, color: '#2563eb' }}>
+                              <span>
+                                🔔 {t('panel.prolongationRequestedUntil', {
+                                  defaultValue: 'Prolongation demandée jusqu\'au {{date}}',
+                                  date: pendingLeads[0].extracted_data?.end_date,
+                                })}
+                                {pendingLeads.length > 1 && (
+                                  <span style={{ marginLeft: 8, opacity: 0.7 }}>
+                                    {t('panel.prolongationOther', {
+                                      defaultValue: '+{{count}} autres',
+                                      count: pendingLeads.length - 1,
+                                    })}
+                                  </span>
+                                )}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelected(c.id)
+                                  setShowProlonger(true)
+                                }}
+                                style={{ padding: '4px 10px', borderRadius: 4, border: 'none', background: '#2563eb', color: '#fff', fontSize: 11, cursor: 'pointer' }}
+                              >
+                                {t('panel.prolongationView', { defaultValue: 'Voir' })} →
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                       <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '10px 12px' }}>
                           <button
@@ -252,6 +307,7 @@ export default function Contracts({ onRestitution }) {
                           </button>
                         </td>
                       </tr>
+                      </>
                     )
                   })}
                 </tbody>
@@ -334,10 +390,19 @@ export default function Contracts({ onRestitution }) {
                 <ProlongationDialog
                   contract={panelContract}
                   vehicle={panelVehicle}
+                  prefilledEndDate={prolongLeadsByContract[panelContract.id]?.[0]?.extracted_data?.end_date || ''}
                   onClose={() => setShowProlonger(false)}
                   onConfirmed={async () => {
+                    const linked = prolongLeadsByContract[panelContract.id] || []
+                    if (linked.length) {
+                      await supabase
+                        .from('pending_demands')
+                        .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+                        .in('id', linked.map(l => l.id))
+                    }
                     const refreshed = await getContracts()
                     setContracts(refreshed)
+                    setProlongLeadsByContract({})
                     setShowProlonger(false)
                   }}
                 />
