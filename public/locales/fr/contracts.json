@@ -43,7 +43,16 @@
     "extendSuccess": "Prolongation enregistrée · Nouvelle facture générée",
     "extendSuccessUpdated": "Prolongation enregistrée · Facture mise à jour",
     "restitute": "🔑 Restituer le véhicule",
-    "downloadPdf": "Télécharger le contrat PDF"
+    "downloadPdf": "Télécharger le contrat PDF",
+    "prolongationBadge": "Prolongation",
+    "prolongationRequestedUntil": "Prolongation demandée jusqu'au {{date}}",
+    "prolongationOther_one": "+{{count}} autre",
+    "prolongationOther_other": "+{{count}} autres",
+    "prolongationCTA": "Prolonger contrat →",
+    "prolongationView": "Voir",
+    "prolongationRefuse": "Refuser",
+    "prolongationPickContract": "Quel contrat prolonger ?",
+    "prolongationRefContract": "Contrat {{number}} — {{vehicle}} — {{client}}"
   },
   "extend": {
     "title": "Prolonger la réservation",

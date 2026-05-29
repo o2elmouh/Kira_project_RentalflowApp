@@ -43,7 +43,16 @@
     "extendSuccess": "تم تسجيل التمديد · فاتورة جديدة أُنشئت",
     "extendSuccessUpdated": "تم تسجيل التمديد · الفاتورة مُحدَّثة",
     "restitute": "🔑 إرجاع السيارة",
-    "downloadPdf": "تحميل عقد PDF"
+    "downloadPdf": "تحميل عقد PDF",
+    "prolongationBadge": "تمديد",
+    "prolongationRequestedUntil": "طلب تمديد إلى {{date}}",
+    "prolongationOther_one": "+{{count}} آخر",
+    "prolongationOther_other": "+{{count}} أخرى",
+    "prolongationCTA": "تمديد العقد ←",
+    "prolongationView": "عرض",
+    "prolongationRefuse": "رفض",
+    "prolongationPickContract": "أي عقد تريد تمديده؟",
+    "prolongationRefContract": "عقد {{number}} — {{vehicle}} — {{client}}"
   },
   "extend": {
     "title": "تمديد الحجز",

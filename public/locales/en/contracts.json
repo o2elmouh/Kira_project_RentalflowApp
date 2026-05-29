@@ -43,7 +43,16 @@
     "extendSuccess": "Extension recorded · New invoice generated",
     "extendSuccessUpdated": "Extension recorded · Invoice updated",
     "restitute": "🔑 Return vehicle",
-    "downloadPdf": "Download contract PDF"
+    "downloadPdf": "Download contract PDF",
+    "prolongationBadge": "Extension",
+    "prolongationRequestedUntil": "Extension requested until {{date}}",
+    "prolongationOther_one": "+{{count}} more",
+    "prolongationOther_other": "+{{count}} more",
+    "prolongationCTA": "Extend contract →",
+    "prolongationView": "View",
+    "prolongationRefuse": "Decline",
+    "prolongationPickContract": "Which contract to extend?",
+    "prolongationRefContract": "Contract {{number}} — {{vehicle}} — {{client}}"
   },
   "extend": {
     "title": "Extend reservation",
