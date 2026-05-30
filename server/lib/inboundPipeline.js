@@ -15,6 +15,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import supabaseAdmin from './supabaseAdmin.js'
 import { detectLanguage, translateToFrench, preFilter, handleAmbiguous, CORE_LANGS } from './triage.js'
 import { appendConversation } from './conversation.js'
+import { isLeadableWhatsAppSender } from './whatsappSender.js'
 
 // ── Singleton Anthropic client ────────────────────────────
 let _client = null
@@ -258,6 +259,13 @@ export async function classifyTextMessage(bodyText, clientStatus) {
  * @param {string}         bodyText    — text body or Whisper transcript
  */
 export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mimeType, bodyText) {
+  // Drop status broadcasts, group messages, channels, and LID pseudonyms
+  // before any pipeline work — these never represent a real 1:1 inquiry.
+  if (!isLeadableWhatsAppSender(senderJid)) {
+    console.log(`[inboundPipeline] ✗ dropped — non-leadable sender: ${senderJid}`)
+    return
+  }
+
   let extractedData = null
 
   // Triage gate — language detection → keyword pre-filter → ambiguous handler

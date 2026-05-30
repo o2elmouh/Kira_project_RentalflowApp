@@ -60,6 +60,7 @@ import { sendWhatsAppMessage } from '../lib/twilioClient.js'
 // Re-exported here to preserve any existing import paths.
 import { encrypt, decrypt } from '../lib/encryption.js'
 import { sendToAgency } from '../lib/pushNotifications.js'
+import { isLeadableWhatsAppSender } from '../lib/whatsappSender.js'
 export { encrypt, decrypt }
 
 const router = Router()
@@ -257,10 +258,26 @@ function requireInternalSecret(req, res, next) {
 }
 
 router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
-  const { agencyId, senderEmail, subject, bodyText, attachments } = req.body
+  const { agencyId, senderEmail, subject, bodyText, attachments, messageId } = req.body
 
   if (!agencyId || !senderEmail) {
     return res.status(400).json({ error: 'agencyId and senderEmail required' })
+  }
+
+  // Dedup: if this Gmail Message-ID has already been ingested for this agency,
+  // skip the pipeline entirely. Cheap pre-check; the partial unique index
+  // (agency_id, gmail_message_id) is the authoritative guard.
+  if (messageId) {
+    const { data: existing } = await supabaseAdmin
+      .from('pending_demands')
+      .select('id')
+      .eq('agency_id', agencyId)
+      .eq('gmail_message_id', messageId)
+      .maybeSingle()
+    if (existing) {
+      console.log(`[pipeline:gmail-wh] ✓ dedup — already ingested message_id=${messageId} lead=${existing.id}`)
+      return res.json({ ok: true, deduped: true, lead_id: existing.id })
+    }
   }
 
   // SECURITY: mask sender email in logs to protect PII
@@ -469,9 +486,18 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
       merged_with_id: match?.type === 'potential' ? match.demand.id : null,
       classification: extractedData?.classification || null,
       prolongation_target_contract_id: prolongationTargetContractId,
+      gmail_message_id: messageId || null,
     }).select('id').maybeSingle()
-    if (error) console.error('[pipeline:gmail-wh] ✗ insert error:', error.message)
-    else {
+    if (error) {
+      // 23505 = unique_violation. The partial unique index (agency_id,
+      // gmail_message_id) means a duplicate Gmail message slipped past the
+      // pre-check (race condition). Treat as success — the row already exists.
+      if (error.code === '23505') {
+        console.log(`[pipeline:gmail-wh] ✓ dedup via unique index — message_id=${messageId}`)
+        return res.json({ ok: true, deduped: true })
+      }
+      console.error('[pipeline:gmail-wh] ✗ insert error:', error.message)
+    } else {
       console.log(`[pipeline:gmail-wh] ✓ lead inserted id=${inserted?.id}`)
       if (inserted?.id) {
         const summary = extractedData?.summary_for_agent
@@ -860,6 +886,15 @@ async function handleOfferResponse(agencyId, senderId, text, lead, source) {
  */
 export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mimeType, bodyText) {
   console.log(`[pipeline:wa] ← message | agency=${agencyId} | sender=${senderJid} | image=${!!imageBuffer} | text="${(bodyText || '').slice(0, 80)}"`)
+
+  // Sender-shape gate: drop status broadcasts, group messages, channels, and
+  // LID pseudonyms before any pipeline work. These never represent a real
+  // 1:1 inquiry and previously polluted pending_demands with empty rows.
+  if (!isLeadableWhatsAppSender(senderJid)) {
+    console.log(`[pipeline:wa] ✗ dropped — non-leadable sender: ${senderJid}`)
+    return
+  }
+
   let extractedData = null
 
   // Pre-triage: if sender has an offer_sent lead, bypass keyword triage

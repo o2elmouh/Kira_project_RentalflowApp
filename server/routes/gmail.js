@@ -84,7 +84,11 @@ async function pollAgency(agency) {
       { bodies: ['HEADER', 'TEXT', ''], markSeen: false }
     )
 
-    const minUid = lastSeenUid.get(agency.id) || 0
+    // Persistent watermark: prefer the DB-backed value so Railway restarts
+    // don't replay every UNSEEN message. Falls back to in-memory Map (and
+    // ultimately 0) if the column hasn't been migrated yet or this is a
+    // first poll for the agency.
+    const minUid = Number(agency.gmail_last_seen_uid) || lastSeenUid.get(agency.id) || 0
     let maxUid = minUid
     const newItems = results.filter(i => i.attributes.uid > minUid)
     console.log(`[pipeline:gmail] → search: ${results.length} unseen in 24h, ${newItems.length} new (minUid=${minUid})`)
@@ -126,7 +130,17 @@ async function pollAgency(agency) {
               'Content-Type': 'application/json',
               ...(process.env.INTERNAL_WEBHOOK_SECRET ? { 'X-Internal-Secret': process.env.INTERNAL_WEBHOOK_SECRET } : {}),
             },
-            body:    JSON.stringify({ agencyId: agency.id, senderEmail: from, subject, bodyText, attachments }),
+            body:    JSON.stringify({
+            agencyId: agency.id,
+            senderEmail: from,
+            subject,
+            bodyText,
+            attachments,
+            // RFC 2822 Message-ID — stable per email, used by the webhook
+            // for dedup against the partial unique index on
+            // (agency_id, gmail_message_id).
+            messageId: parsed.messageId || null,
+          }),
           }
         )
         const webhookBody = await webhookRes.json().catch(() => ({}))
@@ -136,7 +150,17 @@ async function pollAgency(agency) {
       }
     }
 
-    if (maxUid > minUid) lastSeenUid.set(agency.id, maxUid)
+    if (maxUid > minUid) {
+      lastSeenUid.set(agency.id, maxUid)
+      // Persist the new high-water mark so a Railway restart doesn't replay
+      // every UNSEEN message in the 24h window. Wrapped in .then so that a
+      // pre-migration schema (column missing) degrades to a warning.
+      await supabaseAdmin
+        .from('agencies')
+        .update({ gmail_last_seen_uid: maxUid })
+        .eq('id', agency.id)
+        .then(({ error }) => { if (error) console.warn('[pipeline:gmail] gmail_last_seen_uid update skipped:', error.message) })
+    }
 
     await supabaseAdmin
       .from('agencies')
@@ -160,7 +184,7 @@ export function startGmailPoller() {
     try {
       const { data: agencies } = await supabaseAdmin
         .from('agencies')
-        .select('id, gmail_address, gmail_app_password')
+        .select('id, gmail_address, gmail_app_password, gmail_last_seen_uid')
         .not('gmail_address', 'is', null)
         .not('gmail_app_password', 'is', null)
 
@@ -257,7 +281,7 @@ router.get('/status', async (req, res) => {
 router.post('/poll', async (req, res) => {
   const { data: agency, error } = await supabaseAdmin
     .from('agencies')
-    .select('id, gmail_address, gmail_app_password')
+    .select('id, gmail_address, gmail_app_password, gmail_last_seen_uid')
     .eq('id', req.user.agency_id)
     .maybeSingle()
 
