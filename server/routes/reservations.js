@@ -15,6 +15,7 @@ import { Router } from 'express'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { requireAuth } from '../middleware/auth.js'
 import { applyReservationFilters } from '../lib/reservationFilters.js'
+import { RESERVATION_ALLOWED_FIELDS, RESERVATION_DETAIL_COLUMNS } from '../lib/reservationSchema.js'
 
 const router = Router()
 
@@ -68,13 +69,15 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     const agencyId = req.user.agency_id
+    const selectCols = [
+      ...RESERVATION_DETAIL_COLUMNS,
+      'clients(id, first_name, last_name, email, phone, id_type, id_number, driving_license_num)',
+      'vehicles(id, brand, model, plate_number, year, daily_rate, status)',
+    ].join(', ')
+
     const { data, error } = await supabaseAdmin
       .from('reservations')
-      .select(`id, agency_id, status, start_date, end_date, total_price, daily_rate,
-        customer_name, customer_contact, car_model, source_channel, notes,
-        pickup_location, return_location, extras, vehicle_id, client_id, created_at, created_by,
-        clients(id, first_name, last_name, email, phone, id_type, id_number, driving_license_num),
-        vehicles(id, brand, model, plate_number, year, daily_rate, status)`)
+      .select(selectCols)
       .eq('id', req.params.id)
       .eq('agency_id', agencyId)
       .maybeSingle()
@@ -96,13 +99,6 @@ router.get('/:id', async (req, res, next) => {
  * Body must include at minimum: customer_name, customer_contact, car_model,
  * start_date, end_date, total_price, source_channel.
  */
-// Allowed fields for reservation creation — prevents injection of arbitrary columns
-const RESERVATION_ALLOWED_FIELDS = [
-  'customer_name', 'customer_contact', 'car_model', 'vehicle_id', 'client_id',
-  'start_date', 'end_date', 'total_price', 'source_channel', 'status', 'notes',
-  'pickup_location', 'return_location', 'daily_rate', 'extras',
-]
-
 router.post('/', async (req, res, next) => {
   try {
     const agencyId = req.user.agency_id
