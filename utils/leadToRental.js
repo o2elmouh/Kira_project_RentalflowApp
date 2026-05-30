@@ -29,6 +29,11 @@ export function buildRentalPrefill(lead, extractedData) {
       pickupLocation: ex.pickup_location || null,
       returnLocation: ex.return_location || null,
     },
+    // Pass lead origin through so downstream consumers (NewRental wizard,
+    // reservation payload builder) can stamp the correct source_channel
+    // and preserve the link back to the original lead.
+    id:     lead.id,
+    source: lead.source,
     leadId: lead.id,
   }
 }
