@@ -7,9 +7,7 @@ import { formatLocal, formatRange } from '../../src/utils/timezone'
 
 /**
  * Side-panel "sheet" that slides in from the right.
- * Renders the full reservation row with joined client/vehicle data and
- * the raw source_metadata as a JSON viewer (so the agent can see
- * channel-specific details like email subject or WhatsApp number).
+ * Renders the full reservation row with joined client/vehicle data.
  *
  * Renders nothing when `id` is falsy — the parent toggles visibility
  * by setting/clearing the `id` state.
@@ -89,27 +87,6 @@ export default function ReservationDetailsPanel({ id, onClose }) {
             <Field label={t('fields.period')}   value={formatRange(data.start_date, data.end_date)} />
             <Field label={t('fields.price')}    value={`${data.total_price} ${data.currency || 'MAD'}`} />
             <Field label={t('fields.created')}  value={formatLocal(data.created_at)} />
-
-            <div>
-              <strong style={{ fontSize: 12, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                {t('details.metadata')}
-              </strong>
-              <pre
-                style={{
-                  background: 'var(--surface-2, #F7F5F2)',
-                  padding: 12,
-                  borderRadius: 8,
-                  fontSize: 12,
-                  overflowX: 'auto',
-                  marginTop: 6,
-                  marginBottom: 0,
-                  maxHeight: 280,
-                  overflowY: 'auto',
-                }}
-              >
-                {JSON.stringify(data.source_metadata || {}, null, 2)}
-              </pre>
-            </div>
           </div>
         )}
       </aside>

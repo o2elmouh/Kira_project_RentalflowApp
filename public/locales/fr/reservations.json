@@ -49,7 +49,6 @@
   "details": {
     "title": "Détails de la réservation",
     "loading": "Chargement",
-    "metadata": "Métadonnées source",
     "close": "Fermer"
   },
   "fields": {

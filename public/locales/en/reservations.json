@@ -49,7 +49,6 @@
   "details": {
     "title": "Reservation details",
     "loading": "Loading",
-    "metadata": "Source metadata",
     "close": "Close"
   },
   "fields": {
