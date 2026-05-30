@@ -11,6 +11,7 @@ import {
   loadDrafts, saveDraft, getDraft, deleteDraft, getDraftLabel,
 } from '../lib/newRentalDraft'
 import { useCreateReservation } from '../src/hooks/useReservations'
+import { buildReservationPayload } from '../utils/reservationPayload'
 
 export default function NewRental({ onDone, onSigned, prefilledLead = null }) {
   const { t } = useTranslation('common')
@@ -134,57 +135,31 @@ export default function NewRental({ onDone, onSigned, prefilledLead = null }) {
     onDone()
   }
 
-  const handleDone = () => {
+  // ── Booking Hub: create the reservation row ──────────────
+  // Shared between handleDone (finish without sign) and the
+  // onFinalized→onSigned path (contract signed). Both must persist a
+  // reservation so the Booking Hub stays in sync. Fire-and-forget;
+  // errors are logged but never block the UX.
+  const persistReservation = () => {
     if (draftId && agencyId) deleteDraft(agencyId, draftId)
-
-    // ── Booking Hub: create the reservation row ──────────────
-    // Fire-and-forget so the wizard exits immediately. The query cache
-    // is invalidated on success and the row appears in the Reservations
-    // page on next render. Errors are logged but never block the UX.
     try {
-      const sourceFromLead = prefilledLead?.source?.toLowerCase()
-      const source_channel =
-        sourceFromLead === 'whatsapp' ? 'WHATSAPP' :
-        sourceFromLead === 'gmail' || sourceFromLead === 'email' ? 'EMAIL' :
-        'IN_PERSON'
-
-      const customer_name    = `${client?.firstName || ''} ${client?.lastName || ''}`.trim() || 'Client'
-      const customer_contact = client?.phone || client?.email || client?.cinNumber || '—'
-      const car_model =
-        rental?.vehicle?.label ||
-        [rental?.vehicle?.make, rental?.vehicle?.model].filter(Boolean).join(' ') ||
-        'Véhicule'
-
-      const start_date = rental?.startDate ? new Date(rental.startDate).toISOString() : new Date().toISOString()
-      const end_date   = rental?.endDate   ? new Date(rental.endDate).toISOString()   : new Date(Date.now() + 86_400_000).toISOString()
-      const total_price = Number(rental?.totalPrice ?? rental?.total ?? 0)
-
-      createReservation.mutate({
-        client_id:        client?.id || null,
-        customer_name,
-        customer_contact,
-        vehicle_id:       rental?.vehicle?.id || null,
-        car_model,
-        start_date,
-        end_date,
-        total_price,
-        currency:         'MAD',
-        source_channel,
-        status:           'CONFIRMED',
-        source_metadata: {
-          pending_demand_id: prefilledLead?.leadId || prefilledLead?.id || null,
-          original_lead:     prefilledLead?.id ? { id: prefilledLead.id, source: prefilledLead.source } : null,
-          created_via:    'new_rental_wizard',
-          pickup_location: rental?.pickupLocation || null,
-          return_location: rental?.returnLocation || null,
-        },
-        lead_id: prefilledLead?.leadId || prefilledLead?.id || null,  // FK → pending_demands
-      })
+      createReservation.mutate(
+        buildReservationPayload({ client, rental, prefilledLead }),
+        { onError: (err) => console.error('[NewRental] reservation insert rejected:', err) },
+      )
     } catch (err) {
-      console.error('[NewRental] Failed to create reservation:', err)
+      console.error('[NewRental] Failed to build reservation payload:', err)
     }
+  }
 
+  const handleDone = () => {
+    persistReservation()
     onDone()
+  }
+
+  const handleFinalized = (contractId) => {
+    persistReservation()
+    onSigned?.(contractId)
   }
 
   // ── Draft picker (block grid like Fleet) ──────────────────
@@ -349,7 +324,7 @@ export default function NewRental({ onDone, onSigned, prefilledLead = null }) {
           onCancel={() => setShowCancelConfirm(true)}
           onEditStep1={() => advance({ step: 0 })}
           onEditStep2={() => advance({ step: 1 })}
-          onFinalized={onSigned}
+          onFinalized={handleFinalized}
         />}
       </div>
 
