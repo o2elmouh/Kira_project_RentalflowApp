@@ -10,6 +10,8 @@
     "start": "cd server && node index.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "prepare": "node scripts/install-git-hooks.mjs",
+    "graphify:update": "graphify --update .",
     "cleanup:pending": "node server/scripts/cleanupPendingDemands.js",
     "enforce:retention": "node server/scripts/enforceRetention.js",
     "migrate:clients-encrypt": "node server/scripts/migrateClientsEncryption.js"

@@ -18,6 +18,7 @@
 2. **Graph-First Discovery:** Your ONLY allowed discovery mechanism is the graph. To understand data flow, dependencies, or file locations, you MUST query `graphify-out/graph.json` or read `graphify-out/GRAPH_REPORT.md`.
 3. **Trace, Don't Search:** If asked about data flow (e.g., "where does CIN data go?"), find the entry point node in the graph and trace its edges/connections. Do not search the codebase for the word "CIN".
 4. **Targeted Reading Only:** You may only use `cat` or read a raw `.jsx`/`.js` file AFTER you have identified the exact, specific file through the graph.
+5. **Auto-update on version bumps:** Whenever you bump the version line in `components/Sidebar.jsx`, run `npm run graphify:update` and fold the resulting `graphify-out/` changes into the same commit. A `post-commit` hook at `scripts/git-hooks/post-commit` enforces the same on human commits — it's wired automatically by the `prepare` script on `npm install`.
 ---
 
 ## Project Context & Stack

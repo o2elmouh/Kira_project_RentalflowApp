@@ -1,0 +1,50 @@
+#!/bin/sh
+# RentaFlow post-commit hook (v1.14.12+)
+#
+# When components/Sidebar.jsx version line changes (any v1.X.Y bump), run
+# `graphify --update .` to refresh the AST graph. Results are STAGED but
+# NOT auto-committed — folding them into the version-bump commit is the
+# user's call (avoids surprise commits & post-commit hook recursion).
+#
+# Install: run `npm install` (the `prepare` script wires up core.hooksPath).
+# Disable: `git config --unset core.hooksPath` then re-run npm install.
+
+LAST_MSG=$(git log -1 --pretty=%B 2>/dev/null || echo "")
+# Skip our own follow-up commits to avoid edge-case loops
+case "$LAST_MSG" in
+  *"update graphify-out"*) exit 0 ;;
+esac
+
+# Only fire when Sidebar.jsx was touched AND the version line actually moved
+VERSION_DIFF=$(git diff HEAD~1 HEAD -- components/Sidebar.jsx 2>/dev/null | grep -E '^\+\s*v[0-9]+\.[0-9]+\.[0-9]+' || true)
+if [ -z "$VERSION_DIFF" ]; then
+  exit 0
+fi
+
+NEW_VERSION=$(echo "$VERSION_DIFF" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+echo "[graphify-hook] Version bump detected ($NEW_VERSION) — incremental graph update…"
+
+if ! command -v graphify >/dev/null 2>&1; then
+  echo "[graphify-hook] 'graphify' CLI not on PATH — skipping (install: pip install graphifyy)"
+  exit 0
+fi
+
+# --update is cheap: AST-only on changed files, no LLM
+if ! graphify --update . 2>&1 | sed 's/^/[graphify-hook] /'; then
+  echo "[graphify-hook] update failed (non-fatal) — manual rerun: graphify --update ."
+  exit 0
+fi
+
+# Stage any updated outputs so the user can fold them into the next commit
+# (or amend the current one if the version bump was a standalone commit).
+git add graphify-out/ 2>/dev/null || true
+
+if ! git diff --cached --quiet graphify-out/ 2>/dev/null; then
+  echo "[graphify-hook] graphify-out/ updated and staged."
+  echo "[graphify-hook] Fold into the version-bump commit:"
+  echo "[graphify-hook]   git commit --amend --no-edit"
+  echo "[graphify-hook] Or commit separately:"
+  echo "[graphify-hook]   git commit -m 'chore: update graphify-out for $NEW_VERSION'"
+else
+  echo "[graphify-hook] No graph changes — Sidebar version line moved but no source code changed."
+fi
