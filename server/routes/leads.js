@@ -418,6 +418,26 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
     }
   }
 
+  // ── Acceptance-on-open-offer guard (mirror of WhatsApp handler) ──
+  // Same rationale as the WA path: ROUTING_SYSTEM_PROMPT doesn't recognize
+  // "accept the quote we already sent" — those messages get classified as
+  // new_lead and duplicate the offer_sent row. Re-check via analyzeQuoteReply
+  // before letting new_lead through. `question` falls through (genuine new
+  // inquiry from the same sender).
+  if (gmailOfferLead && extractedData?.classification === 'new_lead' && textForTriage) {
+    try {
+      const intent = await analyzeQuoteReply(textForTriage)
+      if (intent === 'accepted' || intent === 'rejected') {
+        console.log(`[pipeline:gmail-wh] → new_lead + open offer + intent=${intent} → routing to offer response`)
+        await handleOfferResponse(agencyId, senderEmail, textForTriage, gmailOfferLead, 'gmail')
+        return res.json({ ok: true, offer_response: true })
+      }
+      console.log(`[pipeline:gmail-wh] → new_lead + open offer + intent=${intent} → inserting as new lead (genuine new inquiry)`)
+    } catch (err) {
+      console.error('[pipeline:gmail-wh] ✗ acceptance-guard error (treating as new_lead):', err.message)
+    }
+  }
+
   // ── Prolongation linkage (Section 1 of design spec) ────────
   // When classification is 'prolongation', find the sender's active contracts
   // and decide where to link the lead:
@@ -1104,6 +1124,34 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
         await handleAmbiguous(ambiguousAlertFallback)
         return
       }
+    }
+  }
+
+  // ── Acceptance-on-open-offer guard ────────────────────────
+  // The text classifier ROUTING_SYSTEM_PROMPT only knows new_lead /
+  // prolongation / support_issue / other. It has no concept of "this is
+  // a reply accepting the quote we already sent". So a message like
+  // "ok je veux louer la Dacia que vous m'avez proposée" gets classified
+  // as new_lead and lands as a duplicate row instead of marking the
+  // existing offer_sent lead accepted.
+  //
+  // Defence: when the sender has an open offer AND the text was
+  // classified as new_lead, ask the quote-reply classifier (which DOES
+  // recognize acceptance / rejection phrasing in French + Darija). If it
+  // says accepted/rejected, that takes precedence over new_lead. If it
+  // says question, fall through — a genuinely different inquiry from the
+  // same sender still gets its own row.
+  if (offerSentLead && extractedData?.classification === 'new_lead' && bodyText?.trim()) {
+    try {
+      const intent = await analyzeQuoteReply(bodyText)
+      if (intent === 'accepted' || intent === 'rejected') {
+        console.log(`[pipeline:wa] → new_lead + open offer + intent=${intent} → routing to offer response`)
+        await handleOfferResponse(agencyId, senderJid, bodyText, offerSentLead, 'whatsapp')
+        return
+      }
+      console.log(`[pipeline:wa] → new_lead + open offer + intent=${intent} → inserting as new lead (genuine new inquiry)`)
+    } catch (err) {
+      console.error('[pipeline:wa] ✗ acceptance-guard error (treating as new_lead):', err.message)
     }
   }
 

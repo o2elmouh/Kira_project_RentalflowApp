@@ -338,3 +338,73 @@ test('no active lead + prolongation + 0 active contracts → downgraded to new_l
   expect(_insertCalls[0].payload.classification).toBe('new_lead')
   expect(_insertCalls[0].payload.prolongation_target_contract_id).toBeFalsy()
 })
+
+// ── v1.14.11 regression: acceptance-on-open-offer guard ──────────────
+//
+// The text classifier (ROUTING_SYSTEM_PROMPT) doesn't know "this is a reply
+// accepting our quote" — it can only return new_lead / prolongation /
+// support_issue / other. So messages like "ok je veux louer la Dacia que
+// vous m'avez proposée" were being classified as new_lead and creating a
+// duplicate row instead of marking the offer_sent lead accepted.
+//
+// v1.14.11 added a guard: when classification=new_lead AND there's an
+// open offer_sent lead, re-check via analyzeQuoteReply before inserting.
+// accepted/rejected → routes to handleOfferResponse. question → falls
+// through (genuine new inquiry stays a new lead).
+
+test('open offer + classify=new_lead + intent=accepted → existing lead marked accepted, NO new lead', async () => {
+  _offerLead = makeOfferLead()
+  _classifyResponse = {
+    classification: 'new_lead',
+    confidence: 0.85,
+    summary_for_agent: 'Louer Dacia',
+    extracted_data: { requested_car: 'Dacia' },
+  }
+  _quoteIntentResponse = 'accepted'
+
+  await handleInboundWhatsApp(AGENCY_ID, SENDER_JID, null, 'image/jpeg', 'ok je veux louer la Dacia que vous m\'avez proposée')
+
+  expect(_insertCalls.length).toBe(0)
+  expect(_updateCalls.length).toBe(1)
+  expect(_updateCalls[0].payload.status).toBe('accepted')
+  expect(_updateCalls[0].payload.accepted_at).toBeTruthy()
+})
+
+test('open offer + classify=new_lead + intent=rejected → existing lead marked ignored, NO new lead', async () => {
+  _offerLead = makeOfferLead()
+  _classifyResponse = {
+    classification: 'new_lead',
+    confidence: 0.8,
+    summary_for_agent: 'Louer ailleurs',
+    extracted_data: { requested_car: 'Mercedes' },
+  }
+  _quoteIntentResponse = 'rejected'
+
+  await handleInboundWhatsApp(AGENCY_ID, SENDER_JID, null, 'image/jpeg', 'non, je vais louer ailleurs')
+
+  expect(_insertCalls.length).toBe(0)
+  expect(_updateCalls.length).toBe(1)
+  expect(_updateCalls[0].payload.status).toBe('ignored')
+})
+
+test('open offer + classify=new_lead + intent=question → genuine new inquiry, NEW lead inserted', async () => {
+  _offerLead = makeOfferLead()
+  _classifyResponse = {
+    classification: 'new_lead',
+    confidence: 0.9,
+    summary_for_agent: 'Demande Mercedes',
+    extracted_data: { requested_car: 'Mercedes' },
+  }
+  // The same sender mentions a different car / dates — neither clearly
+  // accept nor reject the original quote. analyzeQuoteReply returns
+  // 'question' and we fall through to the normal new_lead path.
+  _quoteIntentResponse = 'question'
+
+  await handleInboundWhatsApp(AGENCY_ID, SENDER_JID, null, 'image/jpeg', 'en fait je voudrais une Mercedes pour 7 jours')
+
+  expect(_insertCalls.length).toBe(1)
+  expect(_insertCalls[0].payload.classification).toBe('new_lead')
+  // No quote-status mutation
+  const offerStatusUpdates = _updateCalls.filter(c => c.payload?.status === 'accepted' || c.payload?.status === 'ignored')
+  expect(offerStatusUpdates.length).toBe(0)
+})
