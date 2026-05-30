@@ -5,6 +5,7 @@ import cors from 'cors'
 import rateLimit from 'express-rate-limit'
 import { join } from 'path'
 import { mkdirSync } from 'fs'
+import { formatApiErrorLog } from './lib/formatApiError.js'
 
 import healthRouter from './routes/health.js'
 import agencyRouter from './routes/agency.js'
@@ -126,7 +127,10 @@ app.use((req, res) => {
 // ── Global error handler ──────────────────────────────────
 // SECURITY: Never leak stack traces, file paths, or internal details to clients.
 app.use((err, req, res, _next) => {
-  console.error('[API Error]', err.message)
+  // Structured log: PG SQLSTATE / details / hint / method+path / top stack
+  // frames. Single JSON line per error so Railway log search is greppable.
+  // Client response (below) is unchanged — internals stay server-side.
+  console.error('[API Error]', JSON.stringify(formatApiErrorLog(err, req)))
 
   const status = err.status || 500
   // Only forward the error message for expected client errors (4xx).

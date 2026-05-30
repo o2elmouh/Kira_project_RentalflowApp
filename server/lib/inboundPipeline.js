@@ -1,6 +1,13 @@
 /**
- * Inbound WhatsApp message pipeline — extracted from server/routes/leads.js
- * so that whatsapp.js no longer imports from another route file.
+ * WhatsApp inbound utility library.
+ *
+ * History: this file originally hosted the live WhatsApp inbound handler
+ * (handleInboundWhatsApp). That responsibility moved into
+ * server/routes/leads.js — Baileys imports it from there
+ * (server/lib/baileys/sessionManager.js → routes/leads.js). The
+ * duplicate handler that lived here was deleted in v1.14.10 to remove
+ * confusion. The remaining exports below are utility helpers that the
+ * routes layer may consume.
  *
  * Exports:
  *   normaliseJidToPhone(jid)
@@ -8,14 +15,10 @@
  *   getClientStatus(agencyId, senderJid)
  *   extractWithClaude(imageBlocks, textHint)
  *   classifyTextMessage(bodyText, clientStatus)
- *   handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mimeType, bodyText)
  */
 
 import Anthropic from '@anthropic-ai/sdk'
 import supabaseAdmin from './supabaseAdmin.js'
-import { detectLanguage, translateToFrench, preFilter, handleAmbiguous, CORE_LANGS } from './triage.js'
-import { appendConversation } from './conversation.js'
-import { isLeadableWhatsAppSender } from './whatsappSender.js'
 
 // ── Singleton Anthropic client ────────────────────────────
 let _client = null
@@ -250,121 +253,7 @@ export async function classifyTextMessage(bodyText, clientStatus) {
   }
 }
 
-/**
- * Called directly by the Baileys inbound listener (no HTTP round-trip).
- * @param {string}         agencyId
- * @param {string}         senderJid   — e.g. "212XXXXXXXXX@s.whatsapp.net"
- * @param {Buffer|null}    imageBuffer — raw image bytes (never persisted)
- * @param {string}         mimeType    — e.g. "image/jpeg"
- * @param {string}         bodyText    — text body or Whisper transcript
- */
-export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mimeType, bodyText) {
-  // Drop status broadcasts, group messages, channels, and LID pseudonyms
-  // before any pipeline work — these never represent a real 1:1 inquiry.
-  if (!isLeadableWhatsAppSender(senderJid)) {
-    console.log(`[inboundPipeline] ✗ dropped — non-leadable sender: ${senderJid}`)
-    return
-  }
-
-  let extractedData = null
-
-  // Triage gate — language detection → keyword pre-filter → ambiguous handler
-  if (bodyText?.trim()) {
-    const lang = detectLanguage(bodyText)
-    const translatedText = (!CORE_LANGS.has(lang) && lang !== 'und')
-      ? await translateToFrench(bodyText)
-      : null
-    const textToFilter = translatedText ?? bodyText
-    const { result, matchedKeywords } = preFilter(textToFilter)
-
-    if (result === 'fail') {
-      console.log(`[inboundPipeline] pre-filter dropped: no rental keywords (lang=${lang})`)
-      return
-    }
-
-    if (result === 'ambiguous') {
-      console.log(`[inboundPipeline] pre-filter ambiguous: keywords=[${matchedKeywords.join(',')}]`)
-      await handleAmbiguous({
-        agencyId,
-        senderId: senderJid,
-        source: 'whatsapp',
-        originalText: bodyText,
-        translatedText,
-        rawPayload: { body: bodyText, from: senderJid },
-      })
-      return
-    }
-
-    // result === 'pass' — continue to extraction below
-    console.log(`[inboundPipeline] pre-filter pass: keywords=[${matchedKeywords.join(',')}]`)
-  }
-
-  if (imageBuffer && process.env.ANTHROPIC_API_KEY) {
-    // Process & Purge — send buffer directly to Claude as base64, never stored
-    try {
-      const imageBlock = { type: 'image', source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: imageBuffer.toString('base64') } }
-      extractedData = await extractWithClaude([imageBlock], bodyText)
-      // Document scan = always a new lead; also extract rental intent from caption if present
-      if (extractedData) {
-        extractedData.classification = 'new_lead'
-        if (bodyText?.trim()) {
-          try {
-            const clientStatus = await getClientStatus(agencyId, senderJid)
-            const captionClass = await classifyTextMessage(bodyText, clientStatus)
-            if (captionClass) {
-              extractedData = {
-                ...extractedData,
-                ...captionClass.extracted_data,
-                ...(captionClass.classification && { classification: captionClass.classification }),
-                ...(captionClass.summary_for_agent && { summary_for_agent: captionClass.summary_for_agent }),
-              }
-            }
-          } catch (_) {}
-        }
-      }
-    } catch (err) {
-      console.error('[inboundPipeline] Claude error:', err.message)
-    }
-  } else if (bodyText?.trim()) {
-    try {
-      const clientStatus = await getClientStatus(agencyId, senderJid)
-      const classification = await classifyTextMessage(bodyText, clientStatus)
-      if (classification) {
-        extractedData = {
-          classification: classification.classification,
-          confidence: classification.confidence,
-          summary_for_agent: classification.summary_for_agent,
-          ...classification.extracted_data,
-        }
-      }
-    } catch (err) {
-      console.error('[inboundPipeline] classify error:', err.message)
-    }
-  }
-
-  const match = await findMatchingDemand(agencyId, senderJid, extractedData)
-
-  if (match && match.type !== 'potential') {
-    const existing = match.demand
-    await supabaseAdmin.from('pending_demands').update({
-      extracted_data: { ...(existing.extracted_data || {}), ...(extractedData || {}) },
-      media_urls: existing.media_urls || [],
-      confidence_scores: extractedData?.confidenceScores || null,
-      match_score: match.score,
-      raw_payload: { ...existing.raw_payload, latestBody: bodyText },
-    }).eq('id', existing.id)
-  } else {
-    const { error } = await supabaseAdmin.from('pending_demands').insert({
-      agency_id: agencyId,
-      source: 'whatsapp',
-      sender_id: senderJid,
-      raw_payload: { body: bodyText, from: senderJid },
-      extracted_data: extractedData,
-      confidence_scores: extractedData?.confidenceScores || null,
-      media_urls: [],
-      match_score: match?.score || null,
-      merged_with_id: match?.type === 'potential' ? match.demand.id : null,
-    })
-    if (error) console.error('[inboundPipeline] insert error:', error.message)
-  }
-}
+// handleInboundWhatsApp lived here historically. Deleted in v1.14.10.
+// The live handler is in server/routes/leads.js (imported by Baileys via
+// server/lib/baileys/sessionManager.js). Maintaining two parallel
+// implementations led to fixes landing in one and not the other.
