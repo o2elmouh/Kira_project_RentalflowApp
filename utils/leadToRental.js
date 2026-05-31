@@ -53,6 +53,11 @@ export function buildRentalPrefill(lead, extractedData) {
       pickupLocation: ex.pickup_location || null,
       returnLocation: ex.return_location || null,
     },
+    // v1.14.15: surface the lead-level identity verdict so Step 1 can warn
+    // the operator when the documents on file disagree (different person on
+    // passport vs licence). Resolver runs server-side after every merge.
+    identityMismatch: ex.identityMismatch === true,
+    identitySource:   ex.identitySource || null,
     // Pass lead origin through so downstream consumers (NewRental wizard,
     // reservation payload builder) can stamp the correct source_channel
     // and preserve the link back to the original lead.

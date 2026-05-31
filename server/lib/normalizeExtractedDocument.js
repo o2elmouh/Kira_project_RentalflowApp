@@ -46,8 +46,19 @@ function typeSlot(documentType) {
   return null
 }
 
-const NUMBER_KEY = { cin: 'cinNumber', drivingLicense: 'drivingLicenseNumber', passport: 'passportNumber' }
-const EXPIRY_KEY = { cin: 'cinExpiry',  drivingLicense: 'licenseExpiry',       passport: 'passportExpiry' }
+const NUMBER_KEY   = { cin: 'cinNumber',   drivingLicense: 'drivingLicenseNumber', passport: 'passportNumber' }
+const EXPIRY_KEY   = { cin: 'cinExpiry',    drivingLicense: 'licenseExpiry',        passport: 'passportExpiry' }
+const IDENTITY_KEY = { cin: 'cinIdentity',  drivingLicense: 'drivingLicenseIdentity', passport: 'passportIdentity' }
+
+const IDENTITY_FIELDS = ['firstName', 'lastName', 'dateOfBirth', 'nationality', 'issuingCountry']
+
+function pickIdentity(rest) {
+  const id = {}
+  for (const f of IDENTITY_FIELDS) {
+    if (rest[f]) id[f] = rest[f]
+  }
+  return Object.keys(id).length > 0 ? id : null
+}
 
 export function normalizeExtractedDocument(raw) {
   if (!raw || typeof raw !== 'object') return raw
@@ -67,6 +78,11 @@ export function normalizeExtractedDocument(raw) {
     if (conf.documentNumber !== undefined) remappedConf[numKey] = conf.documentNumber
     if (conf.expiryDate !== undefined)     remappedConf[expKey] = conf.expiryDate
     out.lastDocumentType = documentType
+
+    // v1.14.15: per-doc identity bundle so the identity resolver can pick
+    // the highest-priority source and surface mismatches.
+    const identity = pickIdentity(rest)
+    if (identity) out[IDENTITY_KEY[slot]] = identity
   } else if (documentType) {
     // Unknown type — preserve original keys so nothing is lost.
     out.documentType = documentType

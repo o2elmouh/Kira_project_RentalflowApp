@@ -50,6 +50,8 @@
   "scanStep": {
     "title": "Client identification",
     "subtitle": "Scan or enter client details.",
+    "leadMismatchTitle": "Documents may not match",
+    "leadMismatchBody": "The documents sent by the client (passport, ID, driving licence) don't appear to belong to the same person. Verify each field before continuing.",
     "firstName": "First name",
     "lastName": "Last name",
     "cinNumber": "ID / Passport number",

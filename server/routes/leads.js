@@ -55,6 +55,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { detectLanguage, translateToFrench, preFilter, handleAmbiguous, detectMissingDocs } from '../lib/triage.js'
 import { buildAcknowledgmentMessage, mergeExtractedData } from '../lib/offerMessage.js'
 import { normalizeExtractedDocument } from '../lib/normalizeExtractedDocument.js'
+import { resolveIdentity } from '../lib/identityResolver.js'
 import { sendWhatsAppMessage } from '../lib/twilioClient.js'
 // Encryption helpers moved to server/lib/encryption.js so the new clients
 // route (Phase 5) and the leads pipeline share one AES-256-GCM implementation.
@@ -934,7 +935,9 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
         // v1.14.14 diagnostic — confirm OCR ran and surfaced typed fields.
         console.log(`[pipeline:wa] ← OCR | lead=${activeLead.id} | type=${incoming?.lastDocumentType || 'none'} | fields=[${Object.keys(incoming || {}).filter(k => k !== 'confidenceScores').join(',')}]`)
         if (incoming) {
-          const merged = mergeExtractedData(activeLead.extracted_data, incoming)
+          // v1.14.15: after merging the new extraction in, resolve canonical
+          // identity (PASSPORT > CIN > LICENSE) and flag mismatches.
+          const merged = resolveIdentity(mergeExtractedData(activeLead.extracted_data, incoming))
           const update = { extracted_data: merged }
 
           const { needsCIN, needsPermis } = detectMissingDocs(merged)

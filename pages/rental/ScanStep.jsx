@@ -115,8 +115,35 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
     onNext(clientData)
   }
 
+  // v1.14.15: lead-level identity mismatch (server-detected, e.g. passport
+  // and driving licence belong to different people). Non-blocking banner;
+  // operator decides what to do.
+  const leadMismatch = initialClient?.identityMismatch === true
+
   return (
     <div>
+      {leadMismatch && (
+        <div
+          role="alert"
+          style={{
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+            background: '#FFF5E0', border: '1px solid #E4A700', borderRadius: 12,
+            padding: '12px 14px', marginBottom: 16, fontSize: 13, color: '#4A3700',
+          }}
+        >
+          <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 1, color: '#B07400' }} />
+          <div>
+            <strong style={{ display: 'block', marginBottom: 2 }}>
+              {t('rental:scanStep.leadMismatchTitle', 'Documents potentiellement non concordants')}
+            </strong>
+            {t(
+              'rental:scanStep.leadMismatchBody',
+              "Les documents envoyés par le client (passeport, CIN, permis) ne semblent pas appartenir à la même personne. Vérifiez chaque champ avant de continuer.",
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Manual-entry prompt modal */}
       {showManualEntryPrompt && (
         <div style={{

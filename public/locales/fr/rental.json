@@ -50,6 +50,8 @@
   "scanStep": {
     "title": "Identification du client",
     "subtitle": "Scannez ou saisissez les informations du client.",
+    "leadMismatchTitle": "Documents potentiellement non concordants",
+    "leadMismatchBody": "Les documents envoyés par le client (passeport, CIN, permis) ne semblent pas appartenir à la même personne. Vérifiez chaque champ avant de continuer.",
     "firstName": "Prénom",
     "lastName": "Nom",
     "cinNumber": "N° CIN ou Passeport",
