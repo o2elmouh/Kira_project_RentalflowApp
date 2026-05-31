@@ -10,11 +10,14 @@ describe('formatPhone', () => {
     expect(formatPhone('212612345678:42@s.whatsapp.net')).toBe('+212 612 345 678')
   })
 
-  it('formats an @lid privacy JID with a recognized country prefix', () => {
-    // v1.14.9: country-code lookup (longest-prefix). 84 = Vietnam (valid CC).
-    // Note: @lid pseudonyms are dropped at ingestion by v1.14.8 — this test
-    // documents the formatter behaviour for anything that does reach the UI.
-    expect(formatPhone('84139063677034@lid')).toBe('+84 139 063 677 034')
+  it('returns the masked label for @lid JIDs — never formats LID as a phone', () => {
+    // v1.14.17: LID = WhatsApp privacy pseudonym, NOT a phone number. The
+    // formatter used to print "+84 139 063 677 034" for "84139063677034@lid"
+    // because 84 = Vietnam in the longest-prefix CC table — completely wrong.
+    // The masked label forces the operator to ask the client for their real
+    // number before any signature SMS / dial attempt.
+    expect(formatPhone('84139063677034@lid')).toBe('Numéro masqué (WhatsApp)')
+    expect(formatPhone('212612345678@lid')).toBe('Numéro masqué (WhatsApp)')
   })
 
   it('formats a short 10-digit number with 2-digit country code', () => {
@@ -35,8 +38,10 @@ describe('formatPhone', () => {
     expect(formatPhone(12345)).toBe('')
   })
 
-  it('falls back to raw digits when out of phone range', () => {
-    expect(formatPhone('123@lid')).toBe('123')
+  it('falls back to raw digits when out of phone range (non-LID suffix)', () => {
+    // @c.us with a too-short payload — keep the raw-digits behaviour. @lid is
+    // covered by the masked-label test above.
+    expect(formatPhone('123@c.us')).toBe('123')
   })
 
   it('handles JID with @c.us suffix', () => {
@@ -78,15 +83,16 @@ describe('formatPhone', () => {
 
     it('returns raw digits (no "+") when the prefix is not a known CC', () => {
       // Avoids surfacing a misleading bogus country code in the UI.
-      // "999..." has no matching CC in the table.
-      expect(formatPhone('999123456789@lid')).toBe('999123456789')
+      // "999..." has no matching CC in the table. Use @s.whatsapp.net so the
+      // LID short-circuit doesn't kick in.
+      expect(formatPhone('999123456789@s.whatsapp.net')).toBe('999123456789')
     })
 
     it('returns raw digits when total length is out of E.164 range', () => {
       // Too long: > 15 digits
-      expect(formatPhone('1234567890123456@lid')).toBe('1234567890123456')
+      expect(formatPhone('1234567890123456@s.whatsapp.net')).toBe('1234567890123456')
       // Too short: < 8 digits
-      expect(formatPhone('1234567@lid')).toBe('1234567')
+      expect(formatPhone('1234567@s.whatsapp.net')).toBe('1234567')
     })
   })
 })

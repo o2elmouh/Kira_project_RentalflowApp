@@ -24,6 +24,14 @@ describe('buildRentalPrefill', () => {
     expect(p.phone).toBe('212600123456')
     expect(p.email).toBe('')
   })
+  it('leaves phone EMPTY for @lid senders (LID is not a phone)', () => {
+    // v1.14.17: WhatsApp LIDs are privacy pseudonyms. Using the digits as
+    // a phone was sending the Step 4 signature SMS to a bogus number
+    // (e.g. "+84 139 063 677 034" for "84139063677034@lid").
+    const lidLead = { id: 'lead-lid', source: 'whatsapp', sender_id: '84139063677034@lid' }
+    const p = buildRentalPrefill(lidLead, extracted)
+    expect(p.phone).toBe('')
+  })
   it('extracts email from Gmail sender_id', () => {
     const p = buildRentalPrefill(gmailLead, extracted)
     expect(p.email).toBe('client@example.com')

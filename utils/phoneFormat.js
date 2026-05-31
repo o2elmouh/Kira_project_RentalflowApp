@@ -16,9 +16,16 @@
  *   "351912345678@s.whatsapp.net"     → "+351 912 345 678"   (Portugal)
  *   "14155552671@s.whatsapp.net"      → "+1 415 555 2671"    (US/Canada)
  *   "client@gmail.com"                → "client@gmail.com"
- *   "84139063677034@lid"              → "+84 139 063 677 034" (Vietnam — formatted because 84 matches)
- *   "12345@lid"                       → "12345"               (too short to be E.164)
+ *   "84139063677034@lid"              → "Numéro masqué (WhatsApp)" (LID — NOT a real phone)
+ *   "12345@lid"                       → "Numéro masqué (WhatsApp)"
  *   null                              → ""
+ *
+ * LID handling (v1.14.17): WhatsApp Linked-Identity senders expose a 14–19
+ * digit pseudonym, NOT their phone. Previously the formatter happily printed
+ * "+84 139 063 677 034" (Vietnam) for "84139063677034@lid", and the same
+ * digits were silently used as the dial-target for the contract-signature
+ * SMS in Step 4. Returning an explicit label forces the operator to ask the
+ * client for their real number before sending anything.
  */
 
 // ITU country codes, longest-prefix first. Iteration order matters: 3-digit
@@ -51,11 +58,21 @@ const COUNTRY_CODES = [
   '7',
 ]
 
+// Helper exported so callers (rental prefill, signature SMS dialler, …) can
+// short-circuit BEFORE treating the JID as a phone number.
+export function isLidJid(senderId) {
+  return typeof senderId === 'string' && /@lid$/i.test(senderId)
+}
+
 export function formatPhone(senderId) {
   if (!senderId || typeof senderId !== 'string') return ''
 
+  // WhatsApp LID = privacy pseudonym, not a phone. Do NOT format with a
+  // country-code prefix — the digits look like a real E.164 but aren't.
+  if (isLidJid(senderId)) return 'Numéro masqué (WhatsApp)'
+
   // Gmail / generic email: leave alone
-  const isWhatsAppJid = /@(s\.whatsapp\.net|lid|c\.us)$/i.test(senderId)
+  const isWhatsAppJid = /@(s\.whatsapp\.net|c\.us)$/i.test(senderId)
   if (senderId.includes('@') && !isWhatsAppJid) return senderId
 
   // Strip suffix + multi-device id, then keep only digits
