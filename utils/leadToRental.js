@@ -52,6 +52,11 @@ export function buildRentalPrefill(lead, extractedData) {
               ? (lead.sender_id || '').replace('whatsapp:', '').replace(/@.*$/, '')
               : '',
     email:  lead.source === 'gmail'    ? (lead.sender_id || '') : '',
+    // v1.14.18: preserve the raw WhatsApp JID so the wizard can show the
+    // operator "where the lead came from" even when phone is blanked (LID
+    // case). Baileys uses this JID directly to send confirmation messages
+    // — it does NOT need a dialable phone for in-app WhatsApp messaging.
+    whatsappJid: lead.source === 'whatsapp' ? (lead.sender_id || '') : '',
     rentalIntent: {
       detected:       !!(ex.rentalIntent?.detected || ex.start_date || ex.end_date || ex.pickup_location || ex.return_location),
       startDate:      ex.rentalIntent?.startDate || ex.start_date || null,

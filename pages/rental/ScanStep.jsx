@@ -351,6 +351,32 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
               </div>
             ))}
           </div>
+          {/* v1.14.18: read-only WhatsApp JID from the originating lead. Shown
+              so the operator knows where the lead came from when the phone
+              field has been blanked (LID privacy case) and so they understand
+              that Baileys confirmations will still reach this contact. */}
+          {clientData.whatsappJid ? (
+            <div style={{
+              background: 'rgba(37,211,102,0.08)',
+              borderRadius: 8,
+              padding: '10px 12px',
+              marginBottom: 12,
+              borderLeft: '3px solid #25D366',
+              fontSize: 13,
+            }}>
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>
+                📱 Contact WhatsApp (lead)
+              </div>
+              <div style={{ fontFamily: 'DM Mono, monospace', color: '#141413' }}>
+                {/@lid$/i.test(clientData.whatsappJid) ? clientData.whatsappJid : clientData.whatsappJid.replace(/@.*$/, '')}
+              </div>
+              {/@lid$/i.test(clientData.whatsappJid) ? (
+                <div style={{ fontSize: 11, color: '#666', marginTop: 4, fontStyle: 'italic' }}>
+                  Identifiant masqué — saisir le vrai numéro de téléphone ci-dessus pour le SMS de signature. La confirmation WhatsApp sera envoyée sur cet identifiant.
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <div className="form-row cols-2">
             <div className="form-group">
               <label className="form-label">{t('rental:scanStep.dateOfBirth')}</label>
