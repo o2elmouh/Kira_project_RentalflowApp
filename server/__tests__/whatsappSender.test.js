@@ -1,11 +1,16 @@
 /**
  * Tests for the WhatsApp sender-shape filter.
  *
- * Regression guard (v1.14.8): before this filter, status@broadcast, group
- * messages (*@g.us), channel updates (*@newsletter), and LID pseudonyms
- * (*@lid) all reached the inbound pipeline and inserted empty / phantom
- * rows into pending_demands. The Basket UI showed "status@broadcast" and
- * group IDs as leads with "Aucun document extrait".
+ * Regression guards:
+ *  - v1.14.8: before this filter, status@broadcast, group messages (*@g.us),
+ *    and channel updates (*@newsletter) all reached the inbound pipeline and
+ *    inserted empty / phantom rows. The Basket UI showed "status@broadcast"
+ *    and group IDs as leads with "Aucun document extrait".
+ *  - v1.14.13: v1.14.8 also rejected *@lid, but WhatsApp's LID system uses
+ *    @lid for real users whose phone is hidden by privacy settings. Real
+ *    leads like "bonjour, j'ai besoin d'une voiture..." from
+ *    84139063677034@lid were being silently dropped. @lid is now ACCEPTED;
+ *    empty-message protection lives downstream in the triage gate.
  */
 import { describe, it, expect } from 'vitest'
 import { isLeadableWhatsAppSender } from '../lib/whatsappSender.js'
@@ -24,15 +29,21 @@ describe('isLeadableWhatsAppSender', () => {
     it('rejects newsletter / channel updates', () => {
       expect(isLeadableWhatsAppSender('1234567890@newsletter')).toBe(false)
     })
-
-    it('rejects @lid pseudonyms (cannot resolve to a real phone)', () => {
-      expect(isLeadableWhatsAppSender('84139063677034@lid')).toBe(false)
-    })
   })
 
   describe('accepts real 1:1 senders', () => {
     it('accepts a Moroccan @s.whatsapp.net JID', () => {
       expect(isLeadableWhatsAppSender('212612345678@s.whatsapp.net')).toBe(true)
+    })
+
+    it('accepts @lid (LID-system real users — v1.14.13 regression guard)', () => {
+      // v1.14.8 wrongly blanket-rejected these. WhatsApp's new LID system
+      // delivers messages from real users with this suffix; the sender
+      // "84139063677034@lid" submitted the lead body
+      // "bonjour, j'ai besoin d'une voiture pour le 15 decembre, pour 10 jour"
+      // which was silently dropped pre-fix.
+      expect(isLeadableWhatsAppSender('84139063677034@lid')).toBe(true)
+      expect(isLeadableWhatsAppSender('254562946572445@lid')).toBe(true)
     })
 
     it('accepts a multi-device JID with :device suffix', () => {
