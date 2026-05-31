@@ -321,9 +321,22 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
   if (textForTriage) {
     const lang = detectLanguage(textForTriage)
     const CORE = new Set(['fra', 'ara', 'eng'])
-    const translatedText = (!CORE.has(lang) && lang !== 'und')
-      ? await translateToFrench(textForTriage)
-      : null
+    const needsTranslation = !CORE.has(lang) && lang !== 'und'
+    const translatedText = needsTranslation ? await translateToFrench(textForTriage) : null
+
+    // Claude refused to translate (darija slang, gibberish, etc.). Drop the
+    // message — running preFilter on the refusal text was historically the
+    // source of bogus "alert" rows (e.g. French "car" conjunction matching
+    // the English "car" keyword). For senders with an open offer, still
+    // route to offer-response so legitimate "ok wakha" replies aren't lost.
+    if (needsTranslation && translatedText === null) {
+      if (gmailOfferLead) {
+        return routeGmailToOfferResponse('untranslatable text but sender has open offer')
+      }
+      console.log(`[pipeline:gmail-wh] ✗ dropped — untranslatable text (lang=${lang})`)
+      return res.json({ ok: true, dropped: true, reason: 'untranslatable' })
+    }
+
     const textToFilter = translatedText ?? textForTriage
     const { result, matchedKeywords } = preFilter(textToFilter)
 
@@ -590,7 +603,7 @@ router.get('/', async (req, res) => {
 
   let query = supabaseAdmin
     .from('pending_demands')
-    .select('id, agency_id, sender_id, source, status, classification, extracted_data, offered_vehicle_id, offered_price_total, media_urls, created_at, updated_at')
+    .select('id, agency_id, sender_id, source, status, classification, extracted_data, raw_payload, offered_vehicle_id, offered_price_total, media_urls, created_at, updated_at')
     .eq('agency_id', req.user.agency_id)
     .order('created_at', { ascending: false })
     .limit(100)
@@ -610,7 +623,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const { data, error } = await supabaseAdmin
     .from('pending_demands')
-    .select('id, agency_id, sender_id, source, status, classification, extracted_data, offered_vehicle_id, offered_price_total, media_urls, conversation, created_at, updated_at')
+    .select('id, agency_id, sender_id, source, status, classification, extracted_data, raw_payload, offered_vehicle_id, offered_price_total, media_urls, conversation, created_at, updated_at')
     .eq('id', req.params.id)
     .eq('agency_id', req.user.agency_id)
     .maybeSingle()
@@ -1017,9 +1030,21 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
   if (bodyText?.trim()) {
     const lang = detectLanguage(bodyText)
     const CORE = new Set(['fra', 'ara', 'eng'])
-    const translatedText = (!CORE.has(lang) && lang !== 'und')
-      ? await translateToFrench(bodyText)
-      : null
+    const needsTranslation = !CORE.has(lang) && lang !== 'und'
+    const translatedText = needsTranslation ? await translateToFrench(bodyText) : null
+
+    // Claude refused to translate (darija small-talk, gibberish, etc.). Drop
+    // the message — mirror of the Gmail handler. For senders with an open
+    // offer, route to offer-response so legitimate replies aren't lost.
+    if (needsTranslation && translatedText === null) {
+      if (offerSentLead) {
+        await routeWaToOfferResponse('untranslatable text but sender has open offer')
+        return
+      }
+      console.log(`[pipeline:wa] ✗ dropped — untranslatable text (lang=${lang})`)
+      return
+    }
+
     const textToFilter = translatedText ?? bodyText
     const { result, matchedKeywords } = preFilter(textToFilter)
 

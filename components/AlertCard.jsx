@@ -17,7 +17,15 @@ export default function AlertCard({ alert, onEscalate, onIgnore }) {
   const [expanded, setExpanded] = useState(false)
   const ex = alert.extracted_data || {}
   const summary = ex.summary_for_agent || '—'
-  const body = ex.translated_body || null
+  // Show the raw client message — what they actually wrote on WhatsApp/Gmail —
+  // not the LLM translation. Legacy alerts (pre-v1.10.8) only have translated_body
+  // so we fall back to it; raw_payload.body is the last-resort source if the
+  // backend selectively returned it.
+  const body = ex.original_body
+    || alert.raw_payload?.body
+    || alert.raw_payload?.bodyText
+    || ex.translated_body
+    || null
   const sourceLabel = alert.source === 'whatsapp' ? 'WhatsApp' : 'Gmail'
 
   return (

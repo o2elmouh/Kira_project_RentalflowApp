@@ -118,16 +118,38 @@ export function preFilter(text) {
 }
 
 // ── translateToFrench ─────────────────────────────────────
+// Returns:
+//   string — the translation (or original text if Anthropic key missing / empty input)
+//   null   — Claude refused to translate (darija slang it can't parse, gibberish, emoji-only).
+//            Callers MUST drop these messages instead of running preFilter on the refusal
+//            text — the refusal almost always contains a French "car" / "voiture" / etc. that
+//            produces a false-positive triage hit and lands as a bogus alert.
+//   string — original text on API error (so legitimate leads aren't silently lost).
+const REFUSAL_PATTERNS = [
+  /^je ne peux pas/i,
+  /^je suis (désolé|incapable|navré)/i,
+  /^i (cannot|can't|can not)/i,
+  /^i'?m (sorry|unable)/i,
+  /n'est pas (du français|traduisible|une traduction)/i,
+  /not (a |)french/i,
+  /pas de traduction/i,
+]
+
 export async function translateToFrench(text) {
   if (!anthropic || !text?.trim()) return text
   try {
     const msg = await anthropic.messages.create({
       model: HAIKU_MODEL,
       max_tokens: 200,
-      system: 'Traduis le message suivant en français. Réponds uniquement avec la traduction, sans explication.',
+      system: 'Traduis le message suivant en français. Réponds uniquement avec la traduction, sans explication. Si tu ne peux pas traduire, réponds exactement: NO_TRANSLATION',
       messages: [{ role: 'user', content: text }],
     })
-    return msg.content?.[0]?.text?.trim() ?? text
+    const out = msg.content?.[0]?.text?.trim() ?? text
+    if (out === 'NO_TRANSLATION' || REFUSAL_PATTERNS.some(r => r.test(out))) {
+      console.log(`[triage/translate] ✗ Claude refused — text dropped (preview="${text.slice(0, 40)}")`)
+      return null
+    }
+    return out
   } catch (err) {
     console.error('[triage/translate] error:', err.message)
     return text
@@ -176,6 +198,10 @@ export async function handleAmbiguous({ agencyId, senderId, source, originalText
     raw_payload: rawPayload ?? { body: originalText },
     extracted_data: {
       classification: 'alert',
+      // original_body is what the client actually typed in WhatsApp/Gmail.
+      // translated_body is kept for backward-compat but no longer surfaced
+      // in the UI — agents want to read the raw message, not an LLM rephrase.
+      original_body: originalText,
       translated_body: frenchText,
       summary_for_agent: summary,
     },
