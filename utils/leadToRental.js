@@ -6,19 +6,43 @@ const NATIONALITY_MAP = {
   JOR:'Jordanien', LBN:'Libanais', TUR:'Turc',
 }
 
+// Document type detection — mirrors server/lib/normalizeExtractedDocument.js.
+// Some legacy lead rows may still carry the flat documentNumber/expiryDate
+// keys (pre-v1.14.14), so we fall back via documentType to keep them readable.
+const ID_CARD_TYPES   = new Set(['ID_CARD', 'CIN', 'cin', 'id_card'])
+const LICENSE_TYPES   = new Set(['DRIVING_LICENSE', 'PERMIS', 'permis', 'driving_license'])
+const PASSPORT_TYPES  = new Set(['PASSPORT', 'passport'])
+
+function isCinType(t)      { return t && ID_CARD_TYPES.has(t) }
+function isLicenseType(t)  { return t && LICENSE_TYPES.has(t) }
+function isPassportType(t) { return t && PASSPORT_TYPES.has(t) }
+
 export function buildRentalPrefill(lead, extractedData) {
   const ex = extractedData || {}
   const countryCode = (ex.issuingCountry || '').toUpperCase()
   const nationality = NATIONALITY_MAP[countryCode] || countryCode || 'Marocain'
+
+  // Typed fields first (v1.14.14+ shape); fall back to legacy flat keys
+  // when the document type matches.
+  const lastType = ex.lastDocumentType || ex.documentType
+  const cinNumber   = ex.cinNumber   || (isCinType(lastType)     ? ex.documentNumber : '') || ''
+  const cinExpiry   = ex.cinExpiry   || (isCinType(lastType)     ? ex.expiryDate     : '') || ''
+  const drivingLicenseNumber = ex.drivingLicenseNumber || (isLicenseType(lastType)  ? ex.documentNumber : '') || ''
+  const licenseExpiry        = ex.licenseExpiry        || (isLicenseType(lastType)  ? ex.expiryDate     : '') || ''
+  const passportNumber       = ex.passportNumber       || (isPassportType(lastType) ? ex.documentNumber : '') || ''
+  const passportExpiry       = ex.passportExpiry       || (isPassportType(lastType) ? ex.expiryDate     : '') || ''
+
   return {
     firstName:            ex.firstName || '',
     lastName:             ex.lastName  || '',
-    cinNumber:            ex.documentNumber || '',
-    cinExpiry:            ex.expiryDate  || '',
+    cinNumber,
+    cinExpiry,
     dateOfBirth:          ex.dateOfBirth || '',
     nationality,
-    drivingLicenseNumber: '',
-    licenseExpiry:        '',
+    drivingLicenseNumber,
+    licenseExpiry,
+    passportNumber,
+    passportExpiry,
     phone:  lead.source === 'whatsapp' ? (lead.sender_id || '').replace('whatsapp:', '').replace(/@.*$/, '') : '',
     email:  lead.source === 'gmail'    ? (lead.sender_id || '') : '',
     rentalIntent: {

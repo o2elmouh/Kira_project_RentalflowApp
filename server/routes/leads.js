@@ -54,6 +54,7 @@ import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { requireAuth } from '../middleware/auth.js'
 import { detectLanguage, translateToFrench, preFilter, handleAmbiguous, detectMissingDocs } from '../lib/triage.js'
 import { buildAcknowledgmentMessage, mergeExtractedData } from '../lib/offerMessage.js'
+import { normalizeExtractedDocument } from '../lib/normalizeExtractedDocument.js'
 import { sendWhatsAppMessage } from '../lib/twilioClient.js'
 // Encryption helpers moved to server/lib/encryption.js so the new clients
 // route (Phase 5) and the leads pipeline share one AES-256-GCM implementation.
@@ -191,12 +192,16 @@ async function extractWithClaude(imageBlocks, textHint = '') {
 
   const raw = message.content?.[0]?.text?.trim() ?? ''
   const clean = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+  let parsed
   try {
-    return JSON.parse(clean)
+    parsed = JSON.parse(clean)
   } catch {
     console.error('[leads] Claude returned non-JSON:', raw.slice(0, 200))
     return null
   }
+  // v1.14.14: re-key per document type so passport + driving license don't
+  // collide in the flat documentNumber slot during mergeExtractedData.
+  return normalizeExtractedDocument(parsed)
 }
 
 // ── Find existing pending demand to merge with ────────────
@@ -926,6 +931,8 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       try {
         const imageBlock = { type: 'image', source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: imageBuffer.toString('base64') } }
         const incoming = await extractWithClaude([imageBlock], bodyText)
+        // v1.14.14 diagnostic — confirm OCR ran and surfaced typed fields.
+        console.log(`[pipeline:wa] ← OCR | lead=${activeLead.id} | type=${incoming?.lastDocumentType || 'none'} | fields=[${Object.keys(incoming || {}).filter(k => k !== 'confidenceScores').join(',')}]`)
         if (incoming) {
           const merged = mergeExtractedData(activeLead.extracted_data, incoming)
           const update = { extracted_data: merged }

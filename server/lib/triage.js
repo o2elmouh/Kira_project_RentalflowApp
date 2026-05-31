@@ -195,10 +195,18 @@ export async function handleAmbiguous({ agencyId, senderId, source, originalText
  */
 export function detectMissingDocs(extractedData) {
   const ex = extractedData || {}
+  // v1.14.14+: typed fields (cinNumber / drivingLicenseNumber) are the
+  // canonical shape. Falls back to legacy keys (cin / permis / flat
+  // documentType+documentNumber) for rows written before the normalizer.
   const hasCIN = Boolean(
+    ex.cinNumber ||
     ex.cin ||
-    (ex.documentType === 'cin' && ex.documentNumber)
+    ((ex.documentType === 'cin' || ex.documentType === 'CIN' || ex.documentType === 'ID_CARD') && ex.documentNumber)
   )
-  const hasPermis = Boolean(ex.permis)
+  const hasPermis = Boolean(
+    ex.drivingLicenseNumber ||
+    ex.permis ||
+    ((ex.documentType === 'DRIVING_LICENSE' || ex.documentType === 'permis') && ex.documentNumber)
+  )
   return { needsCIN: !hasCIN, needsPermis: !hasPermis }
 }

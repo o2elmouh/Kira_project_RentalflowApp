@@ -5,8 +5,9 @@ import { buildReservationPayload } from '../../utils/reservationPayload.js'
 const waLead = { id: 'lead-1', source: 'whatsapp', sender_id: '212600123456@s.whatsapp.net' }
 const gmailLead = { id: 'lead-2', source: 'gmail', sender_id: 'client@example.com' }
 const extracted = {
-  firstName: 'Hassan', lastName: 'Alami', documentNumber: 'BE123456',
-  expiryDate: '2028-01-01', dateOfBirth: '1990-05-15', issuingCountry: 'MAR',
+  firstName: 'Hassan', lastName: 'Alami',
+  cinNumber: 'BE123456', cinExpiry: '2028-01-01', lastDocumentType: 'ID_CARD',
+  dateOfBirth: '1990-05-15', issuingCountry: 'MAR',
   rentalIntent: { detected: true, startDate: '2026-05-01', endDate: '2026-05-07', vehicleClass: 'SUV' },
 }
 
@@ -37,6 +38,62 @@ describe('buildRentalPrefill', () => {
     const p = buildRentalPrefill(waLead, {})
     expect(p.firstName).toBe('')
     expect(p.nationality).toBe('Marocain')
+  })
+
+  // ── Regression v1.14.14: driving license & passport must flow through ─
+  // Before: drivingLicenseNumber / licenseExpiry were hardcoded to '' and
+  // passport numbers were silently coerced into cinNumber. A real client
+  // who sent passport + driving license over WhatsApp ended up with an
+  // empty Step 1 form (just the cinNumber field, mislabeled).
+  describe('typed document fields (v1.14.14)', () => {
+    const baseLead = waLead
+
+    it('reads drivingLicenseNumber + licenseExpiry from typed slots', () => {
+      const p = buildRentalPrefill(baseLead, {
+        firstName: 'Otman', lastName: 'Elmouhib',
+        drivingLicenseNumber: 'P-987654', licenseExpiry: '2028-12-31',
+        cinNumber: 'AB123456', cinExpiry: '2030-05-01',
+      })
+      expect(p.drivingLicenseNumber).toBe('P-987654')
+      expect(p.licenseExpiry).toBe('2028-12-31')
+      expect(p.cinNumber).toBe('AB123456')
+      expect(p.cinExpiry).toBe('2030-05-01')
+    })
+
+    it('exposes passportNumber + passportExpiry', () => {
+      const p = buildRentalPrefill(baseLead, {
+        passportNumber: 'AA9988776', passportExpiry: '2031-04-04',
+      })
+      expect(p.passportNumber).toBe('AA9988776')
+      expect(p.passportExpiry).toBe('2031-04-04')
+    })
+
+    it('falls back to legacy flat keys when documentType matches CIN', () => {
+      const p = buildRentalPrefill(baseLead, {
+        documentType: 'ID_CARD', documentNumber: 'LEGACY-CIN', expiryDate: '2029-01-01',
+      })
+      expect(p.cinNumber).toBe('LEGACY-CIN')
+      expect(p.cinExpiry).toBe('2029-01-01')
+      expect(p.drivingLicenseNumber).toBe('')
+    })
+
+    it('falls back to legacy flat keys when documentType matches DRIVING_LICENSE', () => {
+      const p = buildRentalPrefill(baseLead, {
+        documentType: 'DRIVING_LICENSE', documentNumber: 'LEGACY-LIC', expiryDate: '2030-01-01',
+      })
+      expect(p.drivingLicenseNumber).toBe('LEGACY-LIC')
+      expect(p.licenseExpiry).toBe('2030-01-01')
+      expect(p.cinNumber).toBe('')
+    })
+
+    it('does NOT coerce a passport documentNumber into cinNumber (pre-fix bug)', () => {
+      const p = buildRentalPrefill(baseLead, {
+        documentType: 'PASSPORT', documentNumber: 'AA9988776', expiryDate: '2031-04-04',
+      })
+      expect(p.cinNumber).toBe('')
+      expect(p.passportNumber).toBe('AA9988776')
+      expect(p.passportExpiry).toBe('2031-04-04')
+    })
   })
 
   // ── Regression v1.14.4: lead origin must reach the reservation row ────

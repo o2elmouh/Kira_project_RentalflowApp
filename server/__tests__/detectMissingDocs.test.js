@@ -37,6 +37,32 @@ describe('detectMissingDocs', () => {
       .toEqual({ needsCIN: false, needsPermis: false })
   })
 
+  // v1.14.14: typed fields are the canonical shape after normalizeExtractedDocument.
+  test('cinNumber (typed) present → CIN not missing', () => {
+    expect(detectMissingDocs({ cinNumber: 'AB123456' }))
+      .toEqual({ needsCIN: false, needsPermis: true })
+  })
+
+  test('drivingLicenseNumber (typed) present → permis not missing', () => {
+    expect(detectMissingDocs({ drivingLicenseNumber: 'P-987654' }))
+      .toEqual({ needsCIN: true, needsPermis: false })
+  })
+
+  test('typed cinNumber + drivingLicenseNumber together → nothing missing', () => {
+    expect(detectMissingDocs({ cinNumber: 'AB1', drivingLicenseNumber: 'P-9' }))
+      .toEqual({ needsCIN: false, needsPermis: false })
+  })
+
+  test('documentType=DRIVING_LICENSE with documentNumber → permis not missing', () => {
+    expect(detectMissingDocs({ documentType: 'DRIVING_LICENSE', documentNumber: 'P-9' }))
+      .toEqual({ needsCIN: true, needsPermis: false })
+  })
+
+  test('documentType=ID_CARD with documentNumber → CIN not missing', () => {
+    expect(detectMissingDocs({ documentType: 'ID_CARD', documentNumber: 'AB1' }))
+      .toEqual({ needsCIN: false, needsPermis: true })
+  })
+
   test('empty-string values count as missing', () => {
     expect(detectMissingDocs({ cin: '', permis: '' })).toEqual({ needsCIN: true, needsPermis: true })
   })
