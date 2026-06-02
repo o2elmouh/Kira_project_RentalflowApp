@@ -495,6 +495,15 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
     }
   }
 
+  // Safety net mirror of the WhatsApp handler — see comment in handleInboundWhatsApp.
+  // Without this, an email with no subject, no body, and no image attachments
+  // (rare but possible — calendar invites, autoresponders that stripped the
+  // body, attachments-only with non-image types) would insert an empty row.
+  if (!extractedData) {
+    console.log(`[pipeline:gmail-wh] ✗ dropped — no extractable content (hadText=${!!textForTriage}, images=${imageBlocks.length})`)
+    return res.json({ ok: true, dropped: true, reason: 'no_content' })
+  }
+
   const match = await findMatchingDemand(agencyId, senderEmail, extractedData)
   console.log(`[pipeline:gmail-wh] → match: ${match ? `${match.type} (score=${match.score}) id=${match.demand.id}` : 'none — new lead'}`)
 
@@ -1217,6 +1226,18 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
       }))
       console.log(`[pipeline:wa] → prolongation has ${active.length} candidates (deferred to agent)`)
     }
+  }
+
+  // Safety net: never insert a row with no extracted_data. The pipeline can
+  // reach this point with extractedData === null when (a) the message has no
+  // body and no image — stickers, videos, reactions, locations, contact cards,
+  // documents — and skips every triage / extraction block; (b) image vision
+  // returned null; (c) text classifier returned null on a preFilter='ok' path
+  // with no ambiguous fallback. All three previously created empty corbeille
+  // cards labelled "Numéro masqué — Aucun document extrait".
+  if (!extractedData) {
+    console.log(`[pipeline:wa] ✗ dropped — no extractable content (body="${(bodyText || '').slice(0, 40)}", hadImage=${!!imageBuffer})`)
+    return
   }
 
   const match = await findMatchingDemand(agencyId, senderJid, extractedData)
