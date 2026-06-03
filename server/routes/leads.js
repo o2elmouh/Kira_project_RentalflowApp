@@ -97,6 +97,47 @@ function nameMatchScore(nameA, nameB) {
   return 1 - levenshtein(a, b) / maxLen
 }
 
+// ── Substantive-content guard ─────────────────────────────
+/**
+ * Decide whether an `extractedData` object carries enough signal to deserve
+ * a row in `pending_demands`. A lead is **substantive** if any one of:
+ *
+ *   - classification ∈ {prolongation, support_issue, alert}
+ *     These types are always agent-actionable on their own — a prolongation
+ *     row's value is in the contract link, not in OCR fields; alert/support
+ *     escalations exist *because* fields are sparse.
+ *
+ *   - any person field is set: firstName, lastName
+ *
+ *   - any document field is set: cinNumber, drivingLicenseNumber,
+ *     passportNumber, documentNumber
+ *
+ *   - any rental-intent field is set: start_date, end_date, requested_car,
+ *     rentalIntent.detected
+ *
+ *   - the text classifier produced a `summary_for_agent`
+ *
+ * Otherwise the object is meta-only (e.g. `{ classification: 'new_lead',
+ * confidenceScores: {} }` — what Claude vision returns when handed a
+ * sticker / selfie / scenic photo) and would render as an empty corbeille
+ * card. Drop it.
+ *
+ * NOTE: this is a tighter version of v1.14.19's `!extractedData` guard.
+ * It catches the case where Claude returned a parseable-but-useless JSON
+ * and the WA handler force-stamped `classification = 'new_lead'` on it.
+ */
+export function hasSubstantiveContent(extracted) {
+  if (!extracted || typeof extracted !== 'object') return false
+  const cls = extracted.classification
+  if (cls === 'prolongation' || cls === 'support_issue' || cls === 'alert') return true
+  if (extracted.firstName || extracted.lastName) return true
+  if (extracted.cinNumber || extracted.drivingLicenseNumber || extracted.passportNumber || extracted.documentNumber) return true
+  if (extracted.start_date || extracted.end_date || extracted.requested_car) return true
+  if (extracted.rentalIntent?.detected) return true
+  if (extracted.summary_for_agent) return true
+  return false
+}
+
 // ── Claude routing prompt (text messages) ────────────────
 const ROUTING_SYSTEM_PROMPT = `You are an intelligent lead routing assistant for "Rentalflow", a car rental agency in Morocco.
 Your job is to analyze incoming WhatsApp messages, categorize them, and extract relevant data.
@@ -496,11 +537,12 @@ router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
   }
 
   // Safety net mirror of the WhatsApp handler — see comment in handleInboundWhatsApp.
-  // Without this, an email with no subject, no body, and no image attachments
-  // (rare but possible — calendar invites, autoresponders that stripped the
-  // body, attachments-only with non-image types) would insert an empty row.
-  if (!extractedData) {
-    console.log(`[pipeline:gmail-wh] ✗ dropped — no extractable content (hadText=${!!textForTriage}, images=${imageBlocks.length})`)
+  // Drops both (a) the case where every extractor returned null (no body, no
+  // image, or Claude calls failed), and (b) v1.14.21's tightening: an extracted
+  // object that's meta-only (e.g. `{ classification: 'new_lead' }` force-stamped
+  // on a sticker / selfie that Claude vision couldn't read).
+  if (!hasSubstantiveContent(extractedData)) {
+    console.log(`[pipeline:gmail-wh] ✗ dropped — no substantive content (hadText=${!!textForTriage}, images=${imageBlocks.length}, keys=[${Object.keys(extractedData || {}).join(',')}])`)
     return res.json({ ok: true, dropped: true, reason: 'no_content' })
   }
 
@@ -1235,8 +1277,13 @@ export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mi
   // returned null; (c) text classifier returned null on a preFilter='ok' path
   // with no ambiguous fallback. All three previously created empty corbeille
   // cards labelled "Numéro masqué — Aucun document extrait".
-  if (!extractedData) {
-    console.log(`[pipeline:wa] ✗ dropped — no extractable content (body="${(bodyText || '').slice(0, 40)}", hadImage=${!!imageBuffer})`)
+  // v1.14.21: tightened from `!extractedData` to `!hasSubstantiveContent`.
+  // Catches the case where Claude vision returns a parseable-but-useless JSON
+  // for non-document images (stickers, selfies, scenic photos, screenshots);
+  // the WA handler force-stamps `classification = 'new_lead'` on the empty
+  // object, so the old null-check let it through.
+  if (!hasSubstantiveContent(extractedData)) {
+    console.log(`[pipeline:wa] ✗ dropped — no substantive content (body="${(bodyText || '').slice(0, 40)}", hadImage=${!!imageBuffer}, keys=[${Object.keys(extractedData || {}).join(',')}])`)
     return
   }
 
