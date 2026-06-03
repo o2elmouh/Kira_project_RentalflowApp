@@ -109,6 +109,29 @@ describe('buildReservationPayload', () => {
     expect(payload.total_price).toBe(999)
   })
 
+  // v1.14.23 — the NewRental wizard's `rental` object only ever has `totalTTC`;
+  // `totalPrice` was a phantom field that always resolved to 0 in production.
+  // totalTTC must take precedence over the legacy fallbacks.
+  it('reads total_price from rental.totalTTC (the canonical wizard field)', () => {
+    const payload = buildReservationPayload({
+      client: baseClient,
+      rental: { ...baseRental, totalPrice: undefined, total: undefined, totalTTC: 1444 },
+      prefilledLead: null,
+    })
+    expect(payload.total_price).toBe(1444)
+  })
+
+  it('prefers rental.totalTTC over totalPrice / total when all three are set', () => {
+    // Defensive — if a caller somehow sets all three, the wizard's canonical
+    // field wins so we never silently use a stale legacy value.
+    const payload = buildReservationPayload({
+      client: baseClient,
+      rental: { ...baseRental, totalTTC: 2000, totalPrice: 1000, total: 500 },
+      prefilledLead: null,
+    })
+    expect(payload.total_price).toBe(2000)
+  })
+
   it('does not throw when rental and client are empty', () => {
     expect(() =>
       buildReservationPayload({ client: {}, rental: {}, prefilledLead: null })

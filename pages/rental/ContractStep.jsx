@@ -102,9 +102,14 @@ export default function ContractStep({
         photos,
         status: 'active',
       })
-      const fleet = await getFleet()
-      const v = fleet.find(veh => veh.id === rental.vehicle?.id || veh.id === rental.vehicleId)
-      if (v) await saveVehicle({ ...v, status: 'rented' })
+      // v1.14.23: vehicle.status flip to 'rented' moved out of ensureContract.
+      // ensureContract fires when the agent picks a signing channel (link
+      // dispatch happens BEFORE the client signs); flagging the car rented
+      // at that point locked it even when the client never signed or the
+      // agent abandoned the wizard. The car is now flipped only when the
+      // agent clicks "Finaliser le contrat" (handleFinalize). Date-overlap
+      // booking protection is unaffected — that rule keys on
+      // `contracts.status='active' AND date overlap`, not on vehicle.status.
 
       const inv = await saveInvoice({
         contractId: c.id,
@@ -206,6 +211,24 @@ export default function ContractStep({
     try {
       const c = await ensureContract()
       if (!c) throw new Error(t('review.errors.prepareFailed'))
+
+      // v1.14.23: flip vehicle to 'rented' HERE — not in ensureContract.
+      // ensureContract fires on link dispatch (before signing); the agent's
+      // click on "Finaliser le contrat" is the canonical "rental is now
+      // effective" signal. The contract is already status='active' from
+      // ensureContract so the date range is already protected against
+      // double-booking; this flip is just the physical-state hint shown
+      // in Fleet / Dashboard / FleetMap.
+      try {
+        const fleet = await getFleet()
+        const v = fleet.find(veh => veh.id === rental.vehicle?.id || veh.id === rental.vehicleId)
+        if (v && v.status !== 'rented') await saveVehicle({ ...v, status: 'rented' })
+      } catch (vehErr) {
+        // Don't block finalize on this — worst case the agent flips the
+        // status manually from Fleet. Log so we know if it's recurring.
+        console.warn('[ContractStep] vehicle flip to rented non-blocking:', vehErr.message)
+      }
+
       try {
         await api.finalizeContract(c.id)
       } catch (finErr) {

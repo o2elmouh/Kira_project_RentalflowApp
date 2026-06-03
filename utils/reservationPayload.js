@@ -22,7 +22,13 @@ export function buildReservationPayload({ client, rental, prefilledLead }) {
 
   const start_date  = rental?.startDate ? new Date(rental.startDate).toISOString() : new Date().toISOString()
   const end_date    = rental?.endDate   ? new Date(rental.endDate).toISOString()   : new Date(Date.now() + 86_400_000).toISOString()
-  const total_price = Number(rental?.totalPrice ?? rental?.total ?? 0)
+  // The NewRental wizard's `rental` state uses `totalTTC` as the canonical
+  // field (see pages/rental/RentalStep.jsx where it's computed). `totalPrice`
+  // and `total` are kept as backward-compat fallbacks for any external caller
+  // that passes a hand-rolled rental object — but the wizard never sets them,
+  // so v1.14.23 prepends totalTTC to the chain. Without this, the reservations
+  // table always showed `total: 0`.
+  const total_price = Number(rental?.totalTTC ?? rental?.totalPrice ?? rental?.total ?? 0)
 
   const leadId = prefilledLead?.leadId || prefilledLead?.id || null
 
