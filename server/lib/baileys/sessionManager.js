@@ -291,8 +291,34 @@ export async function sendMessage(agencyId, jid, text) {
   }
 
   console.log(`[baileys] → sock.sendMessage agency=${agencyId} | requested=${jid} | resolved=${resolvedJid} | bytes=${text.length}`)
-  const sendResult = await entry.sock.sendMessage(resolvedJid, { text })
+  const sendResult = await entry.sock.sendMessage(resolvedJid, buildOutboundTextMessage(text))
   console.log(`[baileys] ← sock.sendMessage ack agency=${agencyId} | msgId=${sendResult?.key?.id || 'none'} | status=${sendResult?.status ?? 'n/a'}`)
+}
+
+/**
+ * Build the payload passed to `sock.sendMessage`. Exported so the
+ * `linkPreview: null` invariant can be unit-tested without mocking
+ * the whole Baileys stack.
+ *
+ * `linkPreview: null` skips Baileys' generateLinkPreviewIfRequired() path.
+ * Per node_modules/@whiskeysockets/baileys/lib/Utils/messages.js:266 — if
+ * `message.linkPreview` is anything other than `undefined`, Baileys does NOT
+ * attempt to fetch the URL for og:* metadata. We never want previews on our
+ * outbound messages (contract signing links, quote offers, post-accept
+ * notes), and the preview fetch had three failure modes in production:
+ *   1. "url generation failed" log spam when the target page returns no
+ *      og: tags / is JS-only / times out (Vercel cold starts, Railway warmup).
+ *   2. A multi-second synchronous wait inside sock.sendMessage while the
+ *      fetch happens — long enough to push encryption past a Signal-protocol
+ *      session-rotation boundary and corrupt the in-flight message.
+ *   3. WhatsApp anti-spam scores messages with link-preview metadata more
+ *      aggressively from non-Business accounts — fewer previews = better
+ *      delivery odds for transactional links.
+ * Confirmed undelivered contract signing message in production log
+ * (msgId=3EB0764CF03572ACCE23DF) immediately after "url generation failed".
+ */
+export function buildOutboundTextMessage(text) {
+  return { text, linkPreview: null }
 }
 
 /**
