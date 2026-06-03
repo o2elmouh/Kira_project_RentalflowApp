@@ -53,6 +53,12 @@
     "prolongationRefuse": "رفض",
     "prolongationPickContract": "أي عقد تريد تمديده؟",
     "prolongationRefContract": "عقد {{number}} — {{vehicle}} — {{client}}",
+    "prolongationContractNumber": "رقم العقد",
+    "prolongationContractStart": "تاريخ البدء",
+    "prolongationContractInitialEnd": "تاريخ الانتهاء الأصلي",
+    "prolongationConflictTitle": "⚠ المركبة غير متوفرة للتمديد",
+    "prolongationConflictDetail": "{{vehicle}} مؤجرة بالفعل من {{start}} إلى {{end}}. اقترح مركبة أخرى عبر العرض السريع.",
+    "prolongationOpenSmartQuote": "اقترح مركبة أخرى",
     "prolongationPreview_one": "تمديد: يوم 1 · +{{amount}} درهم",
     "prolongationPreview_other": "تمديد: {{count}} يوماً · +{{amount}} درهم",
     "prolongationIgnore": "تجاهل"

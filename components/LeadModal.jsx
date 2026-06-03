@@ -4,7 +4,16 @@ import { api } from '../lib/api.js'
 import SmartQuotePanel from './SmartQuotePanel.jsx'
 import { formatPhone } from '../utils/phoneFormat.js'
 import ProlongationDialog from './ProlongationDialog'
-import { getContractById, getVehicle } from '../lib/db'
+import { getContractById, getVehicle, findVehicleConflicts } from '../lib/db'
+
+// Add `days` to an ISO date string (YYYY-MM-DD). Returns ISO string or null.
+function addDaysIso(iso, days) {
+  if (!iso || !Number.isFinite(days)) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
 
 const CONF_COLOR = (score) => {
   if (score == null) return 'var(--text-secondary)'
@@ -75,6 +84,13 @@ export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) 
     lead.prolongation_target_contract_id || ''
   )
 
+  // Vehicle-conflict state for the extension window. Populated by the effect
+  // below once we have a target contract + an extension end date. Used to
+  // render an amber warning + reveal a SmartQuotePanel fallback so the agent
+  // can propose another available vehicle instead.
+  const [vehicleConflicts, setVehicleConflicts] = useState([])
+  const [showSmartQuote, setShowSmartQuote] = useState(false)
+
   useEffect(() => {
     const id = lead.prolongation_target_contract_id || pickedContractId
     if (!id) return
@@ -90,6 +106,30 @@ export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) 
     })()
     return () => { cancelled = true }
   }, [lead.prolongation_target_contract_id, pickedContractId])
+
+  // Conflict detection — runs once we know the contract being extended and
+  // can derive an extension window. Window is [contract.endDate, newEnd]:
+  //   - newEnd = extracted.end_date if present
+  //   - else   = contract.endDate + extracted.requested_extra_days
+  //   - else   = no window, silently skip
+  // Conflicts = other active contracts on the same vehicle overlapping that
+  // window. The current contract itself is excluded via excludeContractId.
+  useEffect(() => {
+    if (extracted.classification !== 'prolongation') return
+    if (!targetContract?.vehicleId || !targetContract?.endDate) return
+    const start = targetContract.endDate
+    let end = extracted.end_date || null
+    if (!end && Number.isFinite(Number(extracted.requested_extra_days))) {
+      end = addDaysIso(start, Number(extracted.requested_extra_days))
+    }
+    if (!end) { setVehicleConflicts([]); return }
+    let cancelled = false
+    ;(async () => {
+      const rows = await findVehicleConflicts(targetContract.vehicleId, start, end, targetContract.id)
+      if (!cancelled) setVehicleConflicts(rows)
+    })()
+    return () => { cancelled = true }
+  }, [extracted.classification, extracted.end_date, extracted.requested_extra_days, targetContract?.id, targetContract?.vehicleId, targetContract?.endDate])
 
   const conf = lead.confidence_scores || {}
 
@@ -219,14 +259,58 @@ export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) 
                 {extracted.classification === 'prolongation' && (
                   <div style={{ marginTop: 16, padding: 12, background: 'rgba(59,130,246,0.06)', borderRadius: 8, border: '1px solid rgba(59,130,246,0.15)' }}>
                     {targetContract ? (
-                      <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>
-                        {t('panel.prolongationRefContract', {
-                          defaultValue: 'Contrat {{number}} — {{vehicle}} — {{client}}',
-                          number: targetContract.contractNumber,
-                          vehicle: targetContract.vehicleName,
-                          client: targetContract.clientName,
-                        })}
-                      </div>
+                      <>
+                        <div style={{ fontSize: 13, color: 'var(--text-primary)', marginBottom: 8 }}>
+                          {t('panel.prolongationRefContract', {
+                            defaultValue: 'Contrat {{number}} — {{vehicle}} — {{client}}',
+                            number: targetContract.contractNumber,
+                            vehicle: targetContract.vehicleName,
+                            client: targetContract.clientName,
+                          })}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 12, rowGap: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
+                          <div>{t('panel.prolongationContractNumber', { defaultValue: 'Numéro de contrat' })}</div>
+                          <div style={{ color: 'var(--text-primary)' }}>{targetContract.contractNumber || '—'}</div>
+                          <div>{t('panel.prolongationContractStart', { defaultValue: 'Date de début' })}</div>
+                          <div style={{ color: 'var(--text-primary)' }}>{targetContract.startDate || '—'}</div>
+                          <div>{t('panel.prolongationContractInitialEnd', { defaultValue: 'Date de fin initiale' })}</div>
+                          <div style={{ color: 'var(--text-primary)' }}>{targetContract.endDate || '—'}</div>
+                        </div>
+
+                        {vehicleConflicts.length > 0 && (
+                          <div style={{ marginTop: 12, padding: 10, background: 'rgba(245,158,11,0.10)', borderRadius: 6, border: '1px solid rgba(245,158,11,0.35)' }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#d97706', marginBottom: 4 }}>
+                              {t('panel.prolongationConflictTitle', { defaultValue: '⚠ Véhicule indisponible pour la prolongation' })}
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                              {t('panel.prolongationConflictDetail', {
+                                defaultValue: '{{vehicle}} est déjà loué du {{start}} au {{end}}. Proposez un autre véhicule via Devis Rapide.',
+                                vehicle: targetContract.vehicleName || '—',
+                                start: vehicleConflicts[0].startDate || '—',
+                                end: vehicleConflicts[0].endDate || '—',
+                              })}
+                            </div>
+                            {!showSmartQuote && (
+                              <button
+                                onClick={() => setShowSmartQuote(true)}
+                                style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid rgba(245,158,11,0.5)', background: 'rgba(245,158,11,0.10)', color: '#d97706', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                              >
+                                {t('panel.prolongationOpenSmartQuote', { defaultValue: 'Proposer un autre véhicule' })}
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {showSmartQuote && vehicleConflicts.length > 0 && (
+                          <SmartQuotePanel
+                            lead={lead}
+                            onSent={() => {
+                              setShowSmartQuote(false)
+                              Promise.resolve(onStatusChange(lead.id, 'offer_sent')).catch(() => {})
+                            }}
+                          />
+                        )}
+                      </>
                     ) : extracted.prolongation_candidates?.length > 1 ? (
                       <div>
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>

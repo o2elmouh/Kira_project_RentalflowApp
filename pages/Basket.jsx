@@ -142,6 +142,16 @@ export default function Basket({ onNavigate, initialTab = null }) {
   const { leads, alerts, loading, error, load, handleStatusChange, handleEscalate, handleIgnoreAlert } = useLeads(activeTab, statusFilter)
 
   function handleConvert(lead, extractedData) {
+    // Defense-in-depth: prolongation leads must NEVER end up in the new-rental
+    // wizard — that would create a brand-new contract instead of extending the
+    // existing one. The LeadModal already gates its CTAs by classification
+    // (Prolonger contrat → opens ProlongationDialog in-modal), but if any path
+    // ever calls onConvert with a prolongation lead, we bail loudly.
+    const cls = extractedData?.classification || lead.classification
+    if (cls === 'prolongation') {
+      console.warn('[basket] handleConvert blocked — prolongation lead must use in-modal ProlongationDialog', lead.id)
+      return
+    }
     const prefill = buildRentalPrefill(lead, extractedData)
     api.updateLeadStatus(lead.id, 'processed').catch(() => {})
     onNavigate('new-rental', { prefilledLead: prefill })

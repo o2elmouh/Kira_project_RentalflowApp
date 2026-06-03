@@ -53,6 +53,12 @@
     "prolongationRefuse": "Decline",
     "prolongationPickContract": "Which contract to extend?",
     "prolongationRefContract": "Contract {{number}} — {{vehicle}} — {{client}}",
+    "prolongationContractNumber": "Contract number",
+    "prolongationContractStart": "Start date",
+    "prolongationContractInitialEnd": "Initial end date",
+    "prolongationConflictTitle": "⚠ Vehicle unavailable for extension",
+    "prolongationConflictDetail": "{{vehicle}} is already rented from {{start}} to {{end}}. Propose another vehicle via Quick Quote.",
+    "prolongationOpenSmartQuote": "Propose another vehicle",
     "prolongationPreview_one": "Extension: 1 day · +{{amount}} MAD",
     "prolongationPreview_other": "Extension: {{count}} days · +{{amount}} MAD",
     "prolongationIgnore": "Dismiss"

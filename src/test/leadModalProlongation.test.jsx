@@ -6,22 +6,27 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k, opts) => opts?.defaultValue || k }),
 }))
 
+const findVehicleConflictsMock = vi.fn().mockResolvedValue([])
+
 vi.mock('../../lib/db.js', () => ({
   getContractById: vi.fn().mockResolvedValue({
     id: 'ctr-1',
     contractNumber: 'CTR-00003',
     vehicleName: 'Audi A1',
     clientName: 'Karim El Fassi',
+    startDate: '2026-08-01',
     endDate: '2026-08-31',
     dailyRate: 200,
     totalTTC: 6000,
     vehicleId: 'veh-1',
   }),
   getVehicle: vi.fn().mockResolvedValue({ id: 'veh-1', dailyRate: 200 }),
+  findVehicleConflicts: (...args) => findVehicleConflictsMock(...args),
   updateContract: vi.fn().mockResolvedValue(undefined),
   saveInvoice: vi.fn().mockResolvedValue(undefined),
   updateInvoice: vi.fn().mockResolvedValue(undefined),
   getInvoices: vi.fn().mockResolvedValue([]),
+  getAvailableVehicles: vi.fn().mockResolvedValue([]),
 }))
 
 import LeadModal from '../../components/LeadModal.jsx'
@@ -50,7 +55,10 @@ const multiCandidateLead = {
   },
 }
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  findVehicleConflictsMock.mockResolvedValue([])
+})
 
 describe('LeadModal — prolongation variant', () => {
   it('renders the Prolongation badge for prolongation leads', () => {
@@ -78,5 +86,51 @@ describe('LeadModal — prolongation variant', () => {
     await new Promise(r => setTimeout(r, 30))
     fireEvent.click(cta)
     expect(await screen.findByLabelText(/nouvelle date de fin/i)).toBeInTheDocument()
+  })
+
+  it('displays contract number, start date, and initial end date once the contract loads', async () => {
+    render(<LeadModal lead={prolongationLead} onClose={() => {}} onStatusChange={() => {}} />)
+    expect(await screen.findByText('CTR-00003')).toBeInTheDocument()
+    expect(await screen.findByText('2026-08-01')).toBeInTheDocument()
+    expect(await screen.findByText('2026-08-31')).toBeInTheDocument()
+  })
+
+  it('queries findVehicleConflicts with the extension window [contract.endDate → extracted.end_date]', async () => {
+    render(<LeadModal lead={prolongationLead} onClose={() => {}} onStatusChange={() => {}} />)
+    await new Promise(r => setTimeout(r, 50))
+    expect(findVehicleConflictsMock).toHaveBeenCalledWith(
+      'veh-1',
+      '2026-08-31',
+      '2026-09-15',
+      'ctr-1',
+    )
+  })
+
+  it('renders an amber warning and a smart-quote CTA when the vehicle has a conflict', async () => {
+    findVehicleConflictsMock.mockResolvedValue([
+      { id: 'ctr-9', contractNumber: 'CTR-00009', startDate: '2026-09-01', endDate: '2026-09-10', clientName: 'Other', vehicleId: 'veh-1' },
+    ])
+    render(<LeadModal lead={prolongationLead} onClose={() => {}} onStatusChange={() => {}} />)
+    expect(await screen.findByText(/véhicule indisponible/i)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /proposer un autre véhicule/i })).toBeInTheDocument()
+  })
+
+  it('does not render the conflict warning when there are no overlapping contracts', async () => {
+    render(<LeadModal lead={prolongationLead} onClose={() => {}} onStatusChange={() => {}} />)
+    await new Promise(r => setTimeout(r, 50))
+    expect(screen.queryByText(/véhicule indisponible/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /proposer un autre véhicule/i })).not.toBeInTheDocument()
+  })
+
+  it('reveals the SmartQuotePanel when "Proposer un autre véhicule" is clicked', async () => {
+    findVehicleConflictsMock.mockResolvedValue([
+      { id: 'ctr-9', contractNumber: 'CTR-00009', startDate: '2026-09-01', endDate: '2026-09-10', clientName: 'Other', vehicleId: 'veh-1' },
+    ])
+    render(<LeadModal lead={prolongationLead} onClose={() => {}} onStatusChange={() => {}} />)
+    const altBtn = await screen.findByRole('button', { name: /proposer un autre véhicule/i })
+    fireEvent.click(altBtn)
+    // SmartQuotePanel renders a "Véhicule disponible" <label> + a vehicle
+    // <select>. Use the select (combobox) since it's unique to that panel.
+    expect(await screen.findByRole('combobox')).toBeInTheDocument()
   })
 })

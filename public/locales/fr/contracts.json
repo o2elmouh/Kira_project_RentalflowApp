@@ -53,6 +53,12 @@
     "prolongationRefuse": "Refuser",
     "prolongationPickContract": "Quel contrat prolonger ?",
     "prolongationRefContract": "Contrat {{number}} — {{vehicle}} — {{client}}",
+    "prolongationContractNumber": "Numéro de contrat",
+    "prolongationContractStart": "Date de début",
+    "prolongationContractInitialEnd": "Date de fin initiale",
+    "prolongationConflictTitle": "⚠ Véhicule indisponible pour la prolongation",
+    "prolongationConflictDetail": "{{vehicle}} est déjà loué du {{start}} au {{end}}. Proposez un autre véhicule via Devis Rapide.",
+    "prolongationOpenSmartQuote": "Proposer un autre véhicule",
     "prolongationPreview_one": "Prolongation : 1 jour · +{{amount}} MAD",
     "prolongationPreview_other": "Prolongation : {{count}} jours · +{{amount}} MAD",
     "prolongationIgnore": "Ignorer"
