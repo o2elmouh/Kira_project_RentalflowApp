@@ -642,7 +642,12 @@ router.get('/', async (req, res) => {
   const status = req.query.status || 'pending'
   const classification = req.query.classification
 
-  const VALID_CLASSIFICATIONS = ['alert', 'normal', 'spam']
+  // Actual values written by the pipeline are: 'new_lead', 'prolongation',
+  // 'support_issue', 'alert' (per classifyTextMessage + extractWithClaude
+  // + handleAmbiguous). Old labels ('lead', 'normal', 'spam') are kept for
+  // backward compat with any historical row, but accepting them on input is
+  // safe — the column has no CHECK constraint (see CODE_REVIEW_FINDINGS L16).
+  const VALID_CLASSIFICATIONS = ['new_lead', 'prolongation', 'support_issue', 'alert', 'lead', 'normal', 'spam']
   if (classification && !VALID_CLASSIFICATIONS.includes(classification)) {
     return res.status(400).json({ error: 'Invalid classification' })
   }
@@ -686,7 +691,9 @@ router.get('/:id', async (req, res) => {
 
 // PATCH /leads/:id/status
 const VALID_STATUSES = ['pending', 'processed', 'ignored', 'waiting', 'offer_sent', 'accepted', 'converted']
-const VALID_PATCH_CLASSIFICATIONS = ['lead', 'alert', 'normal', 'spam']
+// Same rationale as VALID_CLASSIFICATIONS above — accept canonical pipeline
+// values + legacy labels for backward compat.
+const VALID_PATCH_CLASSIFICATIONS = ['new_lead', 'prolongation', 'support_issue', 'alert', 'lead', 'normal', 'spam']
 router.patch('/:id/status', async (req, res) => {
   const { status, classification } = req.body
   if (!VALID_STATUSES.includes(status)) {
@@ -737,6 +744,15 @@ router.patch('/:id/extracted', async (req, res) => {
  */
 async function getClientStatus(agencyId, senderJid) {
   try {
+    // @lid JIDs are WhatsApp "linked identity" pseudonyms — the numeric prefix
+    // is NOT a phone number. We have no way to map an @lid back to a clients
+    // table row keyed by phone, so short-circuit as 'no_contract'. Without
+    // this guard the digit-suffix logic below could false-positive against an
+    // unrelated client whose phone happens to share the last digits.
+    if (typeof senderJid === 'string' && /@lid$/i.test(senderJid)) {
+      return 'no_contract'
+    }
+
     const digits = senderJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
     // Moroccan local format: strip leading country code
     const localVariants = [digits, digits.replace(/^212/, '0')]
@@ -851,8 +867,16 @@ async function classifyTextMessage(bodyText, clientStatus) {
 
 async function findActiveLeadByPhone(agencyId, senderJid) {
   try {
-    const digits9 = (senderJid || '').replace(/\D/g, '').slice(-9)
+    if (!senderJid) return null
+    const digits9 = senderJid.replace(/\D/g, '').slice(-9)
     if (!digits9) return null
+    // Sender-shape gate: an @lid JID's digit prefix is NOT a phone number, so
+    // matching it against a phone-based sender_id by last 9 digits would
+    // cross-identity false-positive (e.g. `212658100534@s.whatsapp.net` and
+    // `7383658100534@lid` share `658100534`). Only match within the same
+    // JID family — either both @lid (same suffix → same person), or both
+    // phone-based (last 9 digits stable under country-code variation).
+    const isLid = /@lid$/i.test(senderJid)
     const { data: leads } = await supabaseAdmin
       .from('pending_demands')
       .select('id, sender_id, status, raw_payload, extracted_data, docs_completed_at, media_urls')
@@ -860,9 +884,12 @@ async function findActiveLeadByPhone(agencyId, senderJid) {
       .in('status', ['offer_sent', 'accepted'])
       .order('created_at', { ascending: false })
       .limit(20)
-    return (leads || []).find(l =>
-      (l.sender_id || '').replace(/\D/g, '').slice(-9) === digits9
-    ) || null
+    return (leads || []).find(l => {
+      const sid = l.sender_id || ''
+      const sidIsLid = /@lid$/i.test(sid)
+      if (sidIsLid !== isLid) return false
+      return sid.replace(/\D/g, '').slice(-9) === digits9
+    }) || null
   } catch (err) {
     console.error('[leads/findActiveLeadByPhone] error:', err.message)
     return null

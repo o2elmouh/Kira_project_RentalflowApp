@@ -133,10 +133,20 @@ export async function prepareSignableContract({ contractId, pdfBase64, userAgenc
 
   if (!tokenIsFresh) {
     // Generate a signed token: UUID + HMAC suffix for integrity verification.
-    // Even if someone guesses UUIDs, the HMAC prevents forgery.
+    // The HMAC adds entropy and guards against UUIDv4 implementation weaknesses.
+    // SECURITY: refuse to mint with the literal `'fallback-dev-key'` in
+    // production — that key is checked into source, so anyone could forge
+    // tokens. Dev environments can still use the fallback for local testing.
+    const hmacKey = process.env.SIGNING_TOKEN_SECRET || process.env.ENCRYPTION_KEY
+    if (!hmacKey && process.env.NODE_ENV === 'production') {
+      throw httpError(500, {
+        error: 'signing_secret_missing',
+        detail: 'SIGNING_TOKEN_SECRET (or ENCRYPTION_KEY) must be set in production',
+      })
+    }
+    const effectiveKey = hmacKey || 'fallback-dev-key'
     const uuid = crypto.randomUUID()
-    const hmacKey = process.env.SIGNING_TOKEN_SECRET || process.env.ENCRYPTION_KEY || 'fallback-dev-key'
-    const hmac = crypto.createHmac('sha256', hmacKey).update(uuid).digest('hex').slice(0, 16)
+    const hmac = crypto.createHmac('sha256', effectiveKey).update(uuid).digest('hex').slice(0, 16)
     token = `${uuid}-${hmac}`
     expiresAt = new Date(now + SIGN_TOKEN_TTL_HOURS * 3600_000).toISOString()
   }
@@ -152,6 +162,15 @@ export async function prepareSignableContract({ contractId, pdfBase64, userAgenc
     .eq('id', contractId)
   if (updErr) throw httpError(500, { error: 'db_update_failed', detail: updErr.message })
 
+  // SECURITY: in production we MUST know the public frontend URL — otherwise
+  // we'd send clients a link to `app.rentaflow.local` that resolves nowhere.
+  // Dev keeps the literal fallback so local agents can poke at the signing page.
+  if (!process.env.FRONTEND_URL && process.env.NODE_ENV === 'production') {
+    throw httpError(500, {
+      error: 'frontend_url_missing',
+      detail: 'FRONTEND_URL must be set in production so signing links resolve',
+    })
+  }
   const baseUrl = (process.env.FRONTEND_URL || 'https://app.rentaflow.local').replace(/\/$/, '')
   const signUrl = `${baseUrl}/?sign=${token}`
 
