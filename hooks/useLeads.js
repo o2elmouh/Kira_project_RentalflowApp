@@ -1,46 +1,48 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import { api } from '../lib/api.js'
 
 export function useLeads(activeTab, statusFilter) {
-  const [leads, setLeads]     = useState([])
-  const [alerts, setAlerts]   = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState(null)
+  const qc = useQueryClient()
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      if (activeTab === 'alertes') {
-        const data = await api.getAlerts()
-        setAlerts(data || [])
-      } else {
-        const data = await api.getLeads(statusFilter)
-        setLeads(data || [])
-      }
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [activeTab, statusFilter])
+  const isAlerts = activeTab === 'alertes'
 
-  useEffect(() => { load() }, [load])
+  const q = useQuery({
+    queryKey: isAlerts ? ['alerts'] : ['leads', statusFilter],
+    queryFn:  isAlerts ? api.getAlerts : () => api.getLeads(statusFilter),
+    staleTime: 15_000,
+  })
 
-  async function handleStatusChange(id, status) {
+  const invalidateAll = useCallback(async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['leads']  }),
+      qc.invalidateQueries({ queryKey: ['alerts'] }),
+    ])
+  }, [qc])
+
+  const handleStatusChange = useCallback(async (id, status) => {
     await api.updateLeadStatus(id, status)
-    load()
-  }
+    await invalidateAll()
+  }, [invalidateAll])
 
-  async function handleEscalate(id) {
+  const handleEscalate = useCallback(async (id) => {
     await api.escalateAlert(id)
-    load()
-  }
+    await invalidateAll()
+  }, [invalidateAll])
 
-  async function handleIgnoreAlert(id) {
+  const handleIgnoreAlert = useCallback(async (id) => {
     await api.updateLeadStatus(id, 'ignored')
-    load()
-  }
+    await invalidateAll()
+  }, [invalidateAll])
 
-  return { leads, alerts, loading, error, load, handleStatusChange, handleEscalate, handleIgnoreAlert }
+  return {
+    leads:   isAlerts ? [] : (q.data || []),
+    alerts:  isAlerts ? (q.data || []) : [],
+    loading: q.isLoading,
+    error:   q.error?.message || null,
+    load:    invalidateAll,        // keep old API name so pages/Basket.jsx doesn't break
+    handleStatusChange,
+    handleEscalate,
+    handleIgnoreAlert,
+  }
 }
