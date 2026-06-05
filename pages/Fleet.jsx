@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlusCircle, Trash2, Edit2, AlertTriangle } from 'lucide-react'
-import { getFleet, saveVehicle, deleteVehicle } from '../lib/db'
+import { saveVehicle, deleteVehicle } from '../lib/db'
 import { getDefaultConfigForMake as getFleetConfigForMake } from '../lib/fleetConfigDefaults'
+import { useFleet } from '../src/hooks/useFleet'
 
 import { CAR_CATALOGUE, displayPlate } from './fleet/constants'
 import VehicleDetail from './fleet/VehicleDetail'
@@ -58,25 +59,13 @@ function autoFillMaintenance(form) {
 // ── Main component ────────────────────────────────────────
 export default function Fleet() {
   const { t } = useTranslation('fleet')
-  const [fleet,        setFleet]       = useState([])
-  const [loading,      setLoading]     = useState(true)
+  const { data: fleet = [], isLoading: loading, invalidate: invalidateFleet } = useFleet()
   const [editing,      setEditing]     = useState(null)
   const [detail,       setDetail]      = useState(null)  // vehicle being viewed
   const [form,         setForm]        = useState(EMPTY)
   const [configBanner, setConfigBanner] = useState(null)
   const [editingHadPurchaseDate, setEditingHadPurchaseDate] = useState(false)
   const [fleetView,    setFleetView]   = useState('grid')  // 'grid' only for v2
-
-  const refresh = async (currentDetail) => {
-    try {
-      const f = await getFleet()
-      setFleet(f)
-      const d = currentDetail !== undefined ? currentDetail : detail
-      if (d) setDetail(f.find(v => v.id === d.id) || null)
-    } catch (e) { console.error(e) }
-  }
-
-  useEffect(() => { refresh().finally(() => setLoading(false)) }, [])
 
   const openAdd  = () => { setForm(EMPTY); setEditing('new'); setDetail(null); setConfigBanner(null); setEditingHadPurchaseDate(false) }
   const openEdit = (v) => {
@@ -105,7 +94,7 @@ export default function Fleet() {
       await saveVehicle(toSave)
       setEditing(null)
       setConfigBanner(null)
-      await refresh()
+      await invalidateFleet()
     } catch (e) { console.error(e) }
   }
 
@@ -114,7 +103,7 @@ export default function Fleet() {
       try {
         await deleteVehicle(id)
         setDetail(null)
-        await refresh(null)
+        await invalidateFleet()
       } catch (e) { console.error(e) }
     }
   }
@@ -122,7 +111,7 @@ export default function Fleet() {
   const saveDeadlines = async (updated) => {
     try {
       await saveVehicle(updated)
-      await refresh()
+      await invalidateFleet()
     } catch (e) { console.error(e) }
   }
 
