@@ -1,8 +1,7 @@
-﻿import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+﻿import { useTranslation } from 'react-i18next'
 import { LayoutDashboard, PlusCircle, Car, Users, FolderOpen, CalendarDays, Settings, LogOut, RotateCcw, Inbox, Globe, Shield, ClipboardList } from 'lucide-react'
 import LanguageSelector from './LanguageSelector'
-import { api } from '../lib/api.js'
+import { useSidebarCounts } from '../src/hooks/useSidebarCounts'
 
 const NAV_IDS = [
   { id: 'dashboard',         key: 'dashboard',  icon: LayoutDashboard },
@@ -28,39 +27,11 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
   const visibleNav = NAV_IDS.filter(({ id }) => isAdmin || !ADMIN_ONLY_PAGES.includes(id))
 
   // â”€â”€ Unread Basket count â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // Counts every pending row the Corbeille page would show (leads + alerts).
-  // Uses the same /leads backend endpoints the Basket page uses so the badge
-  // always matches what the agent sees â€” no RLS surprises from going direct
-  // to Supabase from the anon client.
-  // Polls every 1s so new arrivals surface within a second.
-  const agencyId = profile?.agency_id
-  const [basketUnread, setBasketUnread] = useState(0)
-
-  useEffect(() => {
-    if (!agencyId) return
-    let cancelled = false
-
-    const refresh = async () => {
-      try {
-        const [leads, alerts] = await Promise.all([
-          api.getLeads('pending'),
-          api.getAlerts(),
-        ])
-        if (cancelled) return
-        const pendingAlerts = (alerts || []).filter(a => a.status === 'pending').length
-        setBasketUnread((leads?.length || 0) + pendingAlerts)
-      } catch (err) {
-        if (!cancelled) console.error('[Sidebar] basket count fetch failed:', err)
-      }
-    }
-    refresh()
-    const pollId = setInterval(refresh, 1000)
-
-    return () => {
-      cancelled = true
-      clearInterval(pollId)
-    }
-  }, [agencyId])
+  // TanStack Query with 10s staleTime + refetchInterval replaces the old
+  // setInterval(1s) which generated ~3600 req/hr/session. 10× reduction.
+  // Mutations elsewhere call queryClient.invalidateQueries(['leads'|'alerts'])
+  // which surfaces here immediately.
+  const { total: basketUnread } = useSidebarCounts()
 
   return (
     <aside className="sidebar">
