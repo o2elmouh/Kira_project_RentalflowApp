@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import { FileText } from 'lucide-react'
-import {
-  getContracts,
-  getFleet,
-  getAgency,
-} from '../lib/db'
+import { useContracts } from '../src/hooks/useContracts'
+import { useClients }   from '../src/hooks/useClients'
+import { useFleet }     from '../src/hooks/useFleet'
+import { useAgency }    from '../src/hooks/useAgency'
 import { generateContract } from '../utils/pdf'
 import { api } from '../lib/api'
 import { daysBetween, fmtDate, statusBadgeClass, statusLabel } from '../utils/contractFormatters'
@@ -20,11 +19,11 @@ import ProlongationBanner from '../components/ProlongationBanner'
 
 export default function Contracts({ onRestitution }) {
   const { t } = useTranslation('contracts')
-  const [contracts, setContracts] = useState([])
-  const [clients, setClients] = useState([])
-  const [fleet, setFleet] = useState([])
-  const [agency, setAgency] = useState({})
-  const [loading, setLoading] = useState(true)
+  const { data: contracts = [], isLoading: contractsLoading, invalidate: invalidateContracts } = useContracts()
+  const { data: clients   = [] } = useClients()
+  const { data: fleet     = [] } = useFleet()
+  const { data: agency    = {} } = useAgency()
+  const loading = contractsLoading
   const [selected, setSelected] = useState(null)
   const [showProlonger, setShowProlonger] = useState(false)
   const [signingUrl, setSigningUrl] = useState(null)   // string | null
@@ -36,26 +35,17 @@ export default function Contracts({ onRestitution }) {
   const [prolongLeadsByContract, setProlongLeadsByContract] = useState({})
 
   useEffect(() => {
+    if (!contracts.length) return
     let cancelled = false
-    setLoading(true)
-    Promise.all([getContracts(), api.getClients(), getFleet(), getAgency()])
-      .then(async ([ct, cl, fl, ag]) => {
-        if (cancelled) return
-        setContracts(ct)
-        setClients(cl)
-        setFleet(fl)
-        setAgency(ag)
-        setLoading(false)
-        // Fetch pending prolongation leads grouped by contract id
-        const ids = ct.map(c => c.id)
-        if (!ids.length) return
-        const { data: leads } = await supabase
-          .from('pending_demands')
-          .select('id, prolongation_target_contract_id, extracted_data, created_at')
-          .eq('status', 'pending')
-          .eq('classification', 'prolongation')
-          .in('prolongation_target_contract_id', ids)
-          .order('created_at', { ascending: false })
+    const ids = contracts.map(c => c.id)
+    supabase
+      .from('pending_demands')
+      .select('id, prolongation_target_contract_id, extracted_data, created_at')
+      .eq('status', 'pending')
+      .eq('classification', 'prolongation')
+      .in('prolongation_target_contract_id', ids)
+      .order('created_at', { ascending: false })
+      .then(({ data: leads }) => {
         if (cancelled) return
         const byContract = {}
         for (const l of (leads || [])) {
@@ -66,12 +56,8 @@ export default function Contracts({ onRestitution }) {
         }
         setProlongLeadsByContract(byContract)
       })
-      .catch(err => {
-        console.error('[Contracts] load error', err)
-        if (!cancelled) setLoading(false)
-      })
     return () => { cancelled = true }
-  }, [])
+  }, [contracts])
 
   const getClient = (id) => clients.find(c => c.id === id) || {}
   const getVehicle = (id) => fleet.find(v => v.id === id) || {}
@@ -270,8 +256,7 @@ export default function Contracts({ onRestitution }) {
           onCloseProlonger={() => setShowProlonger(false)}
           onProlongationConfirmed={async () => {
             await acceptProlongationLeadsForContract(panelContract.id, prolongLeadsByContract, api)
-            const refreshed = await getContracts()
-            setContracts(refreshed)
+            await invalidateContracts()
             setProlongLeadsByContract(prev => {
               const next = { ...prev }
               delete next[panelContract.id]
