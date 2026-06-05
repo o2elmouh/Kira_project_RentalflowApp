@@ -1,7 +1,17 @@
-﻿import { useTranslation } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import { LayoutDashboard, PlusCircle, Car, Users, FolderOpen, CalendarDays, Settings, LogOut, RotateCcw, Inbox, Globe, Shield, ClipboardList } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import LanguageSelector from './LanguageSelector'
 import { useSidebarCounts } from '../src/hooks/useSidebarCounts'
+import { api } from '../lib/api.js'
+import { getFleet, getContracts } from '../lib/db'
+
+const PREFETCH = {
+  clients:   { key: ['clients'],          fn: api.getClients,                stale: 60_000 },
+  fleet:     { key: ['fleet'],            fn: getFleet,                      stale: 60_000 },
+  contracts: { key: ['contracts'],        fn: getContracts,                  stale: 30_000 },
+  basket:    { key: ['leads', 'pending'], fn: () => api.getLeads('pending'), stale: 15_000 },
+}
 
 const NAV_IDS = [
   { id: 'dashboard',         key: 'dashboard',  icon: LayoutDashboard },
@@ -33,6 +43,17 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
   // which surfaces here immediately.
   const { total: basketUnread } = useSidebarCounts()
 
+  // -- Hover-to-prefetch --------------------------------------------------
+  // Warms the TanStack Query cache on nav-link hover so the page render
+  // feels instant. Only the 4 data-heavy pages are in PREFETCH; others
+  // are intentional no-ops (cfg is undefined -> early return).
+  const qc = useQueryClient()
+  const prefetch = (page) => {
+    const cfg = PREFETCH[page]
+    if (!cfg) return
+    qc.prefetchQuery({ queryKey: cfg.key, queryFn: cfg.fn, staleTime: cfg.stale })
+  }
+
   return (
     <aside className="sidebar">
       {/* Logo */}
@@ -51,6 +72,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
               key={id}
               className={`nav-item${isActive ? ' active' : ''}`}
               onClick={() => onNav(navTarget)}
+              onMouseEnter={() => prefetch(id)}
             >
               <Icon size={15} />
               <span>{t(`nav.${key}`)}</span>
