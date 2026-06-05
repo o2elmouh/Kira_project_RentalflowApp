@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import { Download, Edit2 } from 'lucide-react'
-import { getContracts, getAgency } from '../lib/db'
 import { api } from '../lib/api'
+import { useClients }   from '../src/hooks/useClients'
+import { useContracts } from '../src/hooks/useContracts'
+import { useAgency }    from '../src/hooks/useAgency'
 
 // ─────────────────────────────────────────────────────────
 // Helpers
@@ -35,34 +37,15 @@ function flagBadgeStyle(category) {
 
 export default function Clients() {
   const { t } = useTranslation('clients')
-  const [clients, setClients] = useState([])
-  const [contracts, setContracts] = useState([])
-  const [agency, setAgency] = useState({})
-  const [loading, setLoading] = useState(true)
+  const { data: clients = [], isLoading: clientsLoading, invalidate: invalidateClients } = useClients()
+  const { data: contracts = [] } = useContracts()
+  const { data: agency = {} } = useAgency()
+  const loading = clientsLoading
   const [editId, setEditId] = useState(null)
   const [editData, setEditData] = useState({})
   const [flagId, setFlagId] = useState(null)
   const [flagData, setFlagData] = useState({ category: 'Impayé', note: '' })
   const flagRef = useRef(null)
-
-  // Load data
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    Promise.all([api.getClients(), getContracts(), getAgency()])
-      .then(([c, ct, ag]) => {
-        if (cancelled) return
-        setClients(c)
-        setContracts(ct)
-        setAgency(ag)
-        setLoading(false)
-      })
-      .catch(err => {
-        console.error('[Clients] load error', err)
-        if (!cancelled) setLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [])
 
   // Close flag dropdown on outside click
   useEffect(() => {
@@ -74,16 +57,6 @@ export default function Clients() {
     return () => document.removeEventListener('mousedown', handler)
   }, [flagId])
 
-  const reload = async () => {
-    try {
-      const [c, ct] = await Promise.all([api.getClients(), getContracts()])
-      setClients(c)
-      setContracts(ct)
-    } catch (err) {
-      console.error('[Clients] reload', err)
-    }
-  }
-
   const startEdit = (c) => {
     setEditId(c.id)
     setEditData({ phone: c.phone || '', email: c.email || '' })
@@ -94,7 +67,7 @@ export default function Clients() {
     try {
       await api.saveClient({ ...c, phone: editData.phone, email: editData.email })
       setEditId(null)
-      reload()
+      await invalidateClients()
     } catch (err) {
       console.error('[Clients] saveEdit', err)
     }
@@ -110,7 +83,7 @@ export default function Clients() {
     try {
       await api.saveClient({ ...c, flag: { category: flagData.category, note: flagData.note } })
       setFlagId(null)
-      reload()
+      await invalidateClients()
     } catch (err) {
       console.error('[Clients] saveFlag', err)
     }
@@ -120,7 +93,7 @@ export default function Clients() {
     try {
       await api.saveClient({ ...c, flag: null })
       setFlagId(null)
-      reload()
+      await invalidateClients()
     } catch (err) {
       console.error('[Clients] removeFlag', err)
     }
