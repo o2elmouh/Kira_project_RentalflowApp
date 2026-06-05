@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "start": "cd server && node index.js",
     "test": "vitest run",
+    "schema:check": "node scripts/schemaCheck.js",
     "test:watch": "vitest",
     "prepare": "node scripts/install-git-hooks.mjs",
     "graphify:update": "graphify --update .",
