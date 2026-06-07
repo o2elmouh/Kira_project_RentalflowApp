@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useFleet }     from '../src/hooks/useFleet'
+import { useClients }   from '../src/hooks/useClients'
+import { useContracts } from '../src/hooks/useContracts'
+import { useInvoices }  from '../src/hooks/useInvoices'
 import { useTranslation } from 'react-i18next'
 import { Car, Users, FileText, Receipt, TrendingUp, PlusCircle, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
-import { getFleet, getContracts, getInvoices } from '../lib/db'
+// v1.15.2: getFleet/getContracts/getInvoices imports removed — the hooks below
+// wrap them. api stays for api.getAlerts(), which doesn't have a hook yet.
 import { api } from '../lib/api.js'
 
 function inMonth(dateStr, year, month) {
@@ -88,41 +93,18 @@ export default function Dashboard({ onNav }) {
   const [year,  setYear]  = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
 
-  const [fleet,     setFleet]     = useState([])
-  const [clients,   setClients]   = useState([])
-  const [contracts, setContracts] = useState([])
-  const [invoices,  setInvoices]  = useState([])
-  const [loading,   setLoading]   = useState(true)
-  const [alertCount, setAlertCount] = useState(0)
+  // v1.15.2: was useEffect+Promise.all on every mount. Now shares the same
+  // TanStack Query caches as Clients/Fleet/Contracts pages so tab navigation
+  // is instant when data is already loaded elsewhere.
+  const { data: fleet     = [], isLoading: fleetLoading }     = useFleet()
+  const { data: clients   = [] }                              = useClients()
+  const { data: contracts = [], isLoading: contractsLoading } = useContracts()
+  const { data: invoices  = [], isLoading: invoicesLoading }  = useInvoices()
+  const loading = fleetLoading || contractsLoading || invoicesLoading
 
+  const [alertCount, setAlertCount] = useState(0)
   useEffect(() => {
     api.getAlerts().then(data => setAlertCount(data.length)).catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-    async function load() {
-      try {
-        const [f, cl, co, inv] = await Promise.all([
-          getFleet(),
-          api.getClients(),
-          getContracts(),
-          getInvoices(),
-        ])
-        if (!cancelled) {
-          setFleet(f)
-          setClients(cl)
-          setContracts(co)
-          setInvoices(inv)
-          setLoading(false)
-        }
-      } catch (err) {
-        console.error('[Dashboard] load error', err)
-        if (!cancelled) setLoading(false)
-      }
-    }
-    load()
-    return () => { cancelled = true }
   }, [])
 
   const available = fleet.filter(v => v.status === 'available').length

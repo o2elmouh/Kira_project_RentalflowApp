@@ -77,6 +77,7 @@ const TABLE_COLUMNS = {
   invoices: [
     'id', 'agency_id', 'contract_id', 'client_id',
     'invoice_number', 'contract_number',
+    'client_name', 'vehicle_name',
     'total_ht', 'tva', 'total_ttc',
     'status', 'created_at',
   ],

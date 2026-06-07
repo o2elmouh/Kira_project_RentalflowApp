@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getContracts, getFleet } from '../lib/db.js'
+import { useFleet } from '../src/hooks/useFleet'
+import { useContracts } from '../src/hooks/useContracts'
 
 function startOf(date, zoom) {
   const d = new Date(date)
@@ -50,18 +51,14 @@ const NAV_BTN = { width:30, height:30, borderRadius:8, border:'1px solid var(--b
 
 export default function Calendar() {
   const { t } = useTranslation("common")
-  const [contracts, setContracts] = useState([])
-  const [fleet, setFleet]         = useState([])
-  const [loading, setLoading]     = useState(true)
+  // v1.15.2: was useEffect+Promise.all on every mount. Now uses the same
+  // TanStack Query hooks as Fleet/Contracts pages so cache hits are shared.
+  const { data: contracts = [], isLoading: contractsLoading } = useContracts()
+  const { data: fleet     = [], isLoading: fleetLoading }     = useFleet()
+  const loading = contractsLoading || fleetLoading
   const [zoom, setZoom]           = useState('month')
   const [anchor, setAnchor]       = useState(() => startOf(new Date(), 'month'))
   const [vehicle, setVehicle]     = useState('all')
-
-  useEffect(() => {
-    Promise.all([getContracts(), getFleet()])
-      .then(([c, f]) => { setContracts(c || []); setFleet(f || []) })
-      .finally(() => setLoading(false))
-  }, [])
 
   const rows  = useMemo(() => vehicle === 'all' ? fleet : fleet.filter(v => v.id === vehicle), [fleet, vehicle])
   const days  = useMemo(() => getDays(anchor, zoom), [anchor, zoom])
