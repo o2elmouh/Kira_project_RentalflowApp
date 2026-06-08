@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   BarChart2, BookOpen, List, Shield, Building2,
 } from 'lucide-react'
-import { computeAgencyPayout } from '../utils/accounting.js'
+import { computeAgencyPayout, backfillJournalForClosedContracts } from '../utils/accounting.js'
 import {
   card, tableStyle, th, td, inputStyle,
   btnPrimary, fmt, fmtDate,
@@ -21,6 +21,8 @@ function TabBilan() {
   const [from, setFrom] = useState(`${today.getFullYear()}-01-01`)
   const [to,   setTo]   = useState(today.toISOString().slice(0, 10))
   const [result, setResult] = useState(null)
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfillMsg, setBackfillMsg] = useState(null)
 
   const compute = useCallback(async () => {
     const r = await computeAgencyPayout({ startDate: from, endDate: to })
@@ -28,6 +30,24 @@ function TabBilan() {
   }, [from, to])
 
   useEffect(() => { compute() }, [compute])
+
+  const handleBackfill = async () => {
+    if (backfilling) return
+    if (!window.confirm("Régénérer les écritures comptables pour tous les contrats clôturés sans écriture ?\n\nCette opération est idempotente — les contrats déjà comptabilisés sont ignorés.")) return
+    setBackfilling(true)
+    setBackfillMsg(null)
+    try {
+      const r = await backfillJournalForClosedContracts()
+      const errSummary = r.errors.length > 0 ? ` — ${r.errors.length} erreur(s)` : ''
+      setBackfillMsg(`✓ ${r.created} écriture(s) créée(s), ${r.skipped} ignorée(s)${errSummary}`)
+      if (r.errors.length > 0) console.warn('[Backfill] errors:', r.errors)
+      compute()
+    } catch (err) {
+      setBackfillMsg(`✗ ${err.message}`)
+    } finally {
+      setBackfilling(false)
+    }
+  }
 
   const handleGenerate = () => {
     if (!result) return
@@ -63,7 +83,26 @@ function TabBilan() {
           <input type="date" style={{ ...inputStyle, width: 160 }} value={to} onChange={e => setTo(e.target.value)} />
         </div>
         <button style={btnPrimary} onClick={handleGenerate}>Générer rapport</button>
+        <button
+          style={{ ...btnPrimary, background: 'transparent', color: 'var(--accent)', border: '1px solid var(--accent)' }}
+          onClick={handleBackfill}
+          disabled={backfilling}
+          title="Crée les écritures comptables pour tous les contrats clôturés qui n'en ont pas encore"
+        >
+          {backfilling ? 'Régénération…' : 'Régénérer écritures'}
+        </button>
       </div>
+
+      {backfillMsg && (
+        <div style={{
+          padding: '10px 14px', borderRadius: 8, marginBottom: 16,
+          background: backfillMsg.startsWith('✓') ? 'rgba(74, 222, 128, 0.1)' : 'rgba(248, 113, 113, 0.1)',
+          color: backfillMsg.startsWith('✓') ? '#4ade80' : '#f87171',
+          fontSize: 13,
+        }}>
+          {backfillMsg}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <div style={card}>

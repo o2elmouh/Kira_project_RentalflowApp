@@ -3,6 +3,7 @@ import {
   getContracts,
   getContract,
   getJournalEntries,
+  getTransactions,
   saveTransaction,
   saveJournalEntries,
   saveDeposit,
@@ -55,37 +56,64 @@ export async function postTransaction({ date, description, type, contractId, inv
 }
 
 // ── Generate rental invoice journal entries ───────────────
+// The DB schema only has `total_amount` (→ totalTTC) and lumped `extra_fees`
+// — no separate totalHT / tva / extraKmFee / fuelFee / damageFee columns.
+// We derive HT and TVA at the Moroccan rate (20%) from TTC when the
+// contract doesn't carry the values explicitly. Anything in extra_fees is
+// treated as a restitution fee and credited to 3020.
+const MOROCCO_TVA_RATE = 0.20
+
 export async function generateRentalInvoice(contractId) {
   const contract = await getContract(contractId)
   if (!contract) throw new Error('Contrat introuvable')
 
-  const totalHT  = Number(contract.totalHT)  || 0
-  const tva      = Number(contract.tva)       || 0
-  const totalTTC = Number(contract.totalTTC)  || 0
+  let totalTTC = Number(contract.totalTTC ?? contract.total_amount ?? 0)
+  let totalHT  = Number(contract.totalHT  ?? contract.total_ht     ?? 0)
+  let tva      = Number(contract.tva       ?? 0)
 
-  const extraKmFee  = Number(contract.extraKmFee)  || 0
-  const fuelFee     = Number(contract.fuelFee)      || 0
-  const damageFee   = Number(contract.damageFee)    || 0
+  // Fill in whichever pieces the contract is missing using the 20% rate.
+  if (totalTTC <= 0 && totalHT > 0) {
+    tva      = tva || totalHT * MOROCCO_TVA_RATE
+    totalTTC = totalHT + tva
+  } else if (totalTTC > 0 && totalHT <= 0) {
+    totalHT = totalTTC / (1 + MOROCCO_TVA_RATE)
+    tva     = tva || (totalTTC - totalHT)
+  } else if (totalTTC > 0 && totalHT > 0 && tva <= 0) {
+    tva = totalTTC - totalHT
+  }
 
-  const restitutionFee = fuelFee + damageFee
-  const baseCA         = totalHT - extraKmFee - restitutionFee
+  if (totalTTC <= 0) {
+    throw new Error(`Contrat ${contract.contractNumber || contractId} sans montant — facture non émise`)
+  }
+
+  // Web split fields (extraKmFee / fuelFee / damageFee) if present, else
+  // fall back to lumped `extra_fees` from the DB.
+  const extraKmFee     = Number(contract.extraKmFee  ?? 0)
+  const fuelFee        = Number(contract.fuelFee     ?? 0)
+  const damageFee      = Number(contract.damageFee   ?? 0)
+  const lumpedExtras   = Number(contract.extra_fees  ?? contract.extraFees ?? 0)
+  const restitutionFee = (extraKmFee + fuelFee + damageFee) > 0
+    ? fuelFee + damageFee
+    : lumpedExtras
+
+  const baseCA = Math.max(0, totalHT - extraKmFee - restitutionFee)
 
   const entries = []
 
   // Debit 1100 — Créances clients (full TTC)
-  entries.push({ accountCode: '1100', debit: totalTTC, credit: 0, description: `Créance — ${contract.clientName}` })
+  entries.push({ accountCode: '1100', debit: totalTTC, credit: 0, description: `Créance — ${contract.clientName || ''}` })
 
   // Credit 3000 — CA Location (base HT)
   if (baseCA > 0) {
-    entries.push({ accountCode: '3000', debit: 0, credit: baseCA, description: `CA Location — ${contract.contractNumber}` })
+    entries.push({ accountCode: '3000', debit: 0, credit: baseCA, description: `CA Location — ${contract.contractNumber || ''}` })
   }
 
-  // Credit 3030 — Extra KM
+  // Credit 3030 — Extra KM (only if split-fees shape was used)
   if (extraKmFee > 0) {
     entries.push({ accountCode: '3030', debit: 0, credit: extraKmFee, description: 'Frais km supplémentaires' })
   }
 
-  // Credit 3020 — Restitution fees
+  // Credit 3020 — Restitution fees (split fuel+damage, or the lumped extras)
   if (restitutionFee > 0) {
     entries.push({ accountCode: '3020', debit: 0, credit: restitutionFee, description: 'Frais de restitution' })
   }
@@ -96,8 +124,8 @@ export async function generateRentalInvoice(contractId) {
   }
 
   return postTransaction({
-    date: contract.endDate || new Date().toISOString().slice(0, 10),
-    description: `Facture location — ${contract.contractNumber} — ${contract.clientName}`,
+    date: contract.endDate || contract.return_date || contract.actual_return_date || new Date().toISOString().slice(0, 10),
+    description: `Facture location — ${contract.contractNumber || ''} — ${contract.clientName || ''}`,
     type: 'invoice',
     contractId,
     entries,
@@ -234,6 +262,39 @@ export async function computeAgencyPayout({ startDate, endDate } = {}) {
     netPayout,
     breakdown: { byAccount },
   }
+}
+
+// ── Backfill journal entries for historical closed contracts ──
+// One-shot maintenance helper. Posts a rental invoice for every contract
+// whose status='closed' AND that has no transaction row yet. Idempotent:
+// re-running it after a partial run skips anything already posted.
+//
+// Returns { created, skipped, errors: [{ contractId, message }] }.
+export async function backfillJournalForClosedContracts() {
+  const [contracts, transactions] = await Promise.all([
+    getContracts(),
+    getTransactions(),
+  ])
+
+  const alreadyPosted = new Set(
+    transactions
+      .filter(t => t.contractId && (t.type === 'invoice' || t.type === 'manual'))
+      .map(t => t.contractId)
+  )
+
+  const closed = contracts.filter(c => c.status === 'closed')
+
+  const result = { created: 0, skipped: 0, errors: [] }
+  for (const c of closed) {
+    if (alreadyPosted.has(c.id)) { result.skipped++; continue }
+    try {
+      await generateRentalInvoice(c.id)
+      result.created++
+    } catch (err) {
+      result.errors.push({ contractId: c.id, contractNumber: c.contractNumber, message: err.message })
+    }
+  }
+  return result
 }
 
 // ── P&L summary ───────────────────────────────────────────

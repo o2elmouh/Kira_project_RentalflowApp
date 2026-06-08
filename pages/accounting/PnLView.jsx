@@ -4,10 +4,18 @@ import { card, fmt } from './accountingStyles.js'
 
 export default function PnLView({ contracts, entries, accounts }) {
   const pl = useMemo(() => {
-    // Revenue from closed contracts (totalHT)
+    // Revenue from closed contracts. The schema stores `total_amount` (→
+    // `totalTTC` via contractFromDb) but NOT `total_ht`, so we derive HT
+    // from TTC at the Moroccan 20% TVA rate. Per-line fallbacks honor any
+    // explicit totalHT if it ever appears on the contract.
     const rentalIncome = contracts
       .filter(c => c.status === 'closed')
-      .reduce((s, c) => s + (Number(c.totalHT) || 0), 0)
+      .reduce((s, c) => {
+        const explicitHT = Number(c.totalHT) || 0
+        if (explicitHT > 0) return s + explicitHT
+        const ttc = Number(c.totalTTC ?? c.total_amount) || 0
+        return s + (ttc > 0 ? ttc / 1.20 : 0)
+      }, 0)
 
     // Expenses from journal entries
     let maintenance = 0, insurance = 0, salaries = 0, other = 0

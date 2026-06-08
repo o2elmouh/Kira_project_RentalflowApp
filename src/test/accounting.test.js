@@ -7,6 +7,7 @@ vi.mock('../../lib/db.js', () => ({
   getContracts:          vi.fn(),
   getContract:           vi.fn(),
   getJournalEntries:     vi.fn(),
+  getTransactions:       vi.fn(),
   saveTransaction:       vi.fn(),
   saveJournalEntries:    vi.fn(),
   saveDeposit:           vi.fn(),
@@ -16,8 +17,10 @@ vi.mock('../../lib/db.js', () => ({
 
 import {
   getAccounts,
+  getContracts,
   getContract,
   getJournalEntries,
+  getTransactions,
   saveTransaction,
   saveJournalEntries,
   saveDeposit,
@@ -31,6 +34,7 @@ import {
   releaseDeposit,
   computeAgencyPayout,
   computePL,
+  backfillJournalForClosedContracts,
 } from '../../utils/accounting.js'
 
 // ── Default chart of accounts used by most tests ──────────────
@@ -319,5 +323,126 @@ describe('computePL', () => {
     ])
     const pl = await computePL({})
     expect(pl).toEqual({ revenue: 1000, expenses: 300, profit: 700 })
+  })
+})
+
+// ══════════════════════════════════════════════════════════════
+// generateRentalInvoice — derivation paths (v1.16.1 fix)
+// ══════════════════════════════════════════════════════════════
+describe('generateRentalInvoice — derivation from total_amount', () => {
+  it('derives HT and TVA from totalTTC at 20% when only TTC is set', async () => {
+    getContract.mockResolvedValue({
+      id: 'c-derive', contractNumber: 'C-D', clientName: 'X',
+      totalTTC: 1200, // ← only TTC, no totalHT / no tva
+      endDate: '2026-06-08',
+    })
+    saveTransaction.mockResolvedValue({ id: 'tx-d', reference: 'r', date: '2026-06-08' })
+
+    await generateRentalInvoice('c-derive')
+
+    const lines = saveJournalEntries.mock.calls[0][0]
+    const byCode = Object.fromEntries(lines.map(l => [l.accountCode, l]))
+    expect(byCode['1100'].debit).toBe(1200)
+    expect(byCode['3000'].credit).toBeCloseTo(1000, 2)
+    expect(byCode['2100'].credit).toBeCloseTo(200, 2)
+
+    const debits  = lines.reduce((s, l) => s + (l.debit  || 0), 0)
+    const credits = lines.reduce((s, l) => s + (l.credit || 0), 0)
+    expect(debits).toBeCloseTo(credits, 2)
+  })
+
+  it('reads total_amount when totalTTC is missing (DB snake_case shape)', async () => {
+    getContract.mockResolvedValue({
+      id: 'c-snake', contractNumber: 'C-S', clientName: 'Y',
+      total_amount: 600, // ← only the raw DB column
+      return_date: '2026-06-08',
+    })
+    saveTransaction.mockResolvedValue({ id: 'tx-s', reference: 'r', date: '2026-06-08' })
+
+    await generateRentalInvoice('c-snake')
+
+    const lines = saveJournalEntries.mock.calls[0][0]
+    const byCode = Object.fromEntries(lines.map(l => [l.accountCode, l]))
+    expect(byCode['1100'].debit).toBe(600)
+    expect(byCode['3000'].credit).toBeCloseTo(500, 2)
+    expect(byCode['2100'].credit).toBeCloseTo(100, 2)
+  })
+
+  it('routes the lumped extra_fees DB column to a 3020 restitution-fee line', async () => {
+    getContract.mockResolvedValue({
+      id: 'c-extra', contractNumber: 'C-E', clientName: 'Z',
+      totalTTC: 1200,
+      extra_fees: 300, // ← lumped restitution extras
+      endDate: '2026-06-08',
+    })
+    saveTransaction.mockResolvedValue({ id: 'tx-e', reference: 'r', date: '2026-06-08' })
+
+    await generateRentalInvoice('c-extra')
+
+    const lines = saveJournalEntries.mock.calls[0][0]
+    const byCode = Object.fromEntries(lines.map(l => [l.accountCode, l]))
+    expect(byCode['1100'].debit).toBe(1200)
+    expect(byCode['3020'].credit).toBe(300)
+    expect(byCode['3000'].credit).toBeCloseTo(1000 - 300, 2) // baseCA = HT - extras
+    expect(byCode['2100'].credit).toBeCloseTo(200, 2)
+  })
+
+  it('refuses to post when the contract has no amount at all', async () => {
+    getContract.mockResolvedValue({
+      id: 'c-empty', contractNumber: 'C-0', clientName: 'Q',
+      totalTTC: 0,
+    })
+    await expect(generateRentalInvoice('c-empty')).rejects.toThrow(/sans montant/)
+    expect(saveTransaction).not.toHaveBeenCalled()
+  })
+})
+
+// ══════════════════════════════════════════════════════════════
+// backfillJournalForClosedContracts
+// ══════════════════════════════════════════════════════════════
+describe('backfillJournalForClosedContracts', () => {
+  it('only generates invoices for closed contracts that have no transaction', async () => {
+    getContracts.mockResolvedValue([
+      { id: 'c-1', status: 'closed', contractNumber: 'C1', totalTTC: 1200 },
+      { id: 'c-2', status: 'closed', contractNumber: 'C2', totalTTC: 600  },
+      { id: 'c-3', status: 'active', contractNumber: 'C3', totalTTC: 999  }, // ignored — not closed
+    ])
+    getTransactions.mockResolvedValue([
+      { id: 't-old', type: 'invoice', contractId: 'c-1' }, // c-1 already posted
+    ])
+    getContract.mockImplementation(async (id) =>
+      ({ id, contractNumber: `C${id.slice(-1)}`, clientName: 'X', totalTTC: id === 'c-2' ? 600 : 1200 })
+    )
+    saveTransaction.mockResolvedValue({ id: 'tx-new', reference: 'r', date: '2026-06-08' })
+
+    const r = await backfillJournalForClosedContracts()
+
+    expect(r.created).toBe(1)
+    expect(r.skipped).toBe(1)
+    expect(r.errors).toEqual([])
+    // c-2 invoice posted exactly once; c-1 left alone
+    expect(saveTransaction).toHaveBeenCalledTimes(1)
+  })
+
+  it('captures per-contract errors without aborting the loop', async () => {
+    getContracts.mockResolvedValue([
+      { id: 'c-good', status: 'closed', contractNumber: 'GOOD', totalTTC: 1200 },
+      { id: 'c-bad',  status: 'closed', contractNumber: 'BAD',  totalTTC: 0    },
+    ])
+    getTransactions.mockResolvedValue([])
+    getContract.mockImplementation(async (id) =>
+      id === 'c-bad'
+        ? { id, contractNumber: 'BAD',  totalTTC: 0    }
+        : { id, contractNumber: 'GOOD', totalTTC: 1200 }
+    )
+    saveTransaction.mockResolvedValue({ id: 'tx-g', reference: 'r', date: '2026-06-08' })
+
+    const r = await backfillJournalForClosedContracts()
+
+    expect(r.created).toBe(1)
+    expect(r.skipped).toBe(0)
+    expect(r.errors).toHaveLength(1)
+    expect(r.errors[0].contractNumber).toBe('BAD')
+    expect(r.errors[0].message).toMatch(/sans montant/)
   })
 })
