@@ -2,18 +2,16 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Contracts from './Contracts'
 import Invoices from './Invoices'
-import Accounting from './Accounting'
 
 const TABS = [
   { id: 'contracts',  key: 'nav.documentsContracts' },
   { id: 'invoices',   key: 'nav.documentsInvoices' },
-  { id: 'accounting', key: 'nav.documentsAccounting', adminOnly: true },
 ]
 
-export default function Documents({ onRestitution, initialTab = 'contracts', isAdmin = true }) {
+export default function Documents({ onRestitution, initialTab = 'contracts' }) {
   const { t } = useTranslation('common')
   const [active, setActive] = useState(initialTab)
-  const tabs = TABS.filter(tab => !tab.adminOnly || isAdmin)
+  const tabs = TABS
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -34,7 +32,6 @@ export default function Documents({ onRestitution, initialTab = 'contracts', isA
       <div style={{ flex: 1, overflow: 'auto' }}>
         {active === 'contracts'  && <Contracts onRestitution={onRestitution} />}
         {active === 'invoices'   && <Invoices />}
-        {active === 'accounting' && isAdmin && <Accounting />}
       </div>
     </div>
   )

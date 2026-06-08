@@ -113,6 +113,29 @@ const TABLE_COLUMNS = {
   whatsapp_sessions: [
     'agency_id', 'connected_at', 'phone',
   ],
+  // Accounting (Comptabilité) — columns added in 20260608_accounting_schema_fix.sql.
+  accounts: [
+    'id', 'agency_id', 'code', 'name', 'type',
+    'normal_balance', 'category', 'is_system', 'created_at',
+  ],
+  transactions: [
+    'id', 'agency_id', 'reference', 'date', 'description',
+    'type', 'amount', 'total_amount', 'account_code',
+    'contract_id', 'invoice_id', 'created_at',
+  ],
+  journal_entries: [
+    'id', 'agency_id', 'transaction_id', 'transaction_ref',
+    'date', 'description', 'account_code', 'account_name',
+    'debit', 'credit', 'created_at',
+  ],
+  deposits: [
+    'id', 'agency_id', 'contract_id', 'client_id',
+    'client_name', 'vehicle_name',
+    'amount', 'status', 'held_at', 'released_at',
+    'deductions', 'released_amount',
+    'transaction_id', 'release_transaction_id',
+    'notes', 'created_at',
+  ],
 }
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL

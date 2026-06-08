@@ -202,7 +202,8 @@ export default function App() {
       case 'invoices':
         return <Documents onRestitution={handleRestitution} isAdmin={isAdmin} initialTab="invoices" />
       case 'accounting':
-        return <Documents onRestitution={handleRestitution} isAdmin={isAdmin} initialTab="accounting" />
+        if (!isAdmin) { setTimeout(() => setPage('dashboard'), 0); return null }
+        return <Accounting />
       case 'clients': return <Clients />
       case 'fleet': return <Fleet />
       case 'calendar': return <Calendar />

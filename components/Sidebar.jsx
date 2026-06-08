@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, PlusCircle, Car, Users, FolderOpen, CalendarDays, Settings, LogOut, RotateCcw, Inbox, Globe, Shield, ClipboardList } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Car, Users, FolderOpen, CalendarDays, Settings, LogOut, RotateCcw, Inbox, Globe, Shield, ClipboardList, BookOpen } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import LanguageSelector from './LanguageSelector'
 import { useSidebarCounts } from '../src/hooks/useSidebarCounts'
@@ -22,12 +22,13 @@ const NAV_IDS = [
   { id: 'documents',         key: 'documents',   icon: FolderOpen },
   { id: 'calendar',          key: 'calendar',    icon: CalendarDays },
   { id: 'reservations',      key: 'reservations', icon: ClipboardList },
+  { id: 'accounting',        key: 'accounting',  icon: BookOpen },
   { id: 'basket',            key: 'basket',      icon: Inbox },
   { id: 'network',           key: 'network',     icon: Globe },
   { id: 'settings',          key: 'settings',    icon: Settings },
 ]
 
-const ADMIN_ONLY_PAGES = ['settings']
+const ADMIN_ONLY_PAGES = ['settings', 'accounting']
 
 export default function Sidebar({ active, onNav, user, profile, isAdmin = true, onSignOut }) {
   const { t } = useTranslation('common')
@@ -157,7 +158,7 @@ export default function Sidebar({ active, onNav, user, profile, isAdmin = true, 
                 color: 'var(--text-muted)',
                 fontFamily: 'DM Mono, monospace',
               }}>
-                v1.15.2
+                v1.16.0
               </span>
             </div>
           )}

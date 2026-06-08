@@ -152,6 +152,12 @@ export async function releaseDeposit({ depositId, deductions = [] }) {
     entries.push({ accountCode: '1200', debit: 0, credit: refundAmount, description: 'Remboursement dépôt au client' })
   }
 
+  // Debit 1100 — book the excess (deductions > deposit) as an additional
+  // receivable so the journal stays balanced.
+  if (refundAmount < 0) {
+    entries.push({ accountCode: '1100', debit: -refundAmount, credit: 0, description: 'Créance — retenues > dépôt' })
+  }
+
   // Credit revenue accounts for each deduction
   deductions.forEach(ded => {
     const code = ded.accountCode || '3020'

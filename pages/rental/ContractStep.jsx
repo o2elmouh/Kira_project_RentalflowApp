@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { CheckCircle, AlertCircle, ArrowLeft, X, Edit3, FileSignature } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { getAgency, saveVehicle, saveContract, saveInvoice, getFleet } from '../../lib/db'
+import { holdDeposit } from '../../utils/accounting.js'
 import { generateContractBuffer } from '../../utils/pdf'
 import { api } from '../../lib/api'
 import { supabase } from '../../lib/supabase'
@@ -227,6 +228,23 @@ export default function ContractStep({
         // Don't block finalize on this — worst case the agent flips the
         // status manually from Fleet. Log so we know if it's recurring.
         console.warn('[ContractStep] vehicle flip to rented non-blocking:', vehErr.message)
+      }
+
+      // Hold security deposit (non-blocking — accounting must never block
+      // the rental flow). Skip when no deposit was collected.
+      try {
+        const depositAmount = Number(rental?.deposit ?? rental?.depositAmount ?? 0)
+        if (depositAmount > 0) {
+          await holdDeposit({
+            contractId:  c.id,
+            clientName:  `${client.firstName} ${client.lastName}`,
+            vehicleName: `${rental.vehicle.make} ${rental.vehicle.model}`,
+            amount:      depositAmount,
+            date:        rental.startDate || new Date().toISOString().slice(0, 10),
+          })
+        }
+      } catch (depErr) {
+        console.warn('[ContractStep] holdDeposit non-blocking:', depErr.message)
       }
 
       try {

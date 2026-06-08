@@ -1,30 +1,17 @@
-import { useState, useEffect } from 'react'
-import {
-  getAccounts,
-  getJournalEntries,
-  getContracts,
-  getFleet,
-} from '../../lib/db'
+import { useState } from 'react'
+import { useFleet } from '../../src/hooks/useFleet'
+import { useContracts } from '../../src/hooks/useContracts'
+import { useAccounts, useJournalEntries } from '../../src/hooks/useAccounting'
 import PnLView from './PnLView.jsx'
 import UtilizationView from './UtilizationView.jsx'
 import AgedReceivablesView from './AgedReceivablesView.jsx'
 
 export default function TabDashboard() {
-  const [view, setView]       = useState('pl')
-  const [contracts, setContracts] = useState([])
-  const [fleet, setFleet]     = useState([])
-  const [entries, setEntries] = useState([])
-  const [accounts, setAccounts] = useState([])
-
-  useEffect(() => {
-    async function load() {
-      setContracts(await getContracts())
-      setFleet(await getFleet())
-      setEntries(await getJournalEntries())
-      setAccounts(await getAccounts())
-    }
-    load()
-  }, [])
+  const [view, setView] = useState('pl')
+  const { data: contracts = [] } = useContracts()
+  const { data: fleet     = [] } = useFleet()
+  const { data: entries   = [] } = useJournalEntries()
+  const { data: accounts  = [] } = useAccounts()
 
   const VIEWS = [
     { id: 'pl',          label: 'Compte de résultat' },

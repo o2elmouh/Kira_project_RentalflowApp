@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle, ArrowLeft, Download } from 'lucide-react'
-import { updateContract, saveInvoice, saveVehicle, getFleet } from '../../lib/db'
+import { updateContract, saveInvoice, saveVehicle, getFleet, getDepositByContract } from '../../lib/db'
+import { generateRentalInvoice, releaseDeposit } from '../../utils/accounting.js'
 import { computeExtraFees, daysBetween, today } from '../../utils/restitutionUtils'
 import generateRestitutionPDF from './generateRestitutionPDF'
 import { snapshotOnEnd } from '../../utils/snapshots'
@@ -118,6 +119,31 @@ export default function Step4Closure({ agency, contract, vehicle, returnDate, re
         await snapshotOnEnd(contract)
       } catch (err) {
         console.warn('[Restitution] snapshotOnEnd failed:', err)
+      }
+
+      // 5. Post the double-entry journal for the rental (non-blocking —
+      // accounting must never block closure). Uses the final contract
+      // figures we just persisted in step (1).
+      try {
+        await generateRentalInvoice(contract.id)
+      } catch (err) {
+        console.warn('[Restitution] generateRentalInvoice non-blocking:', err.message)
+      }
+
+      // 6. Release any held deposit. Deductions map restitution fees
+      // onto the chart of accounts so the journal stays consistent.
+      try {
+        const dep = await getDepositByContract(contract.id)
+        if (dep && dep.status === 'held') {
+          const deductions = [
+            extraKmFee > 0 ? { reason: 'Km supplémentaires', amount: extraKmFee, accountCode: '3030' } : null,
+            fuelFee    > 0 ? { reason: 'Manque carburant',    amount: fuelFee,    accountCode: '3020' } : null,
+            (damageFee || 0) > 0 ? { reason: 'Frais dommages', amount: damageFee, accountCode: '3020' } : null,
+          ].filter(Boolean)
+          await releaseDeposit({ depositId: dep.id, deductions })
+        }
+      } catch (err) {
+        console.warn('[Restitution] releaseDeposit non-blocking:', err.message)
       }
 
       onDone()
