@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useTransactions, useJournalEntries } from '../../src/hooks/useAccounting'
+import { useJournalEntries } from '../../src/hooks/useAccounting'
 import { card, tableStyle, th, td, inputStyle, fmt, fmtDate } from './accountingStyles.js'
 
 export default function TabJournal() {
@@ -10,14 +10,7 @@ export default function TabJournal() {
   const [from, setFrom] = useState(firstOfMonth)
   const [to,   setTo]   = useState(lastOfMonth)
 
-  const { data: txs       = [] } = useTransactions()
   const { data: allEntries = [] } = useJournalEntries()
-
-  const txMap = useMemo(() => {
-    const m = {}
-    txs.forEach(t => { m[t.id] = t })
-    return m
-  }, [txs])
 
   const entries = useMemo(() => {
     const filtered = allEntries.filter(e => {

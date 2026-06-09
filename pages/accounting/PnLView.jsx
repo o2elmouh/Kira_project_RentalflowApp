@@ -17,20 +17,25 @@ export default function PnLView({ contracts, entries, accounts }) {
         return s + (ttc > 0 ? ttc / 1.20 : 0)
       }, 0)
 
-    // Expenses from journal entries
-    let maintenance = 0, insurance = 0, salaries = 0, other = 0
+    // Expenses from journal entries — broken out by seeded account codes
+    // (4000 maintenance, 4020 insurance, 4030 platform fee). Anything else
+    // — incl. 4010 carburant and 4040 amortissements — lands in "Autres".
+    // v1.16.2: previous version reserved a "Salaires" row for `4050` which
+    // isn't in the seeded chart of accounts → always 0. Replaced with
+    // Commission plateforme (4030), which IS posted by computeAgencyPayout.
+    let maintenance = 0, insurance = 0, platformFee = 0, other = 0
     entries.forEach(e => {
       const acc = accounts.find(a => a.code === e.accountCode)
       if (!acc || acc.type !== 'expense') return
       const amt = Number(e.debit) - Number(e.credit)
-      if (acc.code === '4000') maintenance += amt
-      else if (acc.code === '4020') insurance += amt
-      else if (acc.code === '4050') salaries += amt  // may not exist yet
-      else other += amt
+      if      (acc.code === '4000') maintenance += amt
+      else if (acc.code === '4020') insurance   += amt
+      else if (acc.code === '4030') platformFee += amt
+      else                          other       += amt
     })
 
-    const totalExpenses = maintenance + insurance + salaries + other
-    return { rentalIncome, maintenance, insurance, salaries, other, totalExpenses, net: rentalIncome - totalExpenses }
+    const totalExpenses = maintenance + insurance + platformFee + other
+    return { rentalIncome, maintenance, insurance, platformFee, other, totalExpenses, net: rentalIncome - totalExpenses }
   }, [contracts, entries, accounts])
 
   const row = (label, value, color, bold = false) => (
@@ -63,7 +68,7 @@ export default function PnLView({ contracts, entries, accounts }) {
         </div>
         {row('Entretien & réparations', pl.maintenance, '#f87171')}
         {row('Assurances véhicules',   pl.insurance,    '#f87171')}
-        {row('Salaires',               pl.salaries,     '#f87171')}
+        {row('Commission plateforme',  pl.platformFee,  '#f87171')}
         {row('Autres charges',         pl.other,        '#f87171')}
         {row('Total charges',          pl.totalExpenses,'#f87171', true)}
       </div>

@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import {
   BarChart2, BookOpen, List, Shield, Building2,
 } from 'lucide-react'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import { computeAgencyPayout, backfillJournalForClosedContracts } from '../utils/accounting.js'
 import {
   card, tableStyle, th, td, inputStyle,
@@ -49,16 +51,60 @@ function TabBilan() {
     }
   }
 
+  // v1.16.2: replaced the alert() with a proper one-page PDF report.
+  // Same data as the on-screen Synthèse + breakdown by product account.
   const handleGenerate = () => {
     if (!result) return
-    alert(
-      `Bilan agence du ${from} au ${to}\n\n` +
-      `Chiffre d'affaires:    ${fmt(result.totalRevenue)} MAD\n` +
-      `Commission plateforme: ${fmt(result.platformFees)} MAD\n` +
-      `Net agence:            ${fmt(result.netPayout)} MAD\n` +
-      `Charges opérationnelles: ${fmt(result.totalExpenses)} MAD\n` +
-      `Résultat:              ${fmt(result.netPayout - result.totalExpenses)} MAD`
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+
+    doc.setFontSize(16)
+    doc.text("Bilan agence", 40, 50)
+    doc.setFontSize(10)
+    doc.setTextColor(120)
+    doc.text(`Période : ${from} → ${to}`, 40, 70)
+    doc.setTextColor(0)
+
+    autoTable(doc, {
+      startY: 100,
+      head: [['Synthèse', 'Montant (MAD)']],
+      body: [
+        ["Chiffre d'affaires",         fmt(result.totalRevenue)],
+        ['Commission plateforme',       fmt(-result.platformFees)],
+        ['Net agence',                  fmt(result.netPayout)],
+        ['Charges opérationnelles',     fmt(-result.totalExpenses)],
+        ['Résultat',                    fmt(result.netPayout - result.totalExpenses)],
+      ],
+      theme: 'grid',
+      styles: { fontSize: 10, cellPadding: 6 },
+      headStyles: { fillColor: [40, 40, 40], textColor: 255 },
+      columnStyles: { 1: { halign: 'right' } },
+    })
+
+    const breakdownRows = Object.entries(result.breakdown.byAccount)
+      .map(([code, data]) => [`${code} — ${data.name}`, fmt(data.amount)])
+
+    if (breakdownRows.length > 0) {
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 24,
+        head: [['Détail par compte de produits', 'Montant (MAD)']],
+        body: breakdownRows,
+        theme: 'grid',
+        styles: { fontSize: 10, cellPadding: 6 },
+        headStyles: { fillColor: [40, 40, 40], textColor: 255 },
+        columnStyles: { 1: { halign: 'right' } },
+      })
+    }
+
+    doc.setFontSize(8)
+    doc.setTextColor(140)
+    doc.text(
+      `Généré le ${new Date().toLocaleString('fr-MA')}`,
+      40,
+      doc.internal.pageSize.getHeight() - 30
     )
+
+    doc.save(`bilan-agence-${from}-${to}.pdf`)
   }
 
   const summaryRows = result ? [

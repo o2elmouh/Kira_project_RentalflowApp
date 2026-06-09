@@ -93,6 +93,10 @@ export const DEPOSIT_STATUS_LABELS = {
   partially_released: 'Libéré partiel',
   released:           'Libéré',
   retained:           'Retenu',
+  // Legacy: pre-v1.16.0 (mobile) wrote 'forfeited' via the old quick-action.
+  // The migration's widened CHECK constraint keeps the value valid, so we
+  // alias it to the new "Retenu" semantics for display.
+  forfeited:          'Retenu',
 }
 
 export const DEPOSIT_STATUS_COLORS = {
@@ -100,4 +104,5 @@ export const DEPOSIT_STATUS_COLORS = {
   partially_released: { background: '#1e3a5f', color: '#60a5fa' },
   released:           { background: '#14532d', color: '#4ade80' },
   retained:           { background: '#4a1942', color: '#e879f9' },
+  forfeited:          { background: '#4a1942', color: '#e879f9' },
 }
