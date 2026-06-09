@@ -1,0 +1,23 @@
+{
+  "title": "Confidentialité et protection des données",
+  "intro": "RentaFlow et votre agence de location partenaire traitent vos données personnelles conformément à la loi marocaine 09-08 sur la protection des personnes physiques à l'égard du traitement des données à caractère personnel.",
+  "collectedTitle": "Données collectées",
+  "collected": [
+    "Identité : nom, prénom, CIN",
+    "Permis de conduire",
+    "Numéro de téléphone (WhatsApp)",
+    "Dates et lieux de location"
+  ],
+  "purposeTitle": "Finalité du traitement",
+  "purpose": "Vos données sont utilisées exclusivement pour l'exécution du contrat de location et le respect des obligations légales (assurance, autorités).",
+  "rightsTitle": "Vos droits",
+  "rights": [
+    "Accès à vos données",
+    "Rectification en cas d'inexactitude",
+    "Suppression (sous réserve des obligations légales)",
+    "Opposition au traitement"
+  ],
+  "contactTitle": "Exercer vos droits",
+  "contact": "Pour exercer vos droits, contactez votre agence sur ce même numéro WhatsApp.",
+  "footer": "Conforme à la loi 09-08 — Commission Nationale de contrôle de la Protection des Données à caractère Personnel (CNDP — www.cndp.ma)."
+}

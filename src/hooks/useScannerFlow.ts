@@ -60,6 +60,8 @@ export interface UseScannerFlowReturn {
   manualEntrySlot: ScanDocumentType | null
   /** Initiate a scan for a given slot with an image file */
   startScan: (type: ScanDocumentType, file: File | Blob) => Promise<void>
+  /** Inject mock identity data without calling the OCR API — for testing */
+  simulateScan: (type: ScanDocumentType) => void
   /** Manually update a field in clientData (for the editable form inputs) */
   updateField: (key: keyof ScanSlotResult, value: string) => void
   /** Dismiss the manual-entry prompt (does NOT reset attempt count) */
@@ -240,6 +242,42 @@ export function useScannerFlow(
     // (handled reactively below — we check after state updates settle)
   }, [scanAttemptCount])
 
+  const simulateScan = useCallback((type: ScanDocumentType) => {
+    const future = new Date()
+    future.setFullYear(future.getFullYear() + 5)
+    const futureIso = future.toISOString().slice(0, 10)
+
+    const fields: ScanSlotResult = type === 'cin'
+      ? {
+          firstName: 'Karim',
+          lastName: 'El Fassi',
+          cinNumber: 'BJ987654',
+          cinExpiry: futureIso,
+          dateOfBirth: '1990-06-15',
+          nationality: 'Marocain',
+          docType: 'cin',
+        }
+      : {
+          drivingLicenseNumber: '19/123456',
+          licenseExpiry: futureIso,
+          dateOfBirth: '1990-06-15',
+        }
+
+    setExtracted(prev => ({ ...prev, [type]: fields }))
+    setClientData(prev => {
+      const slotKeys: (keyof ScanSlotResult)[] =
+        type === 'cin'
+          ? ['firstName', 'lastName', 'cinNumber', 'cinExpiry', 'dateOfBirth', 'nationality', 'docType']
+          : ['drivingLicenseNumber', 'licenseExpiry', 'dateOfBirth']
+      const cleared: Partial<ScanSlotResult> = {}
+      for (const k of slotKeys) cleared[k] = undefined
+      const merged = { ...prev, ...cleared, ...fields }
+      if (type === 'license' && prev.dateOfBirth) merged.dateOfBirth = prev.dateOfBirth
+      return merged
+    })
+    setScanError(null)
+  }, [])
+
   const updateField = useCallback((key: keyof ScanSlotResult, value: string) => {
     setClientData(prev => ({ ...prev, [key]: value }))
   }, [])
@@ -268,6 +306,7 @@ export function useScannerFlow(
     showManualEntryPrompt,
     manualEntrySlot,
     startScan,
+    simulateScan,
     updateField,
     dismissManualEntryPrompt,
     resetAttemptCount,

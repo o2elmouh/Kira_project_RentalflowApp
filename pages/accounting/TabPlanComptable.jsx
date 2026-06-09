@@ -1,17 +1,15 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { Plus } from 'lucide-react'
-import { getAccounts, saveAccount } from '../../lib/db'
+import { saveAccount } from '../../lib/db'
+import { useAccounts } from '../../src/hooks/useAccounting'
 import Modal from './Modal.jsx'
 import { card, tableStyle, th, td, inputStyle, selectStyle, btnPrimary, btnSecondary, badge } from './accountingStyles.js'
 
 export default function TabPlanComptable() {
-  const [accounts, setAccounts] = useState([])
+  const { data: accounts = [], invalidate } = useAccounts()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ code: '', name: '', type: 'asset', category: 'Actifs', normalBalance: 'debit' })
   const [error, setError] = useState('')
-
-  const load = useCallback(async () => setAccounts(await getAccounts()), [])
-  useEffect(() => { load() }, [load])
 
   const categories = [...new Set(accounts.map(a => a.category))]
 
@@ -22,7 +20,7 @@ export default function TabPlanComptable() {
     await saveAccount({ ...form, code: form.code.trim(), name: form.name.trim() })
     setShowForm(false)
     setForm({ code: '', name: '', type: 'asset', category: 'Actifs', normalBalance: 'debit' })
-    load()
+    invalidate()
   }
 
   const TYPE_LABELS = { asset: 'Actif', liability: 'Passif', revenue: 'Produit', expense: 'Charge' }

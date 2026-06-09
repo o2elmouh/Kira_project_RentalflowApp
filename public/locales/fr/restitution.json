@@ -24,7 +24,12 @@
     "fuelDepartureHint": "Niveau départ: {{level}}",
     "fuelWarning": "Attention: le niveau de carburant est inférieur au départ ({{diff}} quart(s) manquant(s))",
     "returnDate": "Date de retour",
-    "returnTime": "Heure de retour"
+    "returnTime": "Heure de retour",
+    "telemetryAvailable": "Données télématiques disponibles",
+    "fuelLabel": "Carburant",
+    "dtcWarning": "DTC:",
+    "applySnapshot": "Pré-remplir",
+    "gpsNoSnapshot": "Véhicule GPS — aucun snapshot de fin disponible. Saisie manuelle."
   },
   "step2": {
     "title": "Photos retour",
@@ -44,7 +49,11 @@
     "fuelShortage": "Manque carburant: {{diff}} quart(s) × 100 MAD = {{fee}} MAD",
     "noFuelFee": "Carburant: pas de frais",
     "damageFee": "Frais dommages (MAD)",
-    "totalFees": "Total frais supplémentaires"
+    "totalFees": "Total frais supplémentaires",
+    "fuelFeesLabel": "Frais carburant (MAD)",
+    "fuelCalculated": "calculé :",
+    "fuelLevel": "niveau",
+    "fuelMultiplier": "× 100"
   },
   "step4": {
     "title": "Clôture du contrat",
@@ -60,7 +69,16 @@
     "damagesFound": "Dommages constatés",
     "downloadPdf": "Télécharger document de restitution PDF",
     "closing": "Clôture en cours...",
-    "close": "Clôturer le contrat"
+    "close": "Clôturer le contrat",
+    "phoneNotFound": "Numéro de téléphone client introuvable.",
+    "dayUnit": "jour(s)",
+    "sentOk": "PV envoyé",
+    "sentErr": "Échec",
+    "sendWhatsApp": "Envoyer PV par WhatsApp",
+    "invoiceKmLabel": "Km supplémentaires",
+    "invoiceFuelLabel": "Manque carburant",
+    "invoiceDamageLabel": "Frais dommages",
+    "invoiceNotes": "Frais de restitution"
   },
   "pdf": {
     "title": "PROCÈS-VERBAL DE RESTITUTION",

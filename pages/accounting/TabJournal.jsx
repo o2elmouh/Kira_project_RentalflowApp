@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { getTransactions, getJournalEntries } from '../../lib/db'
+import { useState, useMemo } from 'react'
+import { useJournalEntries } from '../../src/hooks/useAccounting'
 import { card, tableStyle, th, td, inputStyle, fmt, fmtDate } from './accountingStyles.js'
 
 export default function TabJournal() {
@@ -9,32 +9,22 @@ export default function TabJournal() {
 
   const [from, setFrom] = useState(firstOfMonth)
   const [to,   setTo]   = useState(lastOfMonth)
-  const [entries, setEntries] = useState([])
-  const [txMap,   setTxMap]   = useState({})
 
-  useEffect(() => {
-    async function load() {
-      const txs = await getTransactions()
-      const map = {}
-      txs.forEach(t => { map[t.id] = t })
-      setTxMap(map)
+  const { data: allEntries = [] } = useJournalEntries()
 
-      const all = await getJournalEntries()
-      const filtered = all.filter(e => {
-        if (from && e.date < from) return false
-        if (to   && e.date > to)   return false
-        return true
-      })
-      // Sort by date desc, then group by transactionId
-      filtered.sort((a, b) => {
-        const dateComp = b.date?.localeCompare(a.date || '') || 0
-        if (dateComp !== 0) return dateComp
-        return a.transactionId?.localeCompare(b.transactionId || '') || 0
-      })
-      setEntries(filtered)
-    }
-    load()
-  }, [from, to])
+  const entries = useMemo(() => {
+    const filtered = allEntries.filter(e => {
+      if (from && e.date < from) return false
+      if (to   && e.date > to)   return false
+      return true
+    })
+    filtered.sort((a, b) => {
+      const dateComp = b.date?.localeCompare(a.date || '') || 0
+      if (dateComp !== 0) return dateComp
+      return a.transactionId?.localeCompare(b.transactionId || '') || 0
+    })
+    return filtered
+  }, [allEntries, from, to])
 
   const totalDebit  = entries.reduce((s, e) => s + (Number(e.debit)  || 0), 0)
   const totalCredit = entries.reduce((s, e) => s + (Number(e.credit) || 0), 0)

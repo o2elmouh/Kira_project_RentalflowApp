@@ -59,7 +59,7 @@ export default function Restitution({ contract, onDone }) {
   const [returnData, setReturnData] = useState({
     returnMileage: contract?.startMileage || contract?.mileageOut || 0,
     returnFuelLevel: contract?.fuelLevel || 'Plein',
-    returnDate: today(),
+    returnDate: (contract?.endDate ? String(contract.endDate).slice(0, 10) : today()),
     returnTime: nowTime(),
   })
 

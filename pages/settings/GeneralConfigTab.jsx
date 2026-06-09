@@ -1,19 +1,20 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import RentalOptionsSection from './RentalOptionsSection'
 import SignatureSection from './SignatureSection'
 
 export default function GeneralConfigTab() {
+  const { t } = useTranslation('settings')
   const [activeSection, setActiveSection] = useState('options')
 
   const sections = [
-    { id: 'options',    label: 'Options de location' },
-    { id: 'signature',  label: 'Signature par défaut' },
-    { id: 'params',     label: 'Paramètres' },
+    { id: 'options',    label: t('generalConfig.optionsLabel') },
+    { id: 'signature',  label: t('generalConfig.signatureLabel') },
+    { id: 'params',     label: t('generalConfig.paramsLabel') },
   ]
 
   return (
     <div>
-      {/* Tabs horizontaux */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid var(--border)', paddingBottom: 0 }}>
         {sections.map(s => (
           <button
@@ -41,14 +42,14 @@ export default function GeneralConfigTab() {
       {activeSection === 'signature' && <SignatureSection />}
       {activeSection === 'params' && (
         <div className="card" style={{ maxWidth: 680 }}>
-          <div className="card-header"><h3>Paramètres généraux</h3></div>
+          <div className="card-header"><h3>{t('generalConfig.paramsTitle')}</h3></div>
           <div className="card-body">
             <p style={{ fontSize: 13, color: 'var(--text3)' }}>
-              D'autres paramètres généraux seront ajoutés ici prochainement.
+              {t('generalConfig.paramsPlaceholder')}
             </p>
             <div style={{ fontSize: 13, color: 'var(--text2)', background: 'var(--bg2)', borderRadius: 8, padding: '10px 14px', display: 'flex', gap: 8 }}>
               <span>ℹ️</span>
-              <span>La limite kilométrique est désormais configurable par véhicule dans la fiche de chaque voiture (onglet Flotte).</span>
+              <span>{t('generalConfig.kmHint')}</span>
             </div>
           </div>
         </div>

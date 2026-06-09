@@ -1,0 +1,113 @@
+<h2>Where should the Alerts section live?</h2>
+<p class="subtitle">Ambiguous messages (garage, insurance, supplier, client issues) saved as alerts — where does the manager review them?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#FCFBFA;border-radius:16px;padding:16px;font-family:sans-serif">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <div style="background:#141413;color:#F3F0EE;border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700">Tableau de bord</div>
+          <div style="background:#F3F0EE;color:#696969;border-radius:20px;padding:4px 14px;font-size:11px">Contrats</div>
+          <div style="background:#F3F0EE;color:#696969;border-radius:20px;padding:4px 14px;font-size:11px">Flotte</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:#fff;border-radius:12px;padding:12px;border:1px solid #eee">
+            <div style="font-size:10px;color:#696969;margin-bottom:4px">CONTRATS ACTIFS</div>
+            <div style="font-size:22px;font-weight:700">12</div>
+          </div>
+          <div style="background:#FEF0E8;border-radius:12px;padding:12px;border:1px solid #f9c6a0">
+            <div style="font-size:10px;color:#CF4500;margin-bottom:4px">⚠ ALERTES</div>
+            <div style="font-size:22px;font-weight:700;color:#CF4500">3</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;background:#FEF0E8;border-radius:12px;padding:12px;border-left:3px solid #CF4500">
+          <div style="font-size:10px;color:#CF4500;font-weight:700;margin-bottom:6px">⚠ ALERTES RÉCENTES</div>
+          <div style="font-size:11px;color:#333;padding:6px 0;border-bottom:1px solid #f9c6a0">Garage Hassan — statut réparation Dacia Duster</div>
+          <div style="font-size:11px;color:#333;padding:6px 0">Assurance AXA — renouvellement contrat flotte</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Section dans le Dashboard</h3>
+      <p>Bloc d'alertes ajouté directement dans la page Dashboard, sous les stats. Le manager voit les alertes en premier coup d'œil sans changer de page.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#FCFBFA;border-radius:16px;padding:16px;font-family:sans-serif">
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+          <div style="font-size:13px;font-weight:700">Boîte de réception</div>
+          <div style="background:#F3F0EE;border-radius:20px;padding:3px 10px;font-size:11px;color:#696969">Leads</div>
+          <div style="background:#CF4500;color:#fff;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">Alertes 3</div>
+        </div>
+        <div style="background:#FEF0E8;border-radius:10px;padding:10px;margin-bottom:8px;border:1px solid #f9c6a0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <div style="font-size:10px;color:#CF4500;font-weight:700">⚠ ALERTE · WhatsApp</div>
+            <div style="font-size:10px;color:#999">il y a 5 min</div>
+          </div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:2px">Garage Mohammed</div>
+          <div style="font-size:11px;color:#555">Demande statut réparation Dacia Duster plaque XY-234</div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <div style="background:#141413;color:#fff;border-radius:20px;padding:3px 10px;font-size:10px">Escalader</div>
+            <div style="background:#fff;color:#141413;border-radius:20px;padding:3px 10px;font-size:10px;border:1px solid #ddd">Ignorer</div>
+          </div>
+        </div>
+        <div style="background:#FEF0E8;border-radius:10px;padding:10px;border:1px solid #f9c6a0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <div style="font-size:10px;color:#CF4500;font-weight:700">⚠ ALERTE · Gmail</div>
+            <div style="font-size:10px;color:#999">il y a 2h</div>
+          </div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:2px">AXA Assurance</div>
+          <div style="font-size:11px;color:#555">Renouvellement contrat assurance flotte — échéance le 30 avril</div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <div style="background:#141413;color:#fff;border-radius:20px;padding:3px 10px;font-size:10px">Escalader</div>
+            <div style="background:#fff;color:#141413;border-radius:20px;padding:3px 10px;font-size:10px;border:1px solid #ddd">Ignorer</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Onglet dans la Boîte de réception (Basket)</h3>
+      <p>Nouvel onglet "Alertes" à côté de l'onglet "Leads" existant dans Basket.jsx. Même interface que les leads mais avec le style alerte orange.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#FCFBFA;border-radius:16px;padding:16px;font-family:sans-serif;display:flex;gap:12px">
+        <div style="width:90px;background:#141413;border-radius:10px;padding:10px">
+          <div style="color:#F3F0EE;font-size:10px;font-weight:700;margin-bottom:12px">RENTAFLOW</div>
+          <div style="color:#aaa;font-size:10px;padding:6px 0;border-bottom:1px solid #333">Dashboard</div>
+          <div style="color:#aaa;font-size:10px;padding:6px 0;border-bottom:1px solid #333">Leads</div>
+          <div style="color:#F3F0EE;font-size:10px;padding:6px 0;border-bottom:1px solid #333;display:flex;justify-content:space-between">
+            <span>⚠ Alertes</span>
+            <span style="background:#CF4500;color:#fff;border-radius:10px;padding:1px 6px;font-size:9px">3</span>
+          </div>
+          <div style="color:#aaa;font-size:10px;padding:6px 0;border-bottom:1px solid #333">Flotte</div>
+          <div style="color:#aaa;font-size:10px;padding:6px 0">Réglages</div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:700;margin-bottom:8px">⚠ Alertes</div>
+          <div style="font-size:10px;color:#696969;margin-bottom:10px">3 messages non classifiés à examiner</div>
+          <div style="background:#FEF0E8;border-radius:8px;padding:8px;margin-bottom:6px;border:1px solid #f9c6a0">
+            <div style="font-size:9px;color:#CF4500;font-weight:700">GARAGE · WhatsApp</div>
+            <div style="font-size:11px;font-weight:600">Garage Mohammed</div>
+            <div style="font-size:10px;color:#555">Demande statut réparation Dacia Duster</div>
+          </div>
+          <div style="background:#FEF0E8;border-radius:8px;padding:8px;border:1px solid #f9c6a0">
+            <div style="font-size:9px;color:#CF4500;font-weight:700">ASSURANCE · Gmail</div>
+            <div style="font-size:11px;font-weight:600">AXA Assurance</div>
+            <div style="font-size:10px;color:#555">Renouvellement contrat flotte — 30 avril</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Page dédiée dans la Sidebar</h3>
+      <p>Nouvelle entrée "Alertes" dans la navigation principale avec badge rouge. Page dédiée uniquement aux alertes, accessible depuis partout dans l'app.</p>
+    </div>
+  </div>
+
+</div>

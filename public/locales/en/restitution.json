@@ -24,7 +24,12 @@
     "fuelDepartureHint": "Departure level: {{level}}",
     "fuelWarning": "Warning: fuel level is lower than departure ({{diff}} quarter(s) missing)",
     "returnDate": "Return date",
-    "returnTime": "Return time"
+    "returnTime": "Return time",
+    "telemetryAvailable": "Telemetry data available",
+    "fuelLabel": "Fuel",
+    "dtcWarning": "DTC:",
+    "applySnapshot": "Pre-fill",
+    "gpsNoSnapshot": "GPS vehicle — no end snapshot available. Manual entry."
   },
   "step2": {
     "title": "Return photos",
@@ -44,7 +49,11 @@
     "fuelShortage": "Fuel shortage: {{diff}} quarter(s) × 100 MAD = {{fee}} MAD",
     "noFuelFee": "Fuel: no fees",
     "damageFee": "Damage fees (MAD)",
-    "totalFees": "Total extra fees"
+    "totalFees": "Total extra fees",
+    "fuelFeesLabel": "Fuel fees (MAD)",
+    "fuelCalculated": "calculated:",
+    "fuelLevel": "level",
+    "fuelMultiplier": "× 100"
   },
   "step4": {
     "title": "Contract closure",
@@ -60,7 +69,16 @@
     "damagesFound": "Damages found",
     "downloadPdf": "Download return report PDF",
     "closing": "Closing...",
-    "close": "Close contract"
+    "close": "Close contract",
+    "phoneNotFound": "Client phone number not found.",
+    "dayUnit": "day(s)",
+    "sentOk": "Report sent",
+    "sentErr": "Failed",
+    "sendWhatsApp": "Send report via WhatsApp",
+    "invoiceKmLabel": "Extra kilometers",
+    "invoiceFuelLabel": "Fuel shortage",
+    "invoiceDamageLabel": "Damage fees",
+    "invoiceNotes": "Restitution fees"
   },
   "pdf": {
     "title": "RETURN REPORT",

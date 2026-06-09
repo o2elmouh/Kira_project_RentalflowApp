@@ -11,7 +11,14 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5174)",
       "Bash(cmd /c \"taskkill /F /IM node.exe\")",
       "Bash(curl:*)",
-      "Bash(cmd /c \"for /f \"\"tokens=5\"\" %a in \\(''netstat -aon ^| findstr :3001''\\) do taskkill /PID %a /F\")"
+      "Bash(cmd /c \"for /f \"\"tokens=5\"\" %a in \\(''netstat -aon ^| findstr :3001''\\) do taskkill /PID %a /F\")",
+      "Bash(node -e \"require\\('twilio'\\); console.log\\('twilio ok'\\)\")",
+      "Bash(grep -A20 \"### \\\\`agencies\\\\`\" \"C:/Users/otman/Downloads/Rental flow app SAAS/.claude/reference/schema.md\")",
+      "Bash(node -c server/routes/leads.js)",
+      "Bash(node --experimental-test-module-mocks --test __tests__/offerResponse.test.js)",
+      "Bash(node --experimental-test-module-mocks --test __tests__/smartQuote.test.js)",
+      "Bash(node --experimental-test-module-mocks --test __tests__/smartQuote.test.js __tests__/offerResponse.test.js)",
+      "WebSearch"
     ]
   }
 }

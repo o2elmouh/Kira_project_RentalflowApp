@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { PlusCircle, Trash2, Edit2, AlertTriangle } from 'lucide-react'
-import { getFleet, saveVehicle, deleteVehicle } from '../lib/db'
+import { saveVehicle, deleteVehicle } from '../lib/db'
 import { getDefaultConfigForMake as getFleetConfigForMake } from '../lib/fleetConfigDefaults'
+import { useFleet } from '../src/hooks/useFleet'
 
 import { CAR_CATALOGUE, displayPlate } from './fleet/constants'
 import VehicleDetail from './fleet/VehicleDetail'
@@ -56,25 +58,14 @@ function autoFillMaintenance(form) {
 
 // ── Main component ────────────────────────────────────────
 export default function Fleet() {
-  const [fleet,        setFleet]       = useState([])
-  const [loading,      setLoading]     = useState(true)
+  const { t } = useTranslation('fleet')
+  const { data: fleet = [], isLoading: loading, invalidate: invalidateFleet } = useFleet()
   const [editing,      setEditing]     = useState(null)
   const [detail,       setDetail]      = useState(null)  // vehicle being viewed
   const [form,         setForm]        = useState(EMPTY)
   const [configBanner, setConfigBanner] = useState(null)
   const [editingHadPurchaseDate, setEditingHadPurchaseDate] = useState(false)
   const [fleetView,    setFleetView]   = useState('grid')  // 'grid' only for v2
-
-  const refresh = async (currentDetail) => {
-    try {
-      const f = await getFleet()
-      setFleet(f)
-      const d = currentDetail !== undefined ? currentDetail : detail
-      if (d) setDetail(f.find(v => v.id === d.id) || null)
-    } catch (e) { console.error(e) }
-  }
-
-  useEffect(() => { refresh().finally(() => setLoading(false)) }, [])
 
   const openAdd  = () => { setForm(EMPTY); setEditing('new'); setDetail(null); setConfigBanner(null); setEditingHadPurchaseDate(false) }
   const openEdit = (v) => {
@@ -103,7 +94,7 @@ export default function Fleet() {
       await saveVehicle(toSave)
       setEditing(null)
       setConfigBanner(null)
-      await refresh()
+      await invalidateFleet()
     } catch (e) { console.error(e) }
   }
 
@@ -112,7 +103,7 @@ export default function Fleet() {
       try {
         await deleteVehicle(id)
         setDetail(null)
-        await refresh(null)
+        await invalidateFleet()
       } catch (e) { console.error(e) }
     }
   }
@@ -120,19 +111,19 @@ export default function Fleet() {
   const saveDeadlines = async (updated) => {
     try {
       await saveVehicle(updated)
-      await refresh()
+      await invalidateFleet()
     } catch (e) { console.error(e) }
   }
 
-  if (loading) return <div className="page-body"><p style={{ color: 'var(--text3)' }}>Chargement…</p></div>
+  if (loading) return <div className="page-body"><p style={{ color: 'var(--text-muted)' }}>Chargement…</p></div>
 
   return (
     <div>
       <div className="page-header">
-        <div><h2>Parc automobile</h2><p>Gérez votre flotte de véhicules</p></div>
+        <div><h2>{t("title")}</h2><p>{t("subtitle")}</p></div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {!detail && !editing && (
-            <button className="btn btn-primary" onClick={openAdd}><PlusCircle size={15} /> Ajouter</button>
+            <button className="btn-primary" onClick={openAdd} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 18px', borderRadius:'var(--r-btn)', background:'var(--ink)', color:'var(--canvas)', border:'none', fontWeight:600, fontSize:13, cursor:'pointer' }}><PlusCircle size={15} /> {t("addVehicle")}</button>
           )}
         </div>
       </div>
@@ -182,7 +173,8 @@ export default function Fleet() {
               const targetBeltKm = v.nextTimingBeltMileage || (vConfig ? currentKm + vConfig.courroieKm : null)
 
               return (
-                <div key={v.id} className="vehicle-card" style={{ cursor: 'pointer' }}
+                <div key={v.id} className="vehicle-card"
+                  style={{ cursor: 'pointer', opacity: v.status === 'rented' ? 0.55 : 1, position: 'relative' }}
                   onClick={() => { setDetail(v); setEditing(null) }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div className="vehicle-plate" style={{ direction: 'rtl', fontSize: 13, letterSpacing: 2 }}>{displayPlate(v.plate)}</div>
@@ -200,18 +192,18 @@ export default function Fleet() {
                       <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                         {targetOilKm && (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: currentKm > targetOilKm ? '#dc2626' : '#111827' }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: currentKm > targetOilKm ? 'var(--red)' : 'var(--ink)' }}>
                               🛢️ {Number(targetOilKm).toLocaleString()} km
                             </span>
-                            <span style={{ fontSize: 10, color: '#2563eb' }}>{currentKm.toLocaleString()} km</span>
+                            <span style={{ fontSize: 10, color: 'var(--link-blue)' }}>{currentKm.toLocaleString()} km</span>
                           </div>
                         )}
                         {targetBeltKm && (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: currentKm > targetBeltKm ? '#dc2626' : '#111827' }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: currentKm > targetBeltKm ? 'var(--red)' : 'var(--ink)' }}>
                               ⚙️ {Number(targetBeltKm).toLocaleString()} km
                             </span>
-                            <span style={{ fontSize: 10, color: '#2563eb' }}>{currentKm.toLocaleString()} km</span>
+                            <span style={{ fontSize: 10, color: 'var(--link-blue)' }}>{currentKm.toLocaleString()} km</span>
                           </div>
                         )}
                       </div>
@@ -223,7 +215,7 @@ export default function Fleet() {
                   </div>
                   <div style={{ display: 'flex', gap: 5, marginTop: 10 }}>
                     <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); openEdit(v) }}><Edit2 size={12} /></button>
-                    <button className="btn btn-ghost btn-sm" style={{ color: '#dc2626' }} onClick={e => { e.stopPropagation(); remove(v.id) }}><Trash2 size={12} /></button>
+                    <button className="btn btn-ghost btn-sm" style={{ color: 'var(--orange)' }} onClick={e => { e.stopPropagation(); remove(v.id) }}><Trash2 size={12} /></button>
                   </div>
                 </div>
               )
@@ -232,7 +224,7 @@ export default function Fleet() {
         )}
 
         {fleet.length === 0 && (
-          <p style={{ color: 'var(--text3)', textAlign: 'center', marginTop: 40 }}>Aucun véhicule. Ajoutez-en un ci-dessus.</p>
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: 40 }}>{t("noVehicles")}</p>
         )}
       </div>
     </div>

@@ -24,7 +24,12 @@
     "fuelDepartureHint": "مستوى الانطلاق: {{level}}",
     "fuelWarning": "تنبيه: مستوى الوقود أقل من الانطلاق ({{diff}} ربع/أرباع ناقصة)",
     "returnDate": "تاريخ الإرجاع",
-    "returnTime": "وقت الإرجاع"
+    "returnTime": "وقت الإرجاع",
+    "telemetryAvailable": "بيانات التتبع متاحة",
+    "fuelLabel": "الوقود",
+    "dtcWarning": "رمز عطل:",
+    "applySnapshot": "ملء مسبق",
+    "gpsNoSnapshot": "مركبة مزودة بنظام تحديد موقع — لا توجد صورة نهائية متاحة. إدخال يدوي."
   },
   "step2": {
     "title": "صور الإرجاع",
@@ -44,7 +49,11 @@
     "fuelShortage": "نقص الوقود: {{diff}} ربع/أرباع × 100 درهم = {{fee}} درهم",
     "noFuelFee": "الوقود: لا توجد رسوم",
     "damageFee": "رسوم الأضرار (درهم)",
-    "totalFees": "إجمالي المصاريف الإضافية"
+    "totalFees": "إجمالي المصاريف الإضافية",
+    "fuelFeesLabel": "رسوم الوقود (درهم)",
+    "fuelCalculated": "محسوب:",
+    "fuelLevel": "مستوى",
+    "fuelMultiplier": "× 100"
   },
   "step4": {
     "title": "إغلاق العقد",
@@ -60,7 +69,16 @@
     "damagesFound": "الأضرار المُلاحَظة",
     "downloadPdf": "تحميل محضر الإرجاع PDF",
     "closing": "جارٍ الإغلاق...",
-    "close": "إغلاق العقد"
+    "close": "إغلاق العقد",
+    "phoneNotFound": "لم يتم العثور على رقم هاتف العميل.",
+    "dayUnit": "يوم/أيام",
+    "sentOk": "تم إرسال محضر الإرجاع",
+    "sentErr": "فشل الإرسال",
+    "sendWhatsApp": "إرسال محضر الإرجاع عبر WhatsApp",
+    "invoiceKmLabel": "كيلومترات إضافية",
+    "invoiceFuelLabel": "نقص الوقود",
+    "invoiceDamageLabel": "رسوم الأضرار",
+    "invoiceNotes": "رسوم الإرجاع"
   },
   "pdf": {
     "title": "محضر الإرجاع",

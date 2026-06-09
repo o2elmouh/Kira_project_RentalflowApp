@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
 import { useIsAdmin } from '../../lib/UserContext'
 
 export default function TeamTab() {
+  const { t } = useTranslation('settings')
   const isAdmin = useIsAdmin()
   const [members, setMembers]   = useState([])
   const [loading, setLoading]   = useState(true)
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole]   = useState('agent')
+  const [inviteRole, setInviteRole]   = useState('staff')
   const [inviting, setInviting] = useState(false)
-  const [feedback, setFeedback] = useState(null) // { type: 'success'|'error', msg }
+  const [feedback, setFeedback] = useState(null)
 
   const load = async () => {
     setLoading(true)
@@ -25,20 +27,31 @@ export default function TeamTab() {
 
   useEffect(() => { load() }, [])
 
-  const handleInvite = async (e) => {
+  const handleInvite = (e) => {
     e.preventDefault()
+    if (!inviteEmail) return
+
+    const emailSnapshot = inviteEmail
+    const roleSnapshot  = inviteRole
+
+    setFeedback({ type: 'success', msg: t('team.inviteSending', { email: emailSnapshot }) })
+    setInviteEmail('')
     setInviting(true)
-    setFeedback(null)
-    try {
-      await api.inviteMember({ email: inviteEmail, role: inviteRole })
-      setFeedback({ type: 'success', msg: `Invitation envoyée à ${inviteEmail}` })
-      setInviteEmail('')
-      load()
-    } catch (err) {
-      setFeedback({ type: 'error', msg: err.message })
-    } finally {
-      setInviting(false)
-    }
+
+    setTimeout(() => setFeedback(null), 4000)
+
+    api.inviteMember({ email: emailSnapshot, role: roleSnapshot })
+      .then(() => {
+        setFeedback({ type: 'success', msg: t('team.inviteSent', { email: emailSnapshot }) })
+        setTimeout(() => setFeedback(null), 4000)
+        load()
+      })
+      .catch((err) => {
+        console.error('[TeamTab] inviteMember failed:', err)
+      })
+      .finally(() => {
+        setInviting(false)
+      })
   }
 
   const handleRoleChange = async (id, role) => {
@@ -51,7 +64,7 @@ export default function TeamTab() {
   }
 
   const handleRemove = async (id, name) => {
-    if (!window.confirm(`Retirer ${name} de l'agence ?`)) return
+    if (!window.confirm(t('team.removeConfirm', { name }))) return
     try {
       await api.removeMember(id)
       setMembers(m => m.filter(x => x.id !== id))
@@ -71,10 +84,9 @@ export default function TeamTab() {
 
   return (
     <div style={{ maxWidth: 680 }}>
-      {/* Invite form — admin only */}
       {isAdmin && (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 20, marginBottom: 24 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>Inviter un membre</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>{t('team.inviteTitle')}</h3>
           {feedback && (
             <div style={{
               padding: '8px 12px', borderRadius: 6, marginBottom: 12, fontSize: 13,
@@ -93,28 +105,27 @@ export default function TeamTab() {
               value={inviteRole} onChange={e => setInviteRole(e.target.value)}
               className="form-input" style={{ width: 120 }}
             >
-              <option value="agent">Agent</option>
+              <option value="staff">Staff</option>
               <option value="admin">Admin</option>
             </select>
             <button className="btn btn-primary" disabled={inviting}>
-              {inviting ? 'Envoi…' : 'Inviter'}
+              {inviting ? t('team.inviting') : t('team.inviteBtn')}
             </button>
           </form>
           <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8 }}>
-            L'invité recevra un lien par email pour créer son compte.
+            {t('team.inviteHint')}
           </p>
         </div>
       )}
 
-      {/* Members list */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: 14 }}>
-          Membres ({members.length})
+          {t('team.membersTitle', { count: members.length })}
         </div>
         {loading ? (
-          <div style={{ padding: 24, color: 'var(--text3)', textAlign: 'center' }}>Chargement…</div>
+          <div style={{ padding: 24, color: 'var(--text3)', textAlign: 'center' }}>{t('team.loading')}</div>
         ) : members.length === 0 ? (
-          <div style={{ padding: 24, color: 'var(--text3)', textAlign: 'center' }}>Aucun membre trouvé. Configurez votre backend Railway pour afficher l'équipe.</div>
+          <div style={{ padding: 24, color: 'var(--text3)', textAlign: 'center' }}>{t('team.empty')}</div>
         ) : members.map((m, i) => (
           <div key={m.id} style={{
             display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
@@ -135,11 +146,11 @@ export default function TeamTab() {
             </div>
             {isAdmin ? (
               <select
-                value={m.role || 'agent'}
+                value={m.role || 'staff'}
                 onChange={e => handleRoleChange(m.id, e.target.value)}
                 className="form-input" style={{ width: 110, fontSize: 12, padding: '4px 8px' }}
               >
-                <option value="agent">Agent</option>
+                <option value="staff">Staff</option>
                 <option value="admin">Admin</option>
               </select>
             ) : roleBadge(m.role)}

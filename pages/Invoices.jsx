@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getInvoices, getContracts, getClients, getAgency, getFleet } from '../lib/db'
+import { getInvoices, getContracts, getAgency, getFleet } from '../lib/db'
 import { api } from '../lib/api'
 import { Eye, X } from 'lucide-react'
 import { generateInvoice, viewInvoice } from '../utils/pdf'
@@ -25,7 +25,7 @@ export default function Invoices() {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    Promise.all([getInvoices(), getContracts(), getClients(), getAgency(), getFleet()]).then(([invs, ctrs, cls, agc, fleet]) => {
+    Promise.all([getInvoices(), getContracts(), api.getClients(), getAgency(), getFleet()]).then(([invs, ctrs, cls, agc, fleet]) => {
       if (cancelled) return
       setInvoices(invs)
       setContracts(ctrs)

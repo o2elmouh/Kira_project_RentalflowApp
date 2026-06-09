@@ -94,8 +94,8 @@ export default function Step3Damages({ contract, vehicle, agency, returnMileage,
           {/* Fuel fee */}
           <div className="form-group" style={{ marginBottom: 8 }}>
             <label className="form-label" style={{ fontSize: 12 }}>
-              Frais carburant (MAD)
-              {fuelDiff > 0 && <span style={{ color: 'var(--text3)', fontWeight: 400, marginLeft: 6 }}>calculé : {fuelDiff} niveau{fuelDiff > 1 ? 'x' : ''} × 100</span>}
+              {t('step3.fuelFeesLabel')}
+              {fuelDiff > 0 && <span style={{ color: 'var(--text3)', fontWeight: 400, marginLeft: 6 }}>{t('step3.fuelCalculated')} {fuelDiff} {t('step3.fuelLevel')}{fuelDiff > 1 ? 'x' : ''} {t('step3.fuelMultiplier')}</span>}
             </label>
             <input
               type="number"

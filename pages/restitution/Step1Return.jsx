@@ -47,10 +47,10 @@ export default function Step1Return({ contract, vehicle, data, onChange, onNext 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Radio size={14} color="#4ade80" />
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#4ade80' }}>Données télématiques disponibles</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#4ade80' }}>{t('step1.telemetryAvailable')}</div>
                 <div style={{ fontSize: 11, color: '#86efac', marginTop: 2 }}>
-                  {snapFill.mileage?.toLocaleString()} km · Carburant {Math.round(snapFill.fuel ?? 0)}%
-                  {snapFill.dtcCodes?.length > 0 && <span style={{ color: '#f87171', marginLeft: 8 }}>⚠ DTC: {snapFill.dtcCodes.join(', ')}</span>}
+                  {snapFill.mileage?.toLocaleString()} km · {t('step1.fuelLabel')} {Math.round(snapFill.fuel ?? 0)}%
+                  {snapFill.dtcCodes?.length > 0 && <span style={{ color: '#f87171', marginLeft: 8 }}>⚠ {t('step1.dtcWarning')} {snapFill.dtcCodes.join(', ')}</span>}
                 </div>
               </div>
             </div>
@@ -58,13 +58,13 @@ export default function Step1Return({ contract, vehicle, data, onChange, onNext 
               onClick={applySnapshot}
               style={{ background: '#166534', color: '#4ade80', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
             >
-              Pré-remplir
+              {t('step1.applySnapshot')}
             </button>
           </div>
         ) : vehicle?.trackedDevice ? (
           <div style={{ background: '#1e1e2a', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 14px', fontSize: 12, color: 'var(--text3)', display: 'flex', alignItems: 'center', gap: 6 }}>
             <Radio size={12} />
-            Véhicule GPS — aucun snapshot de fin disponible. Saisie manuelle.
+            {t('step1.gpsNoSnapshot')}
           </div>
         ) : null}
 

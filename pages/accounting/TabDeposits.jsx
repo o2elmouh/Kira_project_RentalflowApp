@@ -1,10 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { Plus, X } from 'lucide-react'
-import {
-  getDeposits,
-  getContracts,
-} from '../../lib/db'
 import { holdDeposit, releaseDeposit } from '../../utils/accounting.js'
+import { useDeposits, useJournalEntries, useTransactions } from '../../src/hooks/useAccounting'
+import { useContracts } from '../../src/hooks/useContracts'
 import Modal from './Modal'
 import {
   card, tableStyle, th, td, inputStyle, selectStyle,
@@ -16,10 +14,14 @@ import {
 // TAB 4: Dépôts de garantie
 // ══════════════════════════════════════════════════════════
 export default function TabDeposits() {
-  const [deposits, setDeposits]   = useState([])
+  const { data: deposits = [], invalidate: invalidateDeposits } = useDeposits()
+  const { data: allContracts = [] } = useContracts()
+  const { invalidate: invalidateJournal }      = useJournalEntries()
+  const { invalidate: invalidateTransactions } = useTransactions()
+  const contracts = useMemo(() => allContracts.filter(c => c.status === 'active'), [allContracts])
+
   const [showHold, setShowHold]   = useState(false)
   const [showRelease, setShowRelease] = useState(null) // deposit object
-  const [contracts, setContracts] = useState([])
   const [error, setError] = useState('')
 
   const [holdForm, setHoldForm] = useState({
@@ -28,12 +30,11 @@ export default function TabDeposits() {
 
   const [deductions, setDeductions] = useState([{ reason: '', amount: '', accountCode: '3020' }])
 
-  const load = useCallback(async () => {
-    setDeposits(await getDeposits())
-    setContracts((await getContracts()).filter(c => c.status === 'active'))
-  }, [])
-
-  useEffect(() => { load() }, [load])
+  const refreshAccounting = () => {
+    invalidateDeposits()
+    invalidateJournal()
+    invalidateTransactions()
+  }
 
   const handleHold = async () => {
     setError('')
@@ -51,7 +52,7 @@ export default function TabDeposits() {
       })
       setShowHold(false)
       setHoldForm({ clientName: '', vehicleName: '', amount: '', contractId: '', date: new Date().toISOString().slice(0, 10) })
-      load()
+      refreshAccounting()
     } catch (e) {
       setError(e.message)
     }
@@ -69,7 +70,7 @@ export default function TabDeposits() {
       await releaseDeposit({ depositId: showRelease.id, deductions: validDeds.map(d => ({ ...d, amount: Number(d.amount) })) })
       setShowRelease(null)
       setDeductions([{ reason: '', amount: '', accountCode: '3020' }])
-      load()
+      refreshAccounting()
     } catch (e) {
       setError(e.message)
     }

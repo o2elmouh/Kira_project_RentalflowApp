@@ -43,7 +43,25 @@
     "extendSuccess": "Prolongation enregistrée · Nouvelle facture générée",
     "extendSuccessUpdated": "Prolongation enregistrée · Facture mise à jour",
     "restitute": "🔑 Restituer le véhicule",
-    "downloadPdf": "Télécharger le contrat PDF"
+    "downloadPdf": "Télécharger le contrat PDF",
+    "prolongationBadge": "Prolongation",
+    "prolongationRequestedUntil": "Prolongation demandée jusqu'au {{date}}",
+    "prolongationOther_one": "+{{count}} autre",
+    "prolongationOther_other": "+{{count}} autres",
+    "prolongationCTA": "Prolonger contrat →",
+    "prolongationView": "Voir",
+    "prolongationRefuse": "Refuser",
+    "prolongationPickContract": "Quel contrat prolonger ?",
+    "prolongationRefContract": "Contrat {{number}} — {{vehicle}} — {{client}}",
+    "prolongationContractNumber": "Numéro de contrat",
+    "prolongationContractStart": "Date de début",
+    "prolongationContractInitialEnd": "Date de fin initiale",
+    "prolongationConflictTitle": "⚠ Véhicule indisponible pour la prolongation",
+    "prolongationConflictDetail": "{{vehicle}} est déjà loué du {{start}} au {{end}}. Proposez un autre véhicule via Devis Rapide.",
+    "prolongationOpenSmartQuote": "Proposer un autre véhicule",
+    "prolongationPreview_one": "Prolongation : 1 jour · +{{amount}} MAD",
+    "prolongationPreview_other": "Prolongation : {{count}} jours · +{{amount}} MAD",
+    "prolongationIgnore": "Ignorer"
   },
   "extend": {
     "title": "Prolonger la réservation",
@@ -53,5 +71,75 @@
     "dailyRateSuffix": "MAD/jour",
     "summary": "Prolongation : {{days}} jour(s) · +{{amount}} MAD",
     "confirm": "Confirmer la prolongation"
+  },
+  "review": {
+    "editClient": "Modifier les informations client",
+    "editVehicle": "Modifier le véhicule & options",
+    "signContract": "Signer le contrat",
+    "resendLink": "Renvoyer le lien",
+    "finalize": "Finaliser le contrat",
+    "finalizing": "Finalisation…",
+    "sending": "Envoi…",
+    "errors": {
+      "noContact": "Le client n'a ni email ni numéro WhatsApp",
+      "sendFailed": "Échec de l'envoi du lien",
+      "finalizeFailed": "Échec de la finalisation",
+      "prepareFailed": "Impossible de préparer le contrat",
+      "noPdf": "Aucun contrat à envoyer"
+    },
+    "modal": {
+      "eyebrow": "SIGNATURE ÉLECTRONIQUE",
+      "title": "Envoyer le contrat pour signature",
+      "subtitle": "Choisissez le canal d'envoi. Le client recevra un lien sécurisé pour signer le contrat sur son appareil.",
+      "byEmail": "Envoyer par email",
+      "byWhatsApp": "Envoyer par WhatsApp",
+      "emailHint": "Lien envoyé à l'adresse email du client",
+      "emailMissing": "Email du client manquant",
+      "whatsappHint": "Lien envoyé au numéro WhatsApp du client",
+      "whatsappMissing": "Numéro WhatsApp manquant",
+      "cancel": "Annuler"
+    },
+    "awaiting": {
+      "title": "En attente de signature",
+      "subtitle": "Lien envoyé par {{channel}}{{ago}}. Vous pouvez attendre la signature en ligne ou cliquer sur « Finaliser » pour une signature manuelle en agence.",
+      "channelEmail": "email",
+      "channelWhatsApp": "WhatsApp",
+      "ago": " il y a {{minutes}} min",
+      "resend": "Renvoyer"
+    },
+    "signedOnline": "Contrat signé par le client. Cliquez sur « Finaliser le contrat » pour clôturer le dossier.",
+    "finalized": {
+      "eyebrow": "DOSSIER CLÔTURÉ",
+      "title": "Contrat finalisé",
+      "subtitle": "Le contrat de location {{name}} a été clôturé avec succès.",
+      "download": "Télécharger le contrat",
+      "print": "Imprimer le contrat",
+      "send": "Envoyer le contrat",
+      "backToDashboard": "Retour au tableau de bord"
+    },
+    "sendModal": {
+      "eyebrow": "ENVOI DU CONTRAT",
+      "pickChannel": "Choisir le canal",
+      "confirmSend": "Confirmer l'envoi",
+      "byEmail": "Par email",
+      "byEmailHint": "Envoyer le PDF en pièce jointe",
+      "byWhatsApp": "Par WhatsApp",
+      "byWhatsAppHint": "Notification au numéro du client",
+      "emailLabel": "Adresse email",
+      "phoneLabel": "Numéro WhatsApp",
+      "emailPlaceholder": "client@example.com",
+      "phonePlaceholder": "+212 6XX XXXXXX",
+      "recipientRequired": "Veuillez saisir un destinataire",
+      "back": "← Changer",
+      "send": "Envoyer",
+      "sendError": "Échec de l'envoi"
+    },
+    "badges": {
+      "signed": "Signé",
+      "awaiting": "En attente de signature"
+    },
+    "signature": {
+      "electronic": "✓ Signé électroniquement"
+    }
   }
 }

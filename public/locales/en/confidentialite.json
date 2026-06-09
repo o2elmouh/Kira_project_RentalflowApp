@@ -1,0 +1,23 @@
+{
+  "title": "Privacy and Data Protection",
+  "intro": "RentaFlow and your partner rental agency process your personal data in accordance with Moroccan Law 09-08 on the protection of natural persons with regard to the processing of personal data.",
+  "collectedTitle": "Data collected",
+  "collected": [
+    "Identity: first name, last name, national ID (CIN)",
+    "Driving licence",
+    "Phone number (WhatsApp)",
+    "Rental dates and locations"
+  ],
+  "purposeTitle": "Purpose of processing",
+  "purpose": "Your data is used exclusively for the execution of the rental contract and compliance with legal obligations (insurance, authorities).",
+  "rightsTitle": "Your rights",
+  "rights": [
+    "Access to your data",
+    "Rectification in case of inaccuracy",
+    "Deletion (subject to legal obligations)",
+    "Opposition to processing"
+  ],
+  "contactTitle": "Exercise your rights",
+  "contact": "To exercise your rights, contact your agency on the same WhatsApp number.",
+  "footer": "Compliant with Law 09-08 — National Commission for the Protection of Personal Data (CNDP — www.cndp.ma)."
+}

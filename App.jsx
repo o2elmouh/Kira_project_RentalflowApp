@@ -15,8 +15,17 @@ import AuthPage, { PasswordResetForm } from './pages/Auth'
 import OnboardingPage from './pages/Onboarding'
 import WelcomeScreen from './pages/WelcomeScreen'
 import SignContract from './pages/SignContract'
+import ContractSuccess from './pages/ContractSuccess'
 import Accounting from './pages/Accounting'
+import Documents from './pages/Documents'
+import Calendar  from './pages/Calendar'
 import Basket from './pages/Basket'
+import Network from './pages/Network'
+import PrivacyPolicy from './pages/legal/PrivacyPolicy'
+import Confidentialite from './pages/Confidentialite'
+import Reservations from './pages/Reservations'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from './src/lib/queryClient'
 
 const PREVIEW = new URLSearchParams(window.location.search).get('preview')
 const PAGE_PARAM = new URLSearchParams(window.location.search).get('page')
@@ -26,6 +35,8 @@ export default function App() {
   const [page, setPage] = useState(PAGE_PARAM || 'dashboard')
   const [restitutionContract, setRestitutionContract] = useState(null)
   const [prefilledLead, setPrefilledLead] = useState(null)
+  const [basketInitialTab, setBasketInitialTab] = useState(null)
+  const [successContractId, setSuccessContractId] = useState(null)
   const [authState, setAuthState] = useState('loading')
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -101,13 +112,20 @@ export default function App() {
 
   async function resolveUser(u) {
     if (resolvingRef.current) return
+    // Already resolved for this user — skip the profile/agency roundtrip.
+    // Auth events like USER_UPDATED / SIGNED_IN can re-emit the same user and
+    // would otherwise re-block the UI behind the profile query timeout.
+    if (isReadyRef.current && user?.id === u.id) {
+      setUser(u)
+      return
+    }
     resolvingRef.current = true
     setUser(u)
 
     const fetchProfile = () =>
       Promise.race([
         supabase.from('profiles').select('id, full_name, email, phone, role, agency_id').eq('id', u.id).maybeSingle(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Profile query timed out')), 8000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Profile query timed out')), 4000)),
       ])
 
     try {
@@ -126,7 +144,7 @@ export default function App() {
         try {
           const { data: agency } = await Promise.race([
             supabase.from('agencies').select('*').eq('id', prof.agency_id).maybeSingle(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Agency query timed out')), 4000)),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Agency query timed out')), 3000)),
           ])
           if (agency) prof.agencies = agency
         } catch {}
@@ -156,33 +174,49 @@ export default function App() {
 
   const handleNav = (target, state = {}) => {
     if (state.prefilledLead !== undefined) setPrefilledLead(state.prefilledLead)
+    setBasketInitialTab(state.initialTab ?? null)
     setPage(target)
   }
 
   const role = profile?.role ?? 'staff'
   const isAdmin = role === 'admin'
-  const isPremium = profile?.agencies?.plan === 'premium'
 
   const renderPage = () => {
     switch (page) {
-      case 'dashboard': return <Dashboard onNav={setPage} />
+      case 'dashboard': return <Dashboard onNav={handleNav} />
       case 'new-rental': return <NewRental
         onDone={() => { setPrefilledLead(null); setPage('dashboard') }}
+        onSigned={(id) => { setPrefilledLead(null); setSuccessContractId(id); setPage('contract-success') }}
         prefilledLead={prefilledLead}
       />
-      case 'contracts': return <Contracts onRestitution={handleRestitution} />
-      case 'invoices': return <Invoices />
-      case 'clients': return <Clients />
-      case 'fleet': return <Fleet />
+      case 'contract-success':
+        if (!successContractId) { setTimeout(() => setPage('dashboard'), 0); return null }
+        return <ContractSuccess
+          contractId={successContractId}
+          onDone={() => { setSuccessContractId(null); setPage('dashboard') }}
+        />
+      case 'documents':
+        return <Documents onRestitution={handleRestitution} isAdmin={isAdmin} />
+      case 'contracts':
+        return <Documents onRestitution={handleRestitution} isAdmin={isAdmin} initialTab="contracts" />
+      case 'invoices':
+        return <Documents onRestitution={handleRestitution} isAdmin={isAdmin} initialTab="invoices" />
       case 'accounting':
         if (!isAdmin) { setTimeout(() => setPage('dashboard'), 0); return null }
         return <Accounting />
+      case 'clients': return <Clients />
+      case 'fleet': return <Fleet />
+      case 'calendar': return <Calendar />
+      case 'reservations': return <Reservations />
       case 'settings':
-        if (!isAdmin) { setTimeout(() => setPage('dashboard'), 0); return null }
+        // Settings is open to every authenticated user — Settings.jsx
+        // itself filters which tabs are visible based on role.
         return <Settings />
+      case 'network':  return <Network />
+      case 'privacy-policy': return <PrivacyPolicy onBack={() => setPage('dashboard')} />
+      case 'confidentialite': return <Confidentialite />
       case 'basket':
-        if (!isPremium) { setTimeout(() => setPage('dashboard'), 0); return null }
-        return <Basket onNavigate={handleNav} />
+        return <Basket onNavigate={handleNav} initialTab={basketInitialTab} />
       case 'restitution-picker':
         return <RestitutionPicker onPick={handleRestitution} onCancel={() => setPage('contracts')} />
       case 'restitution':
@@ -196,6 +230,9 @@ export default function App() {
   }
 
   if (signToken) return <SignContract token={signToken} />
+
+  // Public CNDP confidentialite page — no auth required (linked from outbound offer messages)
+  if (PAGE_PARAM === 'confidentialite') return <Confidentialite />
 
   if (PREVIEW === 'onboarding')
     return <OnboardingPage user={{ id: 'preview', email: 'preview@rentaflow.ma' }} />
@@ -224,18 +261,20 @@ export default function App() {
   )
 
   return (
-    <UserContext.Provider value={{ user, profile, role, isAdmin, isPremium }}>
-      <div className="app-shell">
-        <Sidebar
-          active={page}
-          onNav={setPage}
-          user={user}
-          profile={profile}
-          isAdmin={isAdmin}
-          onSignOut={() => supabase.auth.signOut()}
-        />
-        <main className="main">{renderPage()}</main>
-      </div>
-    </UserContext.Provider>
+    <QueryClientProvider client={queryClient}>
+      <UserContext.Provider value={{ user, profile, role, isAdmin }}>
+        <div className="app-shell">
+          <Sidebar
+            active={page}
+            onNav={setPage}
+            user={user}
+            profile={profile}
+            isAdmin={isAdmin}
+            onSignOut={() => supabase.auth.signOut()}
+          />
+          <main className="main">{renderPage()}</main>
+        </div>
+      </UserContext.Provider>
+    </QueryClientProvider>
   )
 }

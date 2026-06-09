@@ -8,7 +8,15 @@ export default function UtilizationView({ contracts, fleet }) {
     return fleet.map(v => {
       const closed = contracts.filter(c => c.vehicleId === v.id && c.status === 'closed')
       const days   = closed.reduce((s, c) => s + (Number(c.days) || 0), 0)
-      const rev    = closed.reduce((s, c) => s + (Number(c.totalHT) || 0), 0)
+      // Revenu HT — derived from totalTTC at 20% (the schema has no totalHT
+      // column). Same logic as PnLView; keeps the dashboard honest until /
+      // unless an explicit HT field gets added to contracts later.
+      const rev    = closed.reduce((s, c) => {
+        const explicitHT = Number(c.totalHT) || 0
+        if (explicitHT > 0) return s + explicitHT
+        const ttc = Number(c.totalTTC ?? c.total_amount) || 0
+        return s + (ttc > 0 ? ttc / 1.20 : 0)
+      }, 0)
       return {
         label:  `${v.make} ${v.model}`.substring(0, 10),
         plate:  v.plate,

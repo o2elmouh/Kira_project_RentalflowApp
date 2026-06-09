@@ -1,5 +1,6 @@
 /**
- * POST /leads/webhook/gmail     — Called by the Gmail poller when a new message arrives
+ * POST /leads/webhook/gmail      — Called by the Gmail poller when a new message arrives
+ * (WhatsApp inbound is handled by Baileys sessionManager — no HTTP webhook needed)
  * GET  /leads                   — List pending demands for the authenticated agency
  * PATCH /leads/:id/status       — Update status (processed / ignored)
  * GET  /leads/:id               — Get single demand
@@ -8,39 +9,63 @@
  *   ANTHROPIC_API_KEY
  *   SUPABASE_SERVICE_ROLE_KEY
  *   ENCRYPTION_KEY  — 32-byte hex string for AES-256-GCM (openssl rand -hex 32)
+ *
+ * ── Entry-points map (jump-to anchors for code search) ────────────────
+ *
+ * Inbound pipeline
+ *   handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mimeType, bodyText)
+ *     The Baileys hot path. Runs triage → classification → prolongation
+ *     decision matrix → insert / merge into pending_demands. Exported.
+ *
+ * Gmail webhook
+ *   router.post('/webhook/gmail', requireInternalSecret, …)
+ *     Same pipeline as WhatsApp but driven by the Gmail IMAP poller.
+ *     Hardcoded `clientStatus='no_contract'` was the v1.13.x bug fixed
+ *     by getClientStatusByEmail in v1.13.9.
+ *
+ * Classification (Claude calls)
+ *   classifyTextMessage(bodyText, clientStatus) — ROUTING_SYSTEM_PROMPT
+ *   extractWithClaude(imageBlocks, textHint)    — GLOBAL_SYSTEM_PROMPT
+ *   analyzeQuoteReply(text)                     — "You analyze client replies…"
+ *
+ * Client / contract lookups (used by the prolongation decision matrix)
+ *   getClientStatus(agencyId, senderJid)              — phone-based
+ *   getClientStatusByEmail(agencyId, senderEmail)     — email-based (exported)
+ *   findActiveContractsForClient(agencyId, clientId)  — exported
+ *   findActiveLeadByPhone(agencyId, senderJid)
+ *   findOfferSentLeadByEmail(agencyId, senderEmail)
+ *   findMatchingDemand(agencyId, senderIdOrName, extractedData)
+ *
+ * Offer-response branching (Smart Quote)
+ *   handleOfferResponse(agencyId, senderId, text, lead, source)
+ *     Branches accepted | rejected | question via analyzeQuoteReply.
+ *
+ * Other helpers
+ *   nameMatchScore() / normaliseName() / levenshtein() — fuzzy matching
+ *   encrypt() / decrypt() — re-exported from ../lib/encryption.js
+ *
+ * See docs/superpowers/specs/2026-05-28-prolongation-flow-design.md for
+ * the decision matrix this file implements end-to-end.
  */
 
 import { Router } from 'express'
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
 import Anthropic from '@anthropic-ai/sdk'
 import supabaseAdmin from '../lib/supabaseAdmin.js'
 import { requireAuth } from '../middleware/auth.js'
-import { requirePremium } from '../middleware/premium.js'
+import { detectLanguage, translateToFrench, preFilter, handleAmbiguous, detectMissingDocs } from '../lib/triage.js'
+import { buildAcknowledgmentMessage, mergeExtractedData } from '../lib/offerMessage.js'
+import { normalizeExtractedDocument } from '../lib/normalizeExtractedDocument.js'
+import { resolveIdentity } from '../lib/identityResolver.js'
+import { sendWhatsAppMessage } from '../lib/twilioClient.js'
+// Encryption helpers moved to server/lib/encryption.js so the new clients
+// route (Phase 5) and the leads pipeline share one AES-256-GCM implementation.
+// Re-exported here to preserve any existing import paths.
+import { encrypt, decrypt } from '../lib/encryption.js'
+import { sendToAgency } from '../lib/pushNotifications.js'
+import { isLeadableWhatsAppSender } from '../lib/whatsappSender.js'
+export { encrypt, decrypt }
 
 const router = Router()
-
-// ── Encryption helpers (AES-256-GCM) ─────────────────────
-const ENC_KEY = process.env.ENCRYPTION_KEY
-  ? Buffer.from(process.env.ENCRYPTION_KEY, 'hex')
-  : null
-
-export function encrypt(text) {
-  if (!ENC_KEY) return text  // dev fallback — no encryption
-  const iv = randomBytes(12)
-  const cipher = createCipheriv('aes-256-gcm', ENC_KEY, iv)
-  const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()])
-  const tag = cipher.getAuthTag()
-  return `${iv.toString('hex')}:${tag.toString('hex')}:${encrypted.toString('hex')}`
-}
-
-export function decrypt(blob) {
-  if (!ENC_KEY || !blob?.includes(':')) return blob
-  const [ivHex, tagHex, encHex] = blob.split(':')
-  const decipher = createDecipheriv('aes-256-gcm', ENC_KEY, Buffer.from(ivHex, 'hex'))
-  decipher.setAuthTag(Buffer.from(tagHex, 'hex'))
-  const dec = Buffer.concat([decipher.update(Buffer.from(encHex, 'hex')), decipher.final()])
-  return dec.toString('utf8')
-}
 
 // ── Fuzzy name matching (Levenshtein distance) ────────────
 function levenshtein(a, b) {
@@ -72,14 +97,56 @@ function nameMatchScore(nameA, nameB) {
   return 1 - levenshtein(a, b) / maxLen
 }
 
+// ── Substantive-content guard ─────────────────────────────
+/**
+ * Decide whether an `extractedData` object carries enough signal to deserve
+ * a row in `pending_demands`. A lead is **substantive** if any one of:
+ *
+ *   - classification ∈ {prolongation, support_issue, alert}
+ *     These types are always agent-actionable on their own — a prolongation
+ *     row's value is in the contract link, not in OCR fields; alert/support
+ *     escalations exist *because* fields are sparse.
+ *
+ *   - any person field is set: firstName, lastName
+ *
+ *   - any document field is set: cinNumber, drivingLicenseNumber,
+ *     passportNumber, documentNumber
+ *
+ *   - any rental-intent field is set: start_date, end_date, requested_car,
+ *     rentalIntent.detected
+ *
+ *   - the text classifier produced a `summary_for_agent`
+ *
+ * Otherwise the object is meta-only (e.g. `{ classification: 'new_lead',
+ * confidenceScores: {} }` — what Claude vision returns when handed a
+ * sticker / selfie / scenic photo) and would render as an empty corbeille
+ * card. Drop it.
+ *
+ * NOTE: this is a tighter version of v1.14.19's `!extractedData` guard.
+ * It catches the case where Claude returned a parseable-but-useless JSON
+ * and the WA handler force-stamped `classification = 'new_lead'` on it.
+ */
+export function hasSubstantiveContent(extracted) {
+  if (!extracted || typeof extracted !== 'object') return false
+  const cls = extracted.classification
+  if (cls === 'prolongation' || cls === 'support_issue' || cls === 'alert') return true
+  if (extracted.firstName || extracted.lastName) return true
+  if (extracted.cinNumber || extracted.drivingLicenseNumber || extracted.passportNumber || extracted.documentNumber) return true
+  if (extracted.start_date || extracted.end_date || extracted.requested_car) return true
+  if (extracted.rentalIntent?.detected) return true
+  if (extracted.summary_for_agent) return true
+  return false
+}
+
 // ── Claude routing prompt (text messages) ────────────────
 const ROUTING_SYSTEM_PROMPT = `You are an intelligent lead routing assistant for "Rentalflow", a car rental agency in Morocco.
 Your job is to analyze incoming WhatsApp messages, categorize them, and extract relevant data.
 Clients may speak in French, Standard Arabic, or Moroccan Darija.
 
 You will receive an input object containing:
-1. "client_status": Either "active_contract" (they currently have a car) or "no_contract".
-2. "message": The transcribed text or text message sent by the user.
+1. "today": today's date in YYYY-MM-DD — use this to resolve relative dates and missing years.
+2. "client_status": Either "active_contract" (they currently have a car) or "no_contract".
+3. "message": The transcribed text or text message sent by the user.
 
 You must output ONLY a raw JSON object. Do not include markdown formatting like \`\`\`json.
 Do not include any conversational text.
@@ -90,14 +157,16 @@ Categorize the "classification" field into exactly one of these four options:
 - "support_issue": An active client is reporting an accident, breakdown, or issue.
 - "other": General questions or unrecognizable intents.
 
+Dates: always output strict ISO 8601 calendar dates in the format YYYY-MM-DD. Never output free-form text like "5 juillet" or ranges. If the client gives a relative date ("demain", "next week", "le mois prochain"), resolve it using TODAY's date which will be provided at the start of each user message. If the year is missing, infer it from TODAY — if the mentioned month/day is on or after TODAY, use TODAY's year; otherwise use TODAY's year + 1. If you cannot confidently resolve a date, return null for that field.
+
 Your output must match this exact JSON structure:
 {
   "classification": "string",
   "confidence": number (0.0 to 1.0),
   "extracted_data": {
     "requested_car": "string or null",
-    "start_date": "string (ISO format or descriptive) or null",
-    "end_date": "string or null",
+    "start_date": "YYYY-MM-DD string or null",
+    "end_date": "YYYY-MM-DD string or null",
     "pickup_location": "string or null (city or address where the client wants to pick up the car)",
     "return_location": "string or null (city or address where the client wants to return the car, if different from pickup)",
     "requested_extra_days": "number or null",
@@ -105,6 +174,7 @@ Your output must match this exact JSON structure:
   },
   "summary_for_agent": "A short, 1-sentence summary of what the client wants."
 }`
+
 
 // ── Claude Vision prompt (image/document OCR) ────────────
 const GLOBAL_SYSTEM_PROMPT = `You are a precise global identity document parser and rental intent extractor.
@@ -164,12 +234,16 @@ async function extractWithClaude(imageBlocks, textHint = '') {
 
   const raw = message.content?.[0]?.text?.trim() ?? ''
   const clean = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+  let parsed
   try {
-    return JSON.parse(clean)
+    parsed = JSON.parse(clean)
   } catch {
     console.error('[leads] Claude returned non-JSON:', raw.slice(0, 200))
     return null
   }
+  // v1.14.14: re-key per document type so passport + driving license don't
+  // collide in the flat documentNumber slot during mergeExtractedData.
+  return normalizeExtractedDocument(parsed)
 }
 
 // ── Find existing pending demand to merge with ────────────
@@ -208,26 +282,251 @@ async function findMatchingDemand(agencyId, senderIdOrName, extractedData) {
 
 
 // ── POST /leads/webhook/gmail ─────────────────────────────
-// Called internally by the Gmail poller (server/routes/gmail.js)
-router.post('/webhook/gmail', async (req, res) => {
-  const { agencyId, senderEmail, subject, bodyText, attachments } = req.body
+// Called internally by the Gmail poller (server/routes/gmail.js).
+// SECURITY: This endpoint is internal-only. Block external calls via a shared secret.
+function requireInternalSecret(req, res, next) {
+  const secret = process.env.INTERNAL_WEBHOOK_SECRET
+  if (!secret) {
+    // Fail closed in production: if the secret isn't configured, refuse the
+    // request rather than accepting anonymous lead injections. Dev still
+    // skips the check so local testing doesn't require the env var.
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[pipeline:gmail-wh] ✗ INTERNAL_WEBHOOK_SECRET missing in production — rejecting')
+      return res.status(503).json({ error: 'Webhook secret not configured' })
+    }
+    return next()
+  }
+  const provided = req.headers['x-internal-secret']
+  if (provided !== secret) {
+    console.warn('[pipeline:gmail-wh] ✗ invalid or missing X-Internal-Secret header')
+    return res.status(403).json({ error: 'Forbidden' })
+  }
+  next()
+}
+
+router.post('/webhook/gmail', requireInternalSecret, async (req, res) => {
+  const { agencyId, senderEmail, subject, bodyText, attachments, messageId } = req.body
 
   if (!agencyId || !senderEmail) {
     return res.status(400).json({ error: 'agencyId and senderEmail required' })
   }
 
+  // Dedup: if this Gmail Message-ID has already been ingested for this agency,
+  // skip the pipeline entirely. Cheap pre-check; the partial unique index
+  // (agency_id, gmail_message_id) is the authoritative guard.
+  if (messageId) {
+    const { data: existing } = await supabaseAdmin
+      .from('pending_demands')
+      .select('id')
+      .eq('agency_id', agencyId)
+      .eq('gmail_message_id', messageId)
+      .maybeSingle()
+    if (existing) {
+      console.log(`[pipeline:gmail-wh] ✓ dedup — already ingested message_id=${messageId} lead=${existing.id}`)
+      return res.json({ ok: true, deduped: true, lead_id: existing.id })
+    }
+  }
+
+  // SECURITY: mask sender email in logs to protect PII
+  const maskedSender = senderEmail ? senderEmail.replace(/(.{2}).*@/, '$1***@') : '?'
+  console.log(`[pipeline:gmail-wh] ← email | agency=${agencyId} | from=${maskedSender} | images=${(attachments || []).length}`)
+
   let extractedData = null
   const mediaUrls = []
+
+  const textForTriage = [subject, bodyText].filter(Boolean).join('\n\n')
+
+  // Lookup any open offer_sent lead from this sender. We do NOT short-circuit here:
+  // a brand-new inquiry from a sender who happens to have a prior offer must still
+  // be triaged and surfaced in the corbeille as a new lead. The offer-response
+  // merge is only triggered later, after classification, when the message is
+  // ambiguous / classified as "other" — i.e. a likely reply to the existing offer
+  // (accept / refuse / question). See decision matrix below.
+  const gmailOfferLead = await findOfferSentLeadByEmail(agencyId, senderEmail)
+  if (gmailOfferLead) {
+    console.log(`[pipeline:gmail-wh] → sender has open offer_sent lead=${gmailOfferLead.id} (decision deferred until classification)`)
+  }
+
+  const routeGmailToOfferResponse = async (reason) => {
+    console.log(`[pipeline:gmail-wh] → ${reason} → routing to offer-response | lead=${gmailOfferLead.id}`)
+    await handleOfferResponse(agencyId, senderEmail, textForTriage, gmailOfferLead, 'gmail')
+    return res.json({ ok: true, offer_response: true })
+  }
+
+  // When the keyword pre-filter is `ambiguous`, we defer the alert and let
+  // Claude classify the message. If Claude returns a real intent (new_lead,
+  // prolongation, support_issue) → it becomes a regular lead. If Claude calls
+  // it `other` or fails → we fall back to this payload to write the alert.
+  let ambiguousAlertFallback = null
+
+  if (textForTriage) {
+    const lang = detectLanguage(textForTriage)
+    const CORE = new Set(['fra', 'ara', 'eng'])
+    const needsTranslation = !CORE.has(lang) && lang !== 'und'
+    const translatedText = needsTranslation ? await translateToFrench(textForTriage) : null
+
+    // Claude refused to translate (darija slang, gibberish, etc.). Drop the
+    // message — running preFilter on the refusal text was historically the
+    // source of bogus "alert" rows (e.g. French "car" conjunction matching
+    // the English "car" keyword). For senders with an open offer, still
+    // route to offer-response so legitimate "ok wakha" replies aren't lost.
+    if (needsTranslation && translatedText === null) {
+      if (gmailOfferLead) {
+        return routeGmailToOfferResponse('untranslatable text but sender has open offer')
+      }
+      console.log(`[pipeline:gmail-wh] ✗ dropped — untranslatable text (lang=${lang})`)
+      return res.json({ ok: true, dropped: true, reason: 'untranslatable' })
+    }
+
+    const textToFilter = translatedText ?? textForTriage
+    const { result, matchedKeywords } = preFilter(textToFilter)
+
+    console.log(`[pipeline:gmail-wh] → triage | lang=${lang} | result=${result} | keywords=[${matchedKeywords.join(',')}]`)
+
+    if (result === 'fail') {
+      if (gmailOfferLead) {
+        return routeGmailToOfferResponse('triage failed (no rental keywords) but sender has open offer')
+      }
+      console.log(`[pipeline:gmail-wh] ✗ dropped — no rental keywords`)
+      return res.json({ ok: true, dropped: true })
+    }
+
+    if (result === 'ambiguous') {
+      const ambiguousPayload = {
+        agencyId,
+        senderId: senderEmail,
+        source: 'gmail',
+        originalText: textForTriage,
+        translatedText,
+        rawPayload: { subject, bodyText: (bodyText || '').slice(0, 2000) },
+      }
+      if (!process.env.ANTHROPIC_API_KEY) {
+        console.log(`[pipeline:gmail-wh] → ambiguous — no Claude key, creating alert`)
+        await handleAmbiguous(ambiguousPayload)
+        return res.json({ ok: true, alert: true })
+      }
+      console.log(`[pipeline:gmail-wh] → ambiguous — deferring to Claude classifier`)
+      ambiguousAlertFallback = ambiguousPayload
+    }
+  }
 
   const imageBlocks = (attachments || [])
     .filter(a => a.base64 && a.mimeType?.startsWith('image/'))
     .map(a => ({ type: 'image', source: { type: 'base64', media_type: a.mimeType, data: a.base64 } }))
 
   if (imageBlocks.length && process.env.ANTHROPIC_API_KEY) {
+    console.log(`[pipeline:gmail-wh] → Claude extraction (${imageBlocks.length} images)`)
     try {
       extractedData = await extractWithClaude(imageBlocks, bodyText || subject)
+      console.log(`[pipeline:gmail-wh] → extraction result: classification=${extractedData?.classification} | confidence=${extractedData?.confidence}`)
     } catch (err) {
-      console.error('[leads/gmail] Claude extraction error:', err.message)
+      console.error('[pipeline:gmail-wh] ✗ Claude extraction error:', err.message)
+    }
+  }
+
+  if (!extractedData && (bodyText || subject) && process.env.ANTHROPIC_API_KEY) {
+    console.log(`[pipeline:gmail-wh] → Claude classification (text)`)
+    try {
+      const textToClassify = [subject, bodyText].filter(Boolean).join('\n\n')
+      const gmailClientStatus = await getClientStatusByEmail(agencyId, senderEmail)
+      const classification = await classifyTextMessage(textToClassify, gmailClientStatus)
+      if (classification) {
+        // Skip messages classified as "other" — not rental-related
+        const cls = classification.classification
+        const unclassified = !cls || cls === 'other'
+        if (unclassified) {
+          console.log(`[pipeline:gmail-wh] → unclassified or "other" (${classification.confidence})`)
+          if (gmailOfferLead) {
+            return routeGmailToOfferResponse('unclassified/"other" + open offer (likely reply to quote)')
+          }
+          console.log(`[pipeline:gmail-wh] ✗ rejected — unclassified/"other" and no open offer`)
+          if (ambiguousAlertFallback) {
+            console.log(`[pipeline:gmail-wh] → ambiguous + unclassified → alert fallback`)
+            await handleAmbiguous(ambiguousAlertFallback)
+            return res.json({ ok: true, alert: true })
+          }
+          return res.json({ ok: true, dropped: true })
+        }
+        extractedData = {
+          classification: classification.classification,
+          confidence: classification.confidence,
+          summary_for_agent: classification.summary_for_agent,
+          ...classification.extracted_data,
+        }
+        console.log(`[pipeline:gmail-wh] → classification: ${classification.classification} (${classification.confidence}) | summary="${(classification.summary_for_agent || '').slice(0, 60)}"`)
+      } else {
+        console.warn(`[pipeline:gmail-wh] → classification returned null`)
+        if (gmailOfferLead) {
+          return routeGmailToOfferResponse('null classification + open offer')
+        }
+        if (ambiguousAlertFallback) {
+          console.log(`[pipeline:gmail-wh] → ambiguous + null classification → alert fallback`)
+          await handleAmbiguous(ambiguousAlertFallback)
+          return res.json({ ok: true, alert: true })
+        }
+      }
+    } catch (err) {
+      console.error('[pipeline:gmail-wh] ✗ text classification error:', err.message)
+      if (gmailOfferLead) {
+        return routeGmailToOfferResponse('classify error + open offer')
+      }
+      if (ambiguousAlertFallback) {
+        console.log(`[pipeline:gmail-wh] → ambiguous + classify error → alert fallback`)
+        await handleAmbiguous(ambiguousAlertFallback)
+        return res.json({ ok: true, alert: true })
+      }
+    }
+  }
+
+  // ── Acceptance-on-open-offer guard (mirror of WhatsApp handler) ──
+  // Same rationale as the WA path: ROUTING_SYSTEM_PROMPT doesn't recognize
+  // "accept the quote we already sent" — those messages get classified as
+  // new_lead and duplicate the offer_sent row. Re-check via analyzeQuoteReply
+  // before letting new_lead through. `question` falls through (genuine new
+  // inquiry from the same sender).
+  if (gmailOfferLead && extractedData?.classification === 'new_lead' && textForTriage) {
+    try {
+      const intent = await analyzeQuoteReply(textForTriage)
+      if (intent === 'accepted' || intent === 'rejected') {
+        console.log(`[pipeline:gmail-wh] → new_lead + open offer + intent=${intent} → routing to offer response`)
+        await handleOfferResponse(agencyId, senderEmail, textForTriage, gmailOfferLead, 'gmail')
+        return res.json({ ok: true, offer_response: true })
+      }
+      console.log(`[pipeline:gmail-wh] → new_lead + open offer + intent=${intent} → inserting as new lead (genuine new inquiry)`)
+    } catch (err) {
+      console.error('[pipeline:gmail-wh] ✗ acceptance-guard error (treating as new_lead):', err.message)
+    }
+  }
+
+  // ── Prolongation linkage (Section 1 of design spec) ────────
+  // When classification is 'prolongation', find the sender's active contracts
+  // and decide where to link the lead:
+  //   - 0 contracts  → downgrade to 'new_lead' (lead still surfaces in corbeille)
+  //   - 1 contract   → set prolongation_target_contract_id
+  //   - 2+ contracts → store candidates in extracted_data, leave target null
+  let prolongationTargetContractId = null
+  if (extractedData?.classification === 'prolongation') {
+    const { data: gmailClients } = await supabaseAdmin
+      .from('clients')
+      .select('id')
+      .eq('agency_id', agencyId)
+      .eq('email', String(senderEmail).trim().toLowerCase())
+      .limit(1)
+    const matchedClientId = gmailClients?.[0]?.id || null
+    const active = matchedClientId ? await findActiveContractsForClient(agencyId, matchedClientId) : []
+    if (active.length === 0) {
+      console.log(`[pipeline:gmail-wh] → prolongation downgraded to new_lead (0 active contracts)`)
+      extractedData.classification = 'new_lead'
+    } else if (active.length === 1) {
+      prolongationTargetContractId = active[0].id
+      console.log(`[pipeline:gmail-wh] → prolongation linked to contract ${active[0].id}`)
+    } else {
+      extractedData.prolongation_candidates = active.map(c => ({
+        id: c.id,
+        contract_number: c.contract_number,
+        end_date: c.end_date,
+      }))
+      console.log(`[pipeline:gmail-wh] → prolongation has ${active.length} candidate contracts (deferred to agent)`)
     }
   }
 
@@ -237,21 +536,35 @@ router.post('/webhook/gmail', async (req, res) => {
     }
   }
 
+  // Safety net mirror of the WhatsApp handler — see comment in handleInboundWhatsApp.
+  // Drops both (a) the case where every extractor returned null (no body, no
+  // image, or Claude calls failed), and (b) v1.14.21's tightening: an extracted
+  // object that's meta-only (e.g. `{ classification: 'new_lead' }` force-stamped
+  // on a sticker / selfie that Claude vision couldn't read).
+  if (!hasSubstantiveContent(extractedData)) {
+    console.log(`[pipeline:gmail-wh] ✗ dropped — no substantive content (hadText=${!!textForTriage}, images=${imageBlocks.length}, keys=[${Object.keys(extractedData || {}).join(',')}])`)
+    return res.json({ ok: true, dropped: true, reason: 'no_content' })
+  }
+
   const match = await findMatchingDemand(agencyId, senderEmail, extractedData)
+  console.log(`[pipeline:gmail-wh] → match: ${match ? `${match.type} (score=${match.score}) id=${match.demand.id}` : 'none — new lead'}`)
 
   if (match && match.type !== 'potential') {
-    const existing = match.demand
-    await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from('pending_demands')
       .update({
-        extracted_data: { ...(existing.extracted_data || {}), ...(extractedData || {}) },
-        media_urls: [...(existing.media_urls || []), ...mediaUrls],
+        extracted_data: { ...(match.demand.extracted_data || {}), ...(extractedData || {}) },
+        media_urls: [...(match.demand.media_urls || []), ...mediaUrls],
         confidence_scores: extractedData?.confidenceScores || null,
         match_score: match.score,
+        ...(extractedData?.classification ? { classification: extractedData.classification } : {}),
+        ...(prolongationTargetContractId ? { prolongation_target_contract_id: prolongationTargetContractId } : {}),
       })
-      .eq('id', existing.id)
+      .eq('id', match.demand.id)
+    if (error) console.error('[pipeline:gmail-wh] ✗ update error:', error.message)
+    else console.log(`[pipeline:gmail-wh] ✓ lead updated id=${match.demand.id}`)
   } else {
-    await supabaseAdmin.from('pending_demands').insert({
+    const { data: inserted, error } = await supabaseAdmin.from('pending_demands').insert({
       agency_id: agencyId,
       source: 'gmail',
       sender_id: senderEmail,
@@ -261,7 +574,32 @@ router.post('/webhook/gmail', async (req, res) => {
       media_urls: mediaUrls,
       match_score: match?.score || null,
       merged_with_id: match?.type === 'potential' ? match.demand.id : null,
-    })
+      classification: extractedData?.classification || null,
+      prolongation_target_contract_id: prolongationTargetContractId,
+      gmail_message_id: messageId || null,
+    }).select('id').maybeSingle()
+    if (error) {
+      // 23505 = unique_violation. The partial unique index (agency_id,
+      // gmail_message_id) means a duplicate Gmail message slipped past the
+      // pre-check (race condition). Treat as success — the row already exists.
+      if (error.code === '23505') {
+        console.log(`[pipeline:gmail-wh] ✓ dedup via unique index — message_id=${messageId}`)
+        return res.json({ ok: true, deduped: true })
+      }
+      console.error('[pipeline:gmail-wh] ✗ insert error:', error.message)
+    } else {
+      console.log(`[pipeline:gmail-wh] ✓ lead inserted id=${inserted?.id}`)
+      if (inserted?.id) {
+        const summary = extractedData?.summary_for_agent
+          || (bodyText || subject || '').slice(0, 120)
+          || `Nouveau message de ${senderEmail}`
+        sendToAgency(agencyId, 'Nouvelle demande Gmail', summary, {
+          type: 'lead',
+          id: inserted.id,
+          source: 'gmail',
+        }).catch(() => {})
+      }
+    }
   }
 
   res.json({ ok: true })
@@ -272,9 +610,16 @@ router.post('/webhook/gmail', async (req, res) => {
 // Security: only Supabase Storage URLs are forwarded (SSRF prevention).
 router.get('/media', async (req, res) => {
   const { url } = req.query
-  if (!url || !url.startsWith('https://')) return res.status(400).end()
+  if (!url || typeof url !== 'string' || !url.startsWith('https://')) return res.status(400).end()
+  // Fail closed: if SUPABASE_URL is not configured, refuse to proxy anything
+  // rather than accept arbitrary https targets (SSRF). Also verify origin
+  // matches exactly to prevent `https://supabase.co.attacker.com/...` tricks.
   const supabaseUrl = process.env.SUPABASE_URL
-  if (supabaseUrl && !url.startsWith(supabaseUrl)) return res.status(403).end()
+  if (!supabaseUrl) return res.status(503).end()
+  let parsed
+  try { parsed = new URL(url) } catch { return res.status(400).end() }
+  const allowedHost = new URL(supabaseUrl).host
+  if (parsed.host !== allowedHost) return res.status(403).end()
   try {
     const upstream = await fetch(url)
     if (!upstream.ok) return res.status(upstream.status).end()
@@ -289,21 +634,43 @@ router.get('/media', async (req, res) => {
   }
 })
 
-// ── Authenticated routes (premium required) ───────────────
-router.use(requireAuth, requirePremium)
+// ── Authenticated routes ──────────────────────────────────
+router.use(requireAuth)
 
 // GET /leads — list pending demands
 router.get('/', async (req, res) => {
   const status = req.query.status || 'pending'
+  const classification = req.query.classification
 
-  const { data, error } = await supabaseAdmin
+  // Actual values written by the pipeline are: 'new_lead', 'prolongation',
+  // 'support_issue', 'alert' (per classifyTextMessage + extractWithClaude
+  // + handleAmbiguous). Old labels ('lead', 'normal', 'spam') are kept for
+  // backward compat with any historical row, but accepting them on input is
+  // safe — the column has no CHECK constraint (see CODE_REVIEW_FINDINGS L16).
+  const VALID_CLASSIFICATIONS = ['new_lead', 'prolongation', 'support_issue', 'alert', 'lead', 'normal', 'spam']
+  if (classification && !VALID_CLASSIFICATIONS.includes(classification)) {
+    return res.status(400).json({ error: 'Invalid classification' })
+  }
+
+  const VALID_STATUSES_GET = ['pending', 'waiting', 'offer_sent', 'accepted', 'ignored']
+  if (!VALID_STATUSES_GET.includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' })
+  }
+
+  let query = supabaseAdmin
     .from('pending_demands')
-    .select('*')
+    .select('id, agency_id, sender_id, source, status, classification, extracted_data, raw_payload, offered_vehicle_id, offered_price_total, media_urls, created_at, updated_at')
     .eq('agency_id', req.user.agency_id)
-    .eq('status', status)
     .order('created_at', { ascending: false })
     .limit(100)
 
+  if (classification) {
+    query = query.eq('classification', classification).neq('status', 'ignored')
+  } else {
+    query = query.eq('status', status).or('classification.neq.alert,classification.is.null')
+  }
+
+  const { data, error } = await query
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
 })
@@ -312,7 +679,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const { data, error } = await supabaseAdmin
     .from('pending_demands')
-    .select('*')
+    .select('id, agency_id, sender_id, source, status, classification, extracted_data, raw_payload, offered_vehicle_id, offered_price_total, media_urls, conversation, created_at, updated_at')
     .eq('id', req.params.id)
     .eq('agency_id', req.user.agency_id)
     .maybeSingle()
@@ -324,15 +691,24 @@ router.get('/:id', async (req, res) => {
 
 // PATCH /leads/:id/status
 const VALID_STATUSES = ['pending', 'processed', 'ignored', 'waiting', 'offer_sent', 'accepted', 'converted']
+// Same rationale as VALID_CLASSIFICATIONS above — accept canonical pipeline
+// values + legacy labels for backward compat.
+const VALID_PATCH_CLASSIFICATIONS = ['new_lead', 'prolongation', 'support_issue', 'alert', 'lead', 'normal', 'spam']
 router.patch('/:id/status', async (req, res) => {
-  const { status } = req.body
+  const { status, classification } = req.body
   if (!VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join('|')}` })
   }
+  if (classification !== undefined && !VALID_PATCH_CLASSIFICATIONS.includes(classification)) {
+    return res.status(400).json({ error: `classification must be one of: ${VALID_PATCH_CLASSIFICATIONS.join('|')}` })
+  }
+
+  const update = { status }
+  if (classification !== undefined) update.classification = classification
 
   const { data, error } = await supabaseAdmin
     .from('pending_demands')
-    .update({ status })
+    .update(update)
     .eq('id', req.params.id)
     .eq('agency_id', req.user.agency_id)
     .select()
@@ -368,6 +744,15 @@ router.patch('/:id/extracted', async (req, res) => {
  */
 async function getClientStatus(agencyId, senderJid) {
   try {
+    // @lid JIDs are WhatsApp "linked identity" pseudonyms — the numeric prefix
+    // is NOT a phone number. We have no way to map an @lid back to a clients
+    // table row keyed by phone, so short-circuit as 'no_contract'. Without
+    // this guard the digit-suffix logic below could false-positive against an
+    // unrelated client whose phone happens to share the last digits.
+    if (typeof senderJid === 'string' && /@lid$/i.test(senderJid)) {
+      return 'no_contract'
+    }
+
     const digits = senderJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
     // Moroccan local format: strip leading country code
     const localVariants = [digits, digits.replace(/^212/, '0')]
@@ -395,6 +780,62 @@ async function getClientStatus(agencyId, senderJid) {
   }
 }
 
+/**
+ * Email-equivalent of getClientStatus(). Looks up a client by exact email,
+ * then checks for any active contract. Used by the Gmail webhook so the
+ * classifier knows whether the sender is a known active-contract client.
+ *
+ * @returns 'active_contract' | 'no_contract'
+ */
+export async function getClientStatusByEmail(agencyId, senderEmail) {
+  try {
+    if (!senderEmail) return 'no_contract'
+    const normalized = String(senderEmail).trim().toLowerCase()
+    const { data: clients } = await supabaseAdmin
+      .from('clients')
+      .select('id')
+      .eq('agency_id', agencyId)
+      .eq('email', normalized)
+      .limit(1)
+
+    if (!clients?.length) return 'no_contract'
+
+    const { data: contracts } = await supabaseAdmin
+      .from('contracts')
+      .select('id')
+      .eq('agency_id', agencyId)
+      .eq('client_id', clients[0].id)
+      .eq('status', 'active')
+
+    return contracts?.length ? 'active_contract' : 'no_contract'
+  } catch {
+    return 'no_contract'
+  }
+}
+
+/**
+ * Returns all of a client's currently-active contracts (sorted newest first).
+ * Used after classification = 'prolongation' to decide whether to link the
+ * lead to one contract (1 row), let the agent pick (2+ rows), or downgrade
+ * the lead to 'new_lead' (0 rows).
+ */
+export async function findActiveContractsForClient(agencyId, clientId) {
+  try {
+    if (!agencyId || !clientId) return []
+    const { data: contracts } = await supabaseAdmin
+      .from('contracts')
+      .select('id, contract_number, vehicle_id, client_id, end_date, daily_rate, status, created_at')
+      .eq('agency_id', agencyId)
+      .eq('client_id', clientId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+    return contracts || []
+  } catch (err) {
+    console.error('[leads/findActiveContractsForClient] error:', err.message)
+    return []
+  }
+}
+
 // ── Text message classifier ───────────────────────────────
 async function classifyTextMessage(bodyText, clientStatus) {
   if (!process.env.ANTHROPIC_API_KEY) return null
@@ -402,11 +843,15 @@ async function classifyTextMessage(bodyText, clientStatus) {
   try {
     const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 256,
+      max_tokens: 512,
       system: ROUTING_SYSTEM_PROMPT,
       messages: [{
         role: 'user',
-        content: JSON.stringify({ client_status: clientStatus, message: bodyText }),
+        content: JSON.stringify({
+          today: new Date().toISOString().slice(0, 10),
+          client_status: clientStatus,
+          message: bodyText,
+        }),
       }],
     })
     const raw = message.content?.[0]?.text?.trim() ?? ''
@@ -418,67 +863,500 @@ async function classifyTextMessage(bodyText, clientStatus) {
   }
 }
 
+// ── Offer-response pre-triage helpers ────────────────────
+
+async function findActiveLeadByPhone(agencyId, senderJid) {
+  try {
+    if (!senderJid) return null
+    const digits9 = senderJid.replace(/\D/g, '').slice(-9)
+    if (!digits9) return null
+    // Sender-shape gate: an @lid JID's digit prefix is NOT a phone number, so
+    // matching it against a phone-based sender_id by last 9 digits would
+    // cross-identity false-positive (e.g. `212658100534@s.whatsapp.net` and
+    // `7383658100534@lid` share `658100534`). Only match within the same
+    // JID family — either both @lid (same suffix → same person), or both
+    // phone-based (last 9 digits stable under country-code variation).
+    const isLid = /@lid$/i.test(senderJid)
+    const { data: leads } = await supabaseAdmin
+      .from('pending_demands')
+      .select('id, sender_id, status, raw_payload, extracted_data, docs_completed_at, media_urls')
+      .eq('agency_id', agencyId)
+      .in('status', ['offer_sent', 'accepted'])
+      .order('created_at', { ascending: false })
+      .limit(20)
+    return (leads || []).find(l => {
+      const sid = l.sender_id || ''
+      const sidIsLid = /@lid$/i.test(sid)
+      if (sidIsLid !== isLid) return false
+      return sid.replace(/\D/g, '').slice(-9) === digits9
+    }) || null
+  } catch (err) {
+    console.error('[leads/findActiveLeadByPhone] error:', err.message)
+    return null
+  }
+}
+
+async function findOfferSentLeadByEmail(agencyId, senderEmail) {
+  try {
+    const { data: leads } = await supabaseAdmin
+      .from('pending_demands')
+      .select('id, sender_id, raw_payload, extracted_data')
+      .eq('agency_id', agencyId)
+      .eq('status', 'offer_sent')
+      .eq('sender_id', senderEmail)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    return leads?.[0] || null
+  } catch (err) {
+    console.error('[leads/findOfferSentLeadByEmail] error:', err.message)
+    return null
+  }
+}
+
+async function handleOfferResponse(agencyId, senderId, text, lead, source) {
+  console.log(`[pipeline:${source}] → offer response | lead=${lead.id} | sender=${senderId}`)
+
+  const intent = text?.trim() ? await analyzeQuoteReply(text) : 'question'
+  const existingReplies = lead.raw_payload?.replies || []
+  const newReply = { text: (text || '').slice(0, 500), intent, timestamp: new Date().toISOString() }
+  const baseUpdate = {
+    last_client_note: (text || '').slice(0, 500),
+    raw_payload: { ...(lead.raw_payload || {}), replies: [...existingReplies, newReply].slice(-50) },
+  }
+
+  if (intent === 'accepted') {
+    const acceptedAt = new Date().toISOString()
+    const { error } = await supabaseAdmin
+      .from('pending_demands')
+      .update({ ...baseUpdate, status: 'accepted', accepted_at: acceptedAt })
+      .eq('id', lead.id)
+      .eq('agency_id', agencyId)
+    if (error) {
+      console.error(`[pipeline:${source}] ✗ accepted update error:`, error.message)
+      return
+    }
+    console.log(`[pipeline:${source}] ✓ lead ${lead.id} → accepted`)
+
+    sendToAgency(
+      agencyId,
+      '✅ Offre acceptée',
+      `Le client a accepté votre devis : « ${(text || '').slice(0, 80)} »`,
+      { type: 'lead', id: lead.id, status: 'accepted' }
+    ).catch(() => {})
+
+    // Auto-ack only on WhatsApp; Gmail clients don't expect WA replies.
+    if (source === 'whatsapp') {
+      const { needsCIN, needsPermis } = detectMissingDocs(lead.extracted_data)
+      const ackBody = buildAcknowledgmentMessage({ needsCIN, needsPermis })
+      try {
+        await sendWhatsAppMessage(senderId, ackBody, agencyId)
+        console.log(`[pipeline:${source}] → auto-ack sent | lead=${lead.id} | needsCIN=${needsCIN} needsPermis=${needsPermis}`)
+      } catch (err) {
+        console.error(`[pipeline:${source}] ✗ auto-ack send error:`, err.message)
+      }
+    }
+    return
+  }
+
+  if (intent === 'rejected') {
+    const { error } = await supabaseAdmin
+      .from('pending_demands')
+      .update({ ...baseUpdate, status: 'ignored' })
+      .eq('id', lead.id)
+      .eq('agency_id', agencyId)
+    if (error) console.error(`[pipeline:${source}] ✗ rejected update error:`, error.message)
+    else console.log(`[pipeline:${source}] ✓ lead ${lead.id} → ignored`)
+
+    sendToAgency(
+      agencyId,
+      '❌ Offre refusée',
+      `Le client a décliné : « ${(text || '').slice(0, 80)} »`,
+      { type: 'lead', id: lead.id, status: 'ignored' }
+    ).catch(() => {})
+    return
+  }
+
+  // intent === 'question' — keep status unchanged
+  const { error } = await supabaseAdmin
+    .from('pending_demands')
+    .update(baseUpdate)
+    .eq('id', lead.id)
+    .eq('agency_id', agencyId)
+  if (error) console.error(`[pipeline:${source}] ✗ question update error:`, error.message)
+  else console.log(`[pipeline:${source}] ✓ lead ${lead.id} | question noted`)
+
+  sendToAgency(
+    agencyId,
+    '💬 Question sur l\'offre',
+    (text || '').slice(0, 160),
+    { type: 'lead', id: lead.id, status: lead.status }
+  ).catch(() => {})
+}
+
 /**
  * Called directly by the Baileys inbound listener (no HTTP round-trip).
- * @param {string}      agencyId
- * @param {string}      senderJid  — e.g. "212XXXXXXXXX@s.whatsapp.net"
- * @param {string|null} imageUrl   — public Supabase Storage URL, or null
- * @param {string}      bodyText   — text body or Whisper transcript
+ * @param {string}         agencyId
+ * @param {string}         senderJid   — e.g. "212XXXXXXXXX@s.whatsapp.net"
+ * @param {Buffer|null}    imageBuffer — raw image bytes (never persisted)
+ * @param {string}         mimeType    — e.g. "image/jpeg"
+ * @param {string}         bodyText    — text body or Whisper transcript
  */
-export async function handleInboundWhatsApp(agencyId, senderJid, imageUrl, bodyText) {
+export async function handleInboundWhatsApp(agencyId, senderJid, imageBuffer, mimeType, bodyText) {
+  console.log(`[pipeline:wa] ← message | agency=${agencyId} | sender=${senderJid} | image=${!!imageBuffer} | text="${(bodyText || '').slice(0, 80)}"`)
+
+  // Sender-shape gate: drop status broadcasts, group messages, channels, and
+  // LID pseudonyms before any pipeline work. These never represent a real
+  // 1:1 inquiry and previously polluted pending_demands with empty rows.
+  if (!isLeadableWhatsAppSender(senderJid)) {
+    console.log(`[pipeline:wa] ✗ dropped — non-leadable sender: ${senderJid}`)
+    return
+  }
+
   let extractedData = null
 
-  if (imageUrl && process.env.ANTHROPIC_API_KEY) {
-    // Image received — run document OCR via public URL
+  // Pre-triage: if sender has an offer_sent lead, bypass keyword triage
+  const activeLead = await findActiveLeadByPhone(agencyId, senderJid)
+  if (activeLead) {
+    // Image from an active lead → OCR + merge into existing lead (no duplicate row).
+    if (imageBuffer && process.env.ANTHROPIC_API_KEY) {
+      console.log(`[pipeline:wa] → active-lead image | lead=${activeLead.id} status=${activeLead.status}`)
+      try {
+        const imageBlock = { type: 'image', source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: imageBuffer.toString('base64') } }
+        const incoming = await extractWithClaude([imageBlock], bodyText)
+        // v1.14.14 diagnostic — confirm OCR ran and surfaced typed fields.
+        console.log(`[pipeline:wa] ← OCR | lead=${activeLead.id} | type=${incoming?.lastDocumentType || 'none'} | fields=[${Object.keys(incoming || {}).filter(k => k !== 'confidenceScores').join(',')}]`)
+        if (incoming) {
+          // v1.14.15: after merging the new extraction in, resolve canonical
+          // identity (PASSPORT > CIN > LICENSE) and flag mismatches.
+          const merged = resolveIdentity(mergeExtractedData(activeLead.extracted_data, incoming))
+          const update = { extracted_data: merged }
+
+          const { needsCIN, needsPermis } = detectMissingDocs(merged)
+          const wasIncomplete = !activeLead.docs_completed_at
+          const isNowComplete = !needsCIN && !needsPermis
+          if (wasIncomplete && isNowComplete) {
+            update.docs_completed_at = new Date().toISOString()
+          }
+
+          const { error } = await supabaseAdmin
+            .from('pending_demands')
+            .update(update)
+            .eq('id', activeLead.id)
+            .eq('agency_id', agencyId)
+          if (error) console.error('[pipeline:wa] ✗ active-lead merge error:', error.message)
+          else console.log(`[pipeline:wa] ✓ active-lead merged | lead=${activeLead.id} docs_complete=${isNowComplete}`)
+
+          if (update.docs_completed_at) {
+            sendToAgency(
+              agencyId,
+              '📂 Documents complets',
+              'Le client a envoyé tous les documents requis — prêt à convertir.',
+              { type: 'lead', id: activeLead.id, status: activeLead.status }
+            ).catch(() => {})
+          }
+        }
+      } catch (err) {
+        console.error('[pipeline:wa] ✗ active-lead OCR error:', err.message)
+      }
+      return
+    }
+
+    // Text on an accepted lead → log only, no triage fall-through.
+    if (activeLead.status === 'accepted') {
+      const existingReplies = activeLead.raw_payload?.replies || []
+      const newReply = { text: (bodyText || '').slice(0, 500), intent: 'post-accept-note', timestamp: new Date().toISOString() }
+      await supabaseAdmin
+        .from('pending_demands')
+        .update({
+          last_client_note: (bodyText || '').slice(0, 500),
+          raw_payload: { ...(activeLead.raw_payload || {}), replies: [...existingReplies, newReply].slice(-50) },
+        })
+        .eq('id', activeLead.id)
+        .eq('agency_id', agencyId)
+      sendToAgency(
+        agencyId,
+        '💬 Message client',
+        (bodyText || '').slice(0, 160),
+        { type: 'lead', id: activeLead.id, status: 'accepted' }
+      ).catch(() => {})
+      return
+    }
+
+    // Empty body on offer_sent lead → preserve "question noted" behavior. There is
+    // nothing classifiable; treat the ping as a quote-thread reply.
+    if (activeLead.status === 'offer_sent' && !bodyText?.trim()) {
+      await handleOfferResponse(agencyId, senderJid, bodyText, activeLead, 'whatsapp')
+      return
+    }
+
+    // Text on an offer_sent lead: do NOT short-circuit here. A brand-new inquiry
+    // from this sender must still be triaged and surfaced in the corbeille as a
+    // new lead. Only short messages that fail triage or classify as "other" are
+    // treated as a reply to the existing offer — see decision matrix below.
+    // (Fall through to triage / classification block.)
+  }
+
+  const offerSentLead = activeLead?.status === 'offer_sent' ? activeLead : null
+  const routeWaToOfferResponse = async (reason) => {
+    console.log(`[pipeline:wa] → ${reason} → routing to offer-response | lead=${offerSentLead.id}`)
+    await handleOfferResponse(agencyId, senderJid, bodyText, offerSentLead, 'whatsapp')
+  }
+
+  // Deferred ambiguous-alert fallback — see Gmail handler above for rationale.
+  let ambiguousAlertFallback = null
+
+  if (bodyText?.trim()) {
+    const lang = detectLanguage(bodyText)
+    const CORE = new Set(['fra', 'ara', 'eng'])
+    const needsTranslation = !CORE.has(lang) && lang !== 'und'
+    const translatedText = needsTranslation ? await translateToFrench(bodyText) : null
+
+    // Claude refused to translate (darija small-talk, gibberish, etc.). Drop
+    // the message — mirror of the Gmail handler. For senders with an open
+    // offer, route to offer-response so legitimate replies aren't lost.
+    if (needsTranslation && translatedText === null) {
+      if (offerSentLead) {
+        await routeWaToOfferResponse('untranslatable text but sender has open offer')
+        return
+      }
+      console.log(`[pipeline:wa] ✗ dropped — untranslatable text (lang=${lang})`)
+      return
+    }
+
+    const textToFilter = translatedText ?? bodyText
+    const { result, matchedKeywords } = preFilter(textToFilter)
+
+    console.log(`[pipeline:wa] → triage | lang=${lang} | result=${result} | keywords=[${matchedKeywords.join(',')}]`)
+
+    if (result === 'fail') {
+      if (offerSentLead) {
+        await routeWaToOfferResponse('triage failed (no rental keywords) but sender has open offer')
+        return
+      }
+      console.log(`[pipeline:wa] ✗ dropped — no rental keywords`)
+      return
+    }
+
+    if (result === 'ambiguous') {
+      const ambiguousPayload = {
+        agencyId,
+        senderId: senderJid,
+        source: 'whatsapp',
+        originalText: bodyText,
+        translatedText,
+        rawPayload: { body: bodyText, from: senderJid },
+      }
+      if (!process.env.ANTHROPIC_API_KEY) {
+        console.log(`[pipeline:wa] → ambiguous — no Claude key, creating alert`)
+        await handleAmbiguous(ambiguousPayload)
+        return
+      }
+      console.log(`[pipeline:wa] → ambiguous — deferring to Claude classifier`)
+      ambiguousAlertFallback = ambiguousPayload
+    }
+  }
+
+  if (imageBuffer && process.env.ANTHROPIC_API_KEY) {
+    console.log(`[pipeline:wa] → Claude extraction (image, ${mimeType}, ${imageBuffer.length} bytes)`)
     try {
-      const imageBlock = { type: 'image', source: { type: 'url', url: imageUrl } }
+      const imageBlock = { type: 'image', source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: imageBuffer.toString('base64') } }
       extractedData = await extractWithClaude([imageBlock], bodyText)
+      if (extractedData) {
+        extractedData.classification = 'new_lead'
+        console.log(`[pipeline:wa] → extraction result: classification=${extractedData.classification} | confidence=${extractedData.confidence}`)
+        if (bodyText?.trim()) {
+          try {
+            const clientStatus = await getClientStatus(agencyId, senderJid)
+            const captionClass = await classifyTextMessage(bodyText, clientStatus)
+            if (captionClass) {
+              extractedData = {
+                ...extractedData,
+                ...captionClass.extracted_data,
+                ...(captionClass.classification && { classification: captionClass.classification }),
+                ...(captionClass.summary_for_agent && { summary_for_agent: captionClass.summary_for_agent }),
+              }
+              console.log(`[pipeline:wa] → caption merged: classification=${extractedData.classification} | summary="${(extractedData.summary_for_agent || '').slice(0, 60)}"`)
+            }
+          } catch (_) {}
+        }
+      } else {
+        console.warn(`[pipeline:wa] → extraction returned null`)
+      }
     } catch (err) {
-      console.error('[leads/inbound-wa] Claude error:', err.message)
+      console.error('[pipeline:wa] ✗ Claude extraction error:', err.message)
     }
   } else if (bodyText?.trim()) {
-    // Text-only or voice-note transcript — run lead classification
+    console.log(`[pipeline:wa] → Claude classification (text-only)`)
     try {
       const clientStatus = await getClientStatus(agencyId, senderJid)
       const classification = await classifyTextMessage(bodyText, clientStatus)
       if (classification) {
+        // Skip messages classified as "other" — not rental-related
+        const cls = classification.classification
+        const unclassified = !cls || cls === 'other'
+        if (unclassified) {
+          console.log(`[pipeline:wa] → unclassified or "other" (${classification.confidence})`)
+          if (offerSentLead) {
+            await routeWaToOfferResponse('unclassified/"other" + open offer (likely reply to quote)')
+            return
+          }
+          console.log(`[pipeline:wa] ✗ rejected — unclassified/"other" and no open offer`)
+          if (ambiguousAlertFallback) {
+            console.log(`[pipeline:wa] → ambiguous + unclassified → alert fallback`)
+            await handleAmbiguous(ambiguousAlertFallback)
+          }
+          return
+        }
         extractedData = {
           classification: classification.classification,
           confidence: classification.confidence,
           summary_for_agent: classification.summary_for_agent,
           ...classification.extracted_data,
         }
+        console.log(`[pipeline:wa] → classification: ${classification.classification} (${classification.confidence}) | summary="${(classification.summary_for_agent || '').slice(0, 60)}"`)
+      } else {
+        console.warn(`[pipeline:wa] → classification returned null`)
+        if (offerSentLead) {
+          await routeWaToOfferResponse('null classification + open offer')
+          return
+        }
+        if (ambiguousAlertFallback) {
+          console.log(`[pipeline:wa] → ambiguous + null classification → alert fallback`)
+          await handleAmbiguous(ambiguousAlertFallback)
+          return
+        }
       }
     } catch (err) {
-      console.error('[leads/inbound-wa] classify error:', err.message)
+      console.error('[pipeline:wa] ✗ classify error:', err.message)
+      if (offerSentLead) {
+        await routeWaToOfferResponse('classify error + open offer')
+        return
+      }
+      if (ambiguousAlertFallback) {
+        console.log(`[pipeline:wa] → ambiguous + classify error → alert fallback`)
+        await handleAmbiguous(ambiguousAlertFallback)
+        return
+      }
     }
   }
 
+  // ── Acceptance-on-open-offer guard ────────────────────────
+  // The text classifier ROUTING_SYSTEM_PROMPT only knows new_lead /
+  // prolongation / support_issue / other. It has no concept of "this is
+  // a reply accepting the quote we already sent". So a message like
+  // "ok je veux louer la Dacia que vous m'avez proposée" gets classified
+  // as new_lead and lands as a duplicate row instead of marking the
+  // existing offer_sent lead accepted.
+  //
+  // Defence: when the sender has an open offer AND the text was
+  // classified as new_lead, ask the quote-reply classifier (which DOES
+  // recognize acceptance / rejection phrasing in French + Darija). If it
+  // says accepted/rejected, that takes precedence over new_lead. If it
+  // says question, fall through — a genuinely different inquiry from the
+  // same sender still gets its own row.
+  if (offerSentLead && extractedData?.classification === 'new_lead' && bodyText?.trim()) {
+    try {
+      const intent = await analyzeQuoteReply(bodyText)
+      if (intent === 'accepted' || intent === 'rejected') {
+        console.log(`[pipeline:wa] → new_lead + open offer + intent=${intent} → routing to offer response`)
+        await handleOfferResponse(agencyId, senderJid, bodyText, offerSentLead, 'whatsapp')
+        return
+      }
+      console.log(`[pipeline:wa] → new_lead + open offer + intent=${intent} → inserting as new lead (genuine new inquiry)`)
+    } catch (err) {
+      console.error('[pipeline:wa] ✗ acceptance-guard error (treating as new_lead):', err.message)
+    }
+  }
+
+  // ── Prolongation linkage (mirror of Gmail webhook) ─────────
+  let waProlongationTargetContractId = null
+  if (extractedData?.classification === 'prolongation') {
+    const digits = senderJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
+    const localVariants = [digits, digits.replace(/^212/, '0')]
+    const { data: waClients } = await supabaseAdmin
+      .from('clients')
+      .select('id')
+      .eq('agency_id', agencyId)
+      .in('phone', localVariants)
+      .limit(1)
+    const matchedClientId = waClients?.[0]?.id || null
+    const active = matchedClientId ? await findActiveContractsForClient(agencyId, matchedClientId) : []
+    if (active.length === 0) {
+      console.log(`[pipeline:wa] → prolongation downgraded to new_lead (0 active contracts)`)
+      extractedData.classification = 'new_lead'
+    } else if (active.length === 1) {
+      waProlongationTargetContractId = active[0].id
+      console.log(`[pipeline:wa] → prolongation linked to contract ${active[0].id}`)
+    } else {
+      extractedData.prolongation_candidates = active.map(c => ({
+        id: c.id,
+        contract_number: c.contract_number,
+        end_date: c.end_date,
+      }))
+      console.log(`[pipeline:wa] → prolongation has ${active.length} candidates (deferred to agent)`)
+    }
+  }
+
+  // Safety net: never insert a row with no extracted_data. The pipeline can
+  // reach this point with extractedData === null when (a) the message has no
+  // body and no image — stickers, videos, reactions, locations, contact cards,
+  // documents — and skips every triage / extraction block; (b) image vision
+  // returned null; (c) text classifier returned null on a preFilter='ok' path
+  // with no ambiguous fallback. All three previously created empty corbeille
+  // cards labelled "Numéro masqué — Aucun document extrait".
+  // v1.14.21: tightened from `!extractedData` to `!hasSubstantiveContent`.
+  // Catches the case where Claude vision returns a parseable-but-useless JSON
+  // for non-document images (stickers, selfies, scenic photos, screenshots);
+  // the WA handler force-stamps `classification = 'new_lead'` on the empty
+  // object, so the old null-check let it through.
+  if (!hasSubstantiveContent(extractedData)) {
+    console.log(`[pipeline:wa] ✗ dropped — no substantive content (body="${(bodyText || '').slice(0, 40)}", hadImage=${!!imageBuffer}, keys=[${Object.keys(extractedData || {}).join(',')}])`)
+    return
+  }
+
   const match = await findMatchingDemand(agencyId, senderJid, extractedData)
-  const mediaUrls = imageUrl ? [imageUrl] : []
+  console.log(`[pipeline:wa] → match: ${match ? `${match.type} (score=${match.score}) id=${match.demand.id}` : 'none — new lead'}`)
 
   if (match && match.type !== 'potential') {
-    const existing = match.demand
-    await supabaseAdmin.from('pending_demands').update({
-      extracted_data: { ...(existing.extracted_data || {}), ...(extractedData || {}) },
-      media_urls: [...(existing.media_urls || []), ...mediaUrls],
+    const { error } = await supabaseAdmin.from('pending_demands').update({
+      extracted_data: { ...(match.demand.extracted_data || {}), ...(extractedData || {}) },
+      media_urls: match.demand.media_urls || [],
       confidence_scores: extractedData?.confidenceScores || null,
       match_score: match.score,
-      raw_payload: { ...existing.raw_payload, latestBody: bodyText },
-    }).eq('id', existing.id)
+      raw_payload: { ...match.demand.raw_payload, latestBody: bodyText },
+      ...(extractedData?.classification ? { classification: extractedData.classification } : {}),
+      ...(waProlongationTargetContractId ? { prolongation_target_contract_id: waProlongationTargetContractId } : {}),
+    }).eq('id', match.demand.id)
+    if (error) console.error('[pipeline:wa] ✗ update error:', error.message)
+    else console.log(`[pipeline:wa] ✓ lead updated id=${match.demand.id}`)
   } else {
-    const { error } = await supabaseAdmin.from('pending_demands').insert({
+    const { data: inserted, error } = await supabaseAdmin.from('pending_demands').insert({
       agency_id: agencyId,
       source: 'whatsapp',
       sender_id: senderJid,
       raw_payload: { body: bodyText, from: senderJid },
       extracted_data: extractedData,
       confidence_scores: extractedData?.confidenceScores || null,
-      media_urls: mediaUrls,
+      media_urls: [],
       match_score: match?.score || null,
       merged_with_id: match?.type === 'potential' ? match.demand.id : null,
-    })
-    if (error) console.error('[leads/inbound-wa] insert error:', error.message)
+      classification: extractedData?.classification || null,
+      prolongation_target_contract_id: waProlongationTargetContractId,
+    }).select('id').maybeSingle()
+    if (error) console.error('[pipeline:wa] ✗ insert error:', error.message)
+    else {
+      console.log(`[pipeline:wa] ✓ lead inserted id=${inserted?.id}`)
+      if (inserted?.id) {
+        const summary = extractedData?.summary_for_agent
+          || (bodyText || '').slice(0, 120)
+          || `Nouveau message WhatsApp`
+        sendToAgency(agencyId, 'Nouvelle demande WhatsApp', summary, {
+          type: 'lead',
+          id: inserted.id,
+          source: 'whatsapp',
+        }).catch(() => {})
+      }
+    }
   }
 }
 
@@ -511,60 +1389,6 @@ Rules:
   } catch (err) {
     console.error('[leads/analyzeQuoteReply] error:', err.message)
     return 'question'
-  }
-}
-
-/**
- * Handle a client reply to a pending quote offer.
- * Checks if the sender has an `offer_sent` lead; if so, runs intent analysis and
- * updates the lead status accordingly.
- * Returns the matched leadId if handled, or null if no offer_sent lead was found.
- */
-export async function handleQuoteReply(agencyId, senderJid, text) {
-  try {
-    const digits9 = (senderJid || '').replace(/\D/g, '').slice(-9)
-    if (!digits9) return null
-
-    const { data: leads } = await supabaseAdmin
-      .from('pending_demands')
-      .select('id, sender_id')
-      .eq('agency_id', agencyId)
-      .eq('status', 'offer_sent')
-      .order('created_at', { ascending: false })
-      .limit(20)
-
-    const matched = (leads || []).find(l => {
-      const leadDigits9 = (l.sender_id || '').replace(/\D/g, '').slice(-9)
-      return leadDigits9 === digits9
-    })
-
-    if (!matched) return null
-
-    const intent = await analyzeQuoteReply(text)
-
-    // For 'question' intent: note the message but return null so handleInboundWhatsApp
-    // still runs — new rental requests from offer_sent clients must not be swallowed.
-    if (intent === 'question') {
-      await supabaseAdmin
-        .from('pending_demands')
-        .update({ last_client_note: text.slice(0, 500) })
-        .eq('id', matched.id)
-      console.log(`[leads/handleQuoteReply] lead ${matched.id} → question noted, passing through`)
-      return null
-    }
-
-    const newStatus = intent === 'accepted' ? 'accepted' : 'ignored'
-
-    await supabaseAdmin
-      .from('pending_demands')
-      .update({ status: newStatus, last_client_note: text.slice(0, 500) })
-      .eq('id', matched.id)
-
-    console.log(`[leads/handleQuoteReply] lead ${matched.id} → ${newStatus} (intent: ${intent})`)
-    return matched.id
-  } catch (err) {
-    console.error('[leads/handleQuoteReply] error:', err.message)
-    return null
   }
 }
 

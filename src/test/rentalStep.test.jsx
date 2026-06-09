@@ -2,7 +2,8 @@
  * Tests for pages/rental/RentalStep
  *
  * Strategy:
- *   - Mock lib/db (getAvailableVehicles) and utils/rentalOptions (getRentalOptions)
+ *   - Mock lib/db (getAvailableVehicles), utils/rentalOptions (getRentalOptions),
+ *     lib/api (api.network.borrowedFleet), and react-i18next
  *   - Render RentalStep with minimal props
  *   - Test: date validation, vehicle selection, price calculation, canContinue guard
  */
@@ -19,6 +20,14 @@ vi.mock('../../utils/rentalOptions', () => ({
   getRentalOptions: vi.fn(),
 }))
 
+vi.mock('../../lib/api', () => ({
+  api: {
+    network: {
+      borrowedFleet: vi.fn().mockResolvedValue({ vehicles: [] }),
+    },
+  },
+}))
+
 vi.mock('../../pages/rental/StepButtons', () => ({
   default: ({ leftBtns, rightBtns }) => (
     <div data-testid="step-buttons">
@@ -28,9 +37,54 @@ vi.mock('../../pages/rental/StepButtons', () => ({
   ),
 }))
 
-// react-i18next — RentalStep doesn't use it but sub-imports might
+// react-i18next — translate keys to recognizable French/English strings
+const TRANSLATIONS = {
+  'rentalStep.continueBtn': 'Continuer',
+  'rentalStep.endBeforeStart': 'La date de fin doit être après la date de début',
+  'rentalStep.noVehicles': 'No vehicles found for the selected period',
+  'rentalStep.perDay': '{{rate}} MAD/day',
+  'rentalStep.daysShort': '{{n}} day(s)',
+  'rentalStep.priceTotal': 'Total TTC',
+  'rentalStep.priceTVA': 'TVA (20%)',
+  'rentalStep.priceVehicle': 'Véhicule',
+  'rentalStep.priceMultiplier': '{{a}} × {{b}}',
+  'rentalStep.priceFlat': 'Forfait',
+  'rentalStep.periodTitle': 'Période de location',
+  'rentalStep.startDate': 'Date de début',
+  'rentalStep.endDate': 'Date de fin',
+  'rentalStep.duration': 'Durée',
+  'rentalStep.selected': 'Sélectionné',
+  'rentalStep.optionsTitle': 'Options',
+  'rentalStep.startTime': 'Heure départ',
+  'rentalStep.endTime': 'Heure retour',
+  'rentalStep.fuelLevel': 'Niveau carburant',
+  'rentalStep.pickupLocation': 'Lieu de prise',
+  'rentalStep.returnLocation': 'Lieu de retour',
+  'rentalStep.locationPlaceholder': 'Agence / Aéroport…',
+  'rentalStep.mileageOut': 'Kilométrage départ',
+  'rentalStep.mileagePlaceholder': 'km',
+  'rentalStep.paymentMethod': 'Mode de paiement',
+  'rentalStep.deposit': 'Caution',
+  'rentalStep.cancelBtn': 'Annuler',
+  'rentalStep.saveQuitBtn': 'Sauvegarder & Quitter',
+  'rentalStep.vehiclesLoading': 'Chargement des véhicules…',
+  'rentalStep.networkBadge': 'Réseau',
+}
+
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (k) => k }),
+  useTranslation: () => ({
+    t: (key, optsOrDefault) => {
+      // t('common:back', 'Retour') — second arg is a default string
+      if (typeof optsOrDefault === 'string' && !TRANSLATIONS[key]) return optsOrDefault
+      let text = TRANSLATIONS[key] || key
+      if (optsOrDefault && typeof optsOrDefault === 'object') {
+        for (const [k, v] of Object.entries(optsOrDefault)) {
+          text = text.replace(`{{${k}}}`, v)
+        }
+      }
+      return text
+    },
+  }),
 }))
 
 const { getAvailableVehicles } = await import('../../lib/db')

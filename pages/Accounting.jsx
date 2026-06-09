@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   BarChart2, BookOpen, List, Shield, Building2,
 } from 'lucide-react'
-import { computeAgencyPayout } from '../utils/accounting.js'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import { computeAgencyPayout, backfillJournalForClosedContracts } from '../utils/accounting.js'
 import {
   card, tableStyle, th, td, inputStyle,
   btnPrimary, fmt, fmtDate,
@@ -20,6 +23,8 @@ function TabBilan() {
   const [from, setFrom] = useState(`${today.getFullYear()}-01-01`)
   const [to,   setTo]   = useState(today.toISOString().slice(0, 10))
   const [result, setResult] = useState(null)
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfillMsg, setBackfillMsg] = useState(null)
 
   const compute = useCallback(async () => {
     const r = await computeAgencyPayout({ startDate: from, endDate: to })
@@ -28,16 +33,78 @@ function TabBilan() {
 
   useEffect(() => { compute() }, [compute])
 
+  const handleBackfill = async () => {
+    if (backfilling) return
+    if (!window.confirm("Régénérer les écritures comptables pour tous les contrats clôturés sans écriture ?\n\nCette opération est idempotente — les contrats déjà comptabilisés sont ignorés.")) return
+    setBackfilling(true)
+    setBackfillMsg(null)
+    try {
+      const r = await backfillJournalForClosedContracts()
+      const errSummary = r.errors.length > 0 ? ` — ${r.errors.length} erreur(s)` : ''
+      setBackfillMsg(`✓ ${r.created} écriture(s) créée(s), ${r.skipped} ignorée(s)${errSummary}`)
+      if (r.errors.length > 0) console.warn('[Backfill] errors:', r.errors)
+      compute()
+    } catch (err) {
+      setBackfillMsg(`✗ ${err.message}`)
+    } finally {
+      setBackfilling(false)
+    }
+  }
+
+  // v1.16.2: replaced the alert() with a proper one-page PDF report.
+  // Same data as the on-screen Synthèse + breakdown by product account.
   const handleGenerate = () => {
     if (!result) return
-    alert(
-      `Bilan agence du ${from} au ${to}\n\n` +
-      `Chiffre d'affaires:    ${fmt(result.totalRevenue)} MAD\n` +
-      `Commission plateforme: ${fmt(result.platformFees)} MAD\n` +
-      `Net agence:            ${fmt(result.netPayout)} MAD\n` +
-      `Charges opérationnelles: ${fmt(result.totalExpenses)} MAD\n` +
-      `Résultat:              ${fmt(result.netPayout - result.totalExpenses)} MAD`
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+
+    doc.setFontSize(16)
+    doc.text("Bilan agence", 40, 50)
+    doc.setFontSize(10)
+    doc.setTextColor(120)
+    doc.text(`Période : ${from} → ${to}`, 40, 70)
+    doc.setTextColor(0)
+
+    autoTable(doc, {
+      startY: 100,
+      head: [['Synthèse', 'Montant (MAD)']],
+      body: [
+        ["Chiffre d'affaires",         fmt(result.totalRevenue)],
+        ['Commission plateforme',       fmt(-result.platformFees)],
+        ['Net agence',                  fmt(result.netPayout)],
+        ['Charges opérationnelles',     fmt(-result.totalExpenses)],
+        ['Résultat',                    fmt(result.netPayout - result.totalExpenses)],
+      ],
+      theme: 'grid',
+      styles: { fontSize: 10, cellPadding: 6 },
+      headStyles: { fillColor: [40, 40, 40], textColor: 255 },
+      columnStyles: { 1: { halign: 'right' } },
+    })
+
+    const breakdownRows = Object.entries(result.breakdown.byAccount)
+      .map(([code, data]) => [`${code} — ${data.name}`, fmt(data.amount)])
+
+    if (breakdownRows.length > 0) {
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 24,
+        head: [['Détail par compte de produits', 'Montant (MAD)']],
+        body: breakdownRows,
+        theme: 'grid',
+        styles: { fontSize: 10, cellPadding: 6 },
+        headStyles: { fillColor: [40, 40, 40], textColor: 255 },
+        columnStyles: { 1: { halign: 'right' } },
+      })
+    }
+
+    doc.setFontSize(8)
+    doc.setTextColor(140)
+    doc.text(
+      `Généré le ${new Date().toLocaleString('fr-MA')}`,
+      40,
+      doc.internal.pageSize.getHeight() - 30
     )
+
+    doc.save(`bilan-agence-${from}-${to}.pdf`)
   }
 
   const summaryRows = result ? [
@@ -62,7 +129,26 @@ function TabBilan() {
           <input type="date" style={{ ...inputStyle, width: 160 }} value={to} onChange={e => setTo(e.target.value)} />
         </div>
         <button style={btnPrimary} onClick={handleGenerate}>Générer rapport</button>
+        <button
+          style={{ ...btnPrimary, background: 'transparent', color: 'var(--accent)', border: '1px solid var(--accent)' }}
+          onClick={handleBackfill}
+          disabled={backfilling}
+          title="Crée les écritures comptables pour tous les contrats clôturés qui n'en ont pas encore"
+        >
+          {backfilling ? 'Régénération…' : 'Régénérer écritures'}
+        </button>
       </div>
+
+      {backfillMsg && (
+        <div style={{
+          padding: '10px 14px', borderRadius: 8, marginBottom: 16,
+          background: backfillMsg.startsWith('✓') ? 'rgba(74, 222, 128, 0.1)' : 'rgba(248, 113, 113, 0.1)',
+          color: backfillMsg.startsWith('✓') ? '#4ade80' : '#f87171',
+          fontSize: 13,
+        }}>
+          {backfillMsg}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <div style={card}>
@@ -116,14 +202,15 @@ function TabBilan() {
 // Main Accounting page
 // ══════════════════════════════════════════════════════════
 const TABS = [
-  { id: 'dashboard', label: 'Tableau de bord', icon: BarChart2 },
-  { id: 'plan',      label: 'Plan comptable',  icon: BookOpen },
-  { id: 'journal',   label: 'Journal',         icon: List },
-  { id: 'deposits',  label: 'Dépôts',          icon: Shield },
-  { id: 'bilan',     label: 'Bilan agence',    icon: Building2 },
+  { id: 'dashboard', labelKey: 'pages.accounting.tabs.dashboard', icon: BarChart2 },
+  { id: 'plan',      labelKey: 'pages.accounting.tabs.plan',      icon: BookOpen },
+  { id: 'journal',   labelKey: 'pages.accounting.tabs.journal',   icon: List },
+  { id: 'deposits',  labelKey: 'pages.accounting.tabs.deposits',  icon: Shield },
+  { id: 'bilan',     labelKey: 'pages.accounting.tabs.bilan',     icon: Building2 },
 ]
 
 export default function Accounting() {
+  const { t } = useTranslation('common')
   const [tab, setTab] = useState('dashboard')
 
   const renderTab = () => {
@@ -141,21 +228,21 @@ export default function Accounting() {
     <div style={{ padding: '24px 28px', maxWidth: 1200, margin: '0 auto' }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text1)' }}>Comptabilité</h1>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text1)' }}>{t('pages.accounting.title')}</h1>
         <p style={{ margin: '4px 0 0', color: 'var(--text3)', fontSize: 13 }}>
-          Plan comptable marocain — double entrée — données locales
+          {t('pages.accounting.subtitle')}
         </p>
       </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '1px solid var(--border, #2d3147)', paddingBottom: 0 }}>
-        {TABS.map(t => {
-          const Icon = t.icon
-          const active = tab === t.id
+        {TABS.map(tabItem => {
+          const Icon = tabItem.icon
+          const active = tab === tabItem.id
           return (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+              key={tabItem.id}
+              onClick={() => setTab(tabItem.id)}
               style={{
                 background: 'none',
                 border: 'none',
@@ -173,7 +260,7 @@ export default function Accounting() {
               }}
             >
               <Icon size={14} />
-              {t.label}
+              {t(tabItem.labelKey)}
             </button>
           )
         })}

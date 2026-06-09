@@ -1,0 +1,62 @@
+{
+  "title": "الحجوزات",
+  "subtitle": "نظرة شاملة على الحجوزات متعددة القنوات",
+  "empty": "لا توجد حجوزات مطابقة للمرشحات.",
+  "error": {
+    "fetch": "فشل التحميل"
+  },
+  "loading": {
+    "initial": "جارٍ التحميل",
+    "refreshing": "تحديث"
+  },
+  "columns": {
+    "source": "القناة",
+    "customer": "العميل",
+    "car": "السيارة",
+    "period": "الفترة",
+    "price": "الإجمالي",
+    "status": "الحالة",
+    "actions": "إجراءات"
+  },
+  "actions": {
+    "view": "تفاصيل"
+  },
+  "pagination": {
+    "showing": "عرض {{from}}–{{to}} من {{total}}"
+  },
+  "filters": {
+    "search": "بحث عن عميل…",
+    "dateFrom": "من تاريخ",
+    "dateTo": "إلى تاريخ",
+    "priceMin": "الحد الأدنى للسعر",
+    "priceMax": "الحد الأقصى للسعر",
+    "reset": "إعادة ضبط"
+  },
+  "source": {
+    "all": "كل القنوات",
+    "EMAIL": "بريد إلكتروني",
+    "WHATSAPP": "واتساب",
+    "WEBSITE": "الموقع",
+    "IN_PERSON": "حضوري"
+  },
+  "status": {
+    "all": "كل الحالات",
+    "PENDING": "قيد الانتظار",
+    "CONFIRMED": "مؤكدة",
+    "CANCELLED": "ملغاة",
+    "COMPLETED": "منتهية"
+  },
+  "details": {
+    "title": "تفاصيل الحجز",
+    "loading": "جارٍ التحميل",
+    "close": "إغلاق"
+  },
+  "fields": {
+    "customer": "العميل",
+    "contact": "جهة الاتصال",
+    "car": "السيارة",
+    "period": "الفترة",
+    "price": "السعر الإجمالي",
+    "created": "تاريخ الإنشاء"
+  }
+}

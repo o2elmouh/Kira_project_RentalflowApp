@@ -13,7 +13,8 @@
 - Accounting dashboard: P&L view, Utilization vs Revenue SVG chart, Aged Receivables table
 - Dev server port: fixed to 5173 via `vite.config.js` `server.port` + `strictPort: true`
 - English locale files: all 9 namespaces (auth, dashboard, onboarding, fleet, contracts, clients, invoices, restitution, settings)
-- RBAC: `profile.role` renamed `agent` → `staff`; App.jsx role default guard; Basket page gated by isPremium; migration 010 normalizes `owner` → `admin`
+- RBAC: `profile.role` renamed `agent` → `staff`; App.jsx role default guard; migration 010 normalizes `owner` → `admin`
+- Premium tier removed (v1.12.0): all agencies have full feature access. Backend `requirePremium` middleware deleted, frontend `isPremium` gates removed from Basket/Sidebar/IntegrationsTab. `agencies.plan` + `seat_limit` columns retained (normalized to `'premium'` / `NULL`) for future re-introduction of tiered pricing
 - Auth fixes: logout race condition fixed; PASSWORD_RECOVERY guard with ref flag; error fallback changed from onboarding to ready state
 - API client: auto-refreshes Supabase session on 401 and retries request
 - Telemetry/WhatsApp: fully disabled for v2 — all files are no-op stubs or commented routes

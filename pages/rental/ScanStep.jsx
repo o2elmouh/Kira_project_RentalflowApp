@@ -1,10 +1,54 @@
-import { useRef, useEffect } from 'react'
-import { Camera, CheckCircle, AlertCircle, ArrowRight, X, PenLine } from 'lucide-react'
+import { useRef, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Camera, CheckCircle, AlertCircle, ArrowRight, X, PenLine, Shield } from 'lucide-react'
 import { useScannerFlow } from '../../src/hooks/useScannerFlow'
 import ClientAlerts from './ClientAlerts'
 import StepButtons from './StepButtons'
+import DocumentExpiryAlert from '../../components/DocumentExpiryAlert'
+import DocumentMismatchModal from '../../components/DocumentMismatchModal'
+import { checkClientDocumentExpiry } from '../../utils/documentValidation'
+
+// ── Identity-mismatch detector ────────────────────────────────────────
+// Normalises a name down to a comparable token: lowercase, no diacritics,
+// no punctuation, no whitespace. Lets us spot OCR-level orthographic
+// drift (e.g. "El Mouhib" vs "El-Mouhib") without false positives.
+const normalizeName = (s) =>
+  (s || '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+
+// Compare CIN-side identity (firstName + lastName) to the licence-side
+// identity. Returns { mismatch: boolean, reason?: string } so the caller
+// can decide whether to surface the modal.
+function detectIdentityMismatch(cinExtracted, licenseExtracted) {
+  if (!cinExtracted || !licenseExtracted) return { mismatch: false }
+
+  const cinFirst = normalizeName(cinExtracted.firstName)
+  const cinLast  = normalizeName(cinExtracted.lastName)
+  const licFirst = normalizeName(licenseExtracted.firstName)
+  const licLast  = normalizeName(licenseExtracted.lastName)
+
+  // If either side has no name at all, we can't reliably compare — skip.
+  if (!cinFirst || !cinLast || !licFirst || !licLast) return { mismatch: false }
+
+  const firstMatches = cinFirst === licFirst
+  const lastMatches  = cinLast === licLast
+  if (firstMatches && lastMatches) return { mismatch: false }
+
+  if (!firstMatches && !lastMatches) {
+    return { mismatch: true, reason: "Le prénom et le nom diffèrent entre la pièce d'identité et le permis de conduire." }
+  }
+  if (!firstMatches) {
+    return { mismatch: true, reason: "Le prénom diffère entre la pièce d'identité et le permis de conduire." }
+  }
+  return { mismatch: true, reason: "Le nom de famille diffère entre la pièce d'identité et le permis de conduire." }
+}
 
 export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClient }) {
+  const { t } = useTranslation(['rental', 'common'])
   const cinRef = useRef()
   const licRef = useRef()
 
@@ -19,6 +63,7 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
     showManualEntryPrompt,
     manualEntrySlot,
     startScan,
+    simulateScan,
     updateField,
     dismissManualEntryPrompt,
     resetAttemptCount,
@@ -38,8 +83,67 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
   const allFilled = clientData.firstName && clientData.lastName &&
     clientData.cinNumber && clientData.drivingLicenseNumber
 
+  // ── Document expiry gate ─────────────────────────────────
+  const [expiredDoc, setExpiredDoc] = useState(null) // { type, expiry } | null
+
+  // ── Identity-mismatch gate ───────────────────────────────
+  // After both scans land, the names extracted from the CIN/passport
+  // and the driving licence are compared. If they disagree we trap
+  // the operator with a confirmation modal so they don't accidentally
+  // create a rental for the wrong person. The flag is sticky once
+  // dismissed (acknowledgedMismatch) so re-renders don't re-trigger
+  // the modal on the same scans.
+  const [mismatch, setMismatch] = useState(null) // { reason } | null
+  const [acknowledgedMismatch, setAcknowledgedMismatch] = useState(false)
+
+  useEffect(() => {
+    if (!extracted.cin || !extracted.license) return
+    if (acknowledgedMismatch) return
+    const result = detectIdentityMismatch(extracted.cin, extracted.license)
+    if (result.mismatch) setMismatch({ reason: result.reason })
+  }, [extracted.cin, extracted.license, acknowledgedMismatch])
+
+  const handleContinue = () => {
+    // If a mismatch has been detected and not yet acknowledged, surface
+    // it before checking expiry — operator must explicitly resolve it.
+    if (mismatch && !acknowledgedMismatch) return
+    const expiry = checkClientDocumentExpiry(clientData)
+    if (expiry) {
+      setExpiredDoc(expiry)
+      return
+    }
+    onNext(clientData)
+  }
+
+  // v1.14.15: lead-level identity mismatch (server-detected, e.g. passport
+  // and driving licence belong to different people). Non-blocking banner;
+  // operator decides what to do.
+  const leadMismatch = initialClient?.identityMismatch === true
+
   return (
     <div>
+      {leadMismatch && (
+        <div
+          role="alert"
+          style={{
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+            background: '#FFF5E0', border: '1px solid #E4A700', borderRadius: 12,
+            padding: '12px 14px', marginBottom: 16, fontSize: 13, color: '#4A3700',
+          }}
+        >
+          <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 1, color: '#B07400' }} />
+          <div>
+            <strong style={{ display: 'block', marginBottom: 2 }}>
+              {t('rental:scanStep.leadMismatchTitle', 'Documents potentiellement non concordants')}
+            </strong>
+            {t(
+              'rental:scanStep.leadMismatchBody',
+              "Les documents envoyés par le client (passeport, CIN, permis) ne semblent pas appartenir à la même personne. Vérifiez chaque champ avant de continuer.",
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Manual-entry prompt modal */}
       {showManualEntryPrompt && (
         <div style={{
@@ -50,43 +154,59 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
               <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <PenLine size={18} style={{ color: 'var(--accent)' }} />
-                Saisie manuelle recommandée
+                {t('rental:scanStep.manualEntryTitle')}
               </h3>
-              <button className="btn btn-ghost btn-sm" onClick={dismissManualEntryPrompt}>
+              <button className="btn-outline-ink" style={{ padding: '4px 12px', fontSize: 13 }} onClick={dismissManualEntryPrompt}>
                 <X size={14} />
               </button>
             </div>
             <p style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 16 }}>
-              Après {scanAttemptCount[manualEntrySlot ?? 'cin']} tentatives, le scanner n'a pas pu extraire
-              tous les champs du {manualEntrySlot === 'license' ? 'permis de conduire' : 'CIN / passeport'}.
+              {t('rental:scanStep.manualEntryReason', { n: scanAttemptCount[manualEntrySlot ?? 'cin'], doc: manualEntrySlot === 'license' ? t('rental:scanStep.docLicense') : t('rental:scanStep.docCin') })}
             </p>
             <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>
-              Pour gagner du temps, remplissez les champs directement dans le formulaire ci-dessous.
-              Vous pouvez également réessayer avec une photo plus lumineuse.
+              {t('rental:scanStep.manualEntryHint')}
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={dismissManualEntryPrompt}>
-                <PenLine size={13} /> Saisir manuellement
+              <button className="btn-ink" style={{ flex: 1, justifyContent: 'center', fontSize: 14 }} onClick={dismissManualEntryPrompt}>
+                <PenLine size={13} /> {t('rental:scanStep.manualEntryConfirm')}
               </button>
-              <button className="btn btn-secondary btn-sm" onClick={() => {
+              <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={() => {
                 if (manualEntrySlot) resetAttemptCount(manualEntrySlot)
                 dismissManualEntryPrompt()
               }}>
-                Réessayer
+                {t('rental:scanStep.retryBtn')}
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Law 09-08 privacy notice */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10,
+        padding: '10px 14px',
+        marginBottom: 16,
+        background: 'var(--surface-2, #F7F5F2)',
+        border: '1px solid var(--border, #E5E1DA)',
+        borderRadius: 8,
+        fontSize: 12,
+        lineHeight: 1.5,
+        color: 'var(--text2, #5A564F)',
+      }}>
+        <Shield size={14} style={{ flexShrink: 0, marginTop: 2, color: 'var(--accent, #2D7A47)' }} />
+        <span>{t('common:privacy.scanNotice')}</span>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
         {/* CIN Scan */}
         <div className="card">
           <div className="card-header">
-            <h3>Carte nationale (CIN) ou Passeport</h3>
+            <h3>{t('rental:scanStep.cinSection')}</h3>
             {extracted.cin && (
               <span className="badge badge-green">
-                <CheckCircle size={11} /> {extracted.cin.docType === 'passport' ? 'Passport MRZ' : 'CIN'} scanné
+                <CheckCircle size={11} /> {t('rental:scanStep.scannedBadge', { type: extracted.cin.docType === 'passport' ? t('rental:scanStep.passportType') : 'CIN' })}
               </span>
             )}
             {scanAttemptCount.cin > 0 && !extracted.cin && (
@@ -101,8 +221,8 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
               onClick={() => !scanning && cinRef.current?.click()}
             >
               <div className="scan-icon">🪪</div>
-              <div className="scan-title">Importer CIN / Passeport</div>
-              <div className="scan-hint">Cliquez ou déposez un fichier (JPG, PNG)</div>
+              <div className="scan-title">{t('rental:scanStep.importCin')}</div>
+              <div className="scan-hint">{t('rental:scanStep.importHint')}</div>
               {scanning && activeScanType === 'cin' && (
                 <div className="progress-bar">
                   <div className="progress-fill" style={{ width: `${progress}%` }} />
@@ -116,15 +236,24 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
               ref={cinRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => handleFile('cin', e.target.files?.[0])}
             />
+            <button
+              type="button"
+              className="btn-outline-ink"
+              style={{ fontSize: 12, marginTop: 8, width: '100%', justifyContent: 'center' }}
+              disabled={scanning}
+              onClick={() => simulateScan('cin')}
+            >
+              🧪 Simuler scan CIN
+            </button>
           </div>
         </div>
 
         {/* License Scan */}
         <div className="card">
           <div className="card-header">
-            <h3>Permis de conduire</h3>
+            <h3>{t('rental:scanStep.licenseSection')}</h3>
             {extracted.license && (
-              <span className="badge badge-green"><CheckCircle size={11} /> Permis scanné</span>
+              <span className="badge badge-green"><CheckCircle size={11} /> {t('rental:scanStep.licenseScanned')}</span>
             )}
             {scanAttemptCount.license > 0 && !extracted.license && (
               <span className="badge badge-orange" title={`${scanAttemptCount.license} tentative(s)`}>
@@ -138,8 +267,8 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
               onClick={() => !scanning && licRef.current?.click()}
             >
               <div className="scan-icon">🪙</div>
-              <div className="scan-title">Importer le permis</div>
-              <div className="scan-hint">Recto du permis marocain ou européen</div>
+              <div className="scan-title">{t('rental:scanStep.importLicense')}</div>
+              <div className="scan-hint">{t('rental:scanStep.licenseHint')}</div>
               {scanning && activeScanType === 'license' && (
                 <div className="progress-bar">
                   <div className="progress-fill" style={{ width: `${progress}%` }} />
@@ -153,6 +282,15 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
               ref={licRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => handleFile('license', e.target.files?.[0])}
             />
+            <button
+              type="button"
+              className="btn-outline-ink"
+              style={{ fontSize: 12, marginTop: 8, width: '100%', justifyContent: 'center' }}
+              disabled={scanning}
+              onClick={() => simulateScan('license')}
+            >
+              🧪 Simuler scan permis
+            </button>
           </div>
         </div>
       </div>
@@ -160,15 +298,15 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
       {/* Extracted / Editable fields */}
       <div className="card">
         <div className="card-header">
-          <h3>Informations client</h3>
-          <span style={{ fontSize: 12, color: 'var(--text3)' }}>Vérifiez et corrigez les résultats OCR</span>
+          <h3>{t('rental:scanStep.clientInfo')}</h3>
+          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{t('rental:scanStep.ocrHint')}</span>
         </div>
         <div className="card-body">
           <div className="form-row cols-3">
             {[
-              { label: 'Prénom *', key: 'firstName' },
-              { label: 'Nom *', key: 'lastName' },
-              { label: 'Nationalité', key: 'nationality' },
+              { label: t('rental:scanStep.firstNameReq'), key: 'firstName' },
+              { label: t('rental:scanStep.lastNameReq'), key: 'lastName' },
+              { label: t('rental:scanStep.nationality'), key: 'nationality' },
             ].map(({ label, key }) => (
               <div className="form-group" key={key}>
                 <label className="form-label">{label}</label>
@@ -182,10 +320,10 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
           </div>
           <div className="form-row cols-2">
             {[
-              { label: 'N° CIN / Passeport *', key: 'cinNumber' },
-              { label: 'Expiration CIN', key: 'cinExpiry', type: 'date' },
-              { label: 'N° Permis de conduire *', key: 'drivingLicenseNumber' },
-              { label: 'Expiration permis', key: 'licenseExpiry', type: 'date' },
+              { label: t('rental:scanStep.cinNumberReq'), key: 'cinNumber' },
+              { label: t('rental:scanStep.cinExpiryShort'), key: 'cinExpiry', type: 'date' },
+              { label: t('rental:scanStep.licenseNumberReq'), key: 'drivingLicenseNumber' },
+              { label: t('rental:scanStep.licenseExpiryShort'), key: 'licenseExpiry', type: 'date' },
             ].map(({ label, key, type = 'text' }) => (
               <div className="form-group" key={key}>
                 <label className="form-label">{label}</label>
@@ -200,8 +338,8 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
           </div>
           <div className="form-row cols-2">
             {[
-              { label: 'Téléphone', key: 'phone' },
-              { label: 'Email', key: 'email' },
+              { label: t('rental:scanStep.phone'), key: 'phone' },
+              { label: t('rental:scanStep.email'), key: 'email' },
             ].map(({ label, key }) => (
               <div className="form-group" key={key}>
                 <label className="form-label">{label}</label>
@@ -213,9 +351,35 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
               </div>
             ))}
           </div>
+          {/* v1.14.18: read-only WhatsApp JID from the originating lead. Shown
+              so the operator knows where the lead came from when the phone
+              field has been blanked (LID privacy case) and so they understand
+              that Baileys confirmations will still reach this contact. */}
+          {clientData.whatsappJid ? (
+            <div style={{
+              background: 'rgba(37,211,102,0.08)',
+              borderRadius: 8,
+              padding: '10px 12px',
+              marginBottom: 12,
+              borderLeft: '3px solid #25D366',
+              fontSize: 13,
+            }}>
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>
+                📱 Contact WhatsApp (lead)
+              </div>
+              <div style={{ fontFamily: 'DM Mono, monospace', color: '#141413' }}>
+                {/@lid$/i.test(clientData.whatsappJid) ? clientData.whatsappJid : clientData.whatsappJid.replace(/@.*$/, '')}
+              </div>
+              {/@lid$/i.test(clientData.whatsappJid) ? (
+                <div style={{ fontSize: 11, color: '#666', marginTop: 4, fontStyle: 'italic' }}>
+                  Identifiant masqué — saisir le vrai numéro de téléphone ci-dessus pour le SMS de signature. La confirmation WhatsApp sera envoyée sur cet identifiant.
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <div className="form-row cols-2">
             <div className="form-group">
-              <label className="form-label">Date de naissance</label>
+              <label className="form-label">{t('rental:scanStep.dateOfBirth')}</label>
               <input
                 className="form-input text-mono"
                 type="date"
@@ -226,7 +390,7 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
           </div>
           <div className="alert alert-info mt-2" style={{ fontSize: 12 }}>
             <AlertCircle size={14} />
-            <span>Conformément à la Loi 09-08 (CNDP), seuls les champs texte extraits sont conservés — aucune image de document n'est stockée.</span>
+            <span>{t('rental:scanStep.law0908Notice')}</span>
           </div>
         </div>
       </div>
@@ -235,22 +399,63 @@ export default function ScanStep({ onNext, onSaveAndQuit, onCancel, initialClien
 
       <StepButtons
         leftBtns={
-          <button className="btn btn-primary btn-lg" style={{ color: '#dc2626' }} onClick={onCancel}>
-            <X size={15} /> Annuler
+          <button className="btn-outline-ink" style={{ fontSize: 14, color: '#CF4500', borderColor: '#CF4500' }} onClick={onCancel}>
+            <X size={15} /> {t('rental:scanStep.cancelShort')}
           </button>
         }
         rightBtns={
           <>
-            <button className="btn btn-ghost" onClick={() => onSaveAndQuit(clientData)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              💾 Sauvegarder & quitter
+            <button className="btn-outline-ink" style={{ fontSize: 14 }} onClick={() => onSaveAndQuit(clientData)}>
+              {t('rental:scanStep.saveQuitBtn')}
             </button>
-            <button className="btn btn-primary btn-lg" disabled={!allFilled} onClick={() => onNext(clientData)}>
-              Continuer <ArrowRight size={15} />
+            <button className="btn-ink" style={{ fontSize: 15 }} disabled={!allFilled} onClick={handleContinue}>
+              {t('rental:scanStep.continueBtn')} <ArrowRight size={15} />
             </button>
           </>
         }
       />
+
+      {/* Document expiry alert — shown when CIN or license expiry is past */}
+      {expiredDoc && (
+        <DocumentExpiryAlert
+          documentType={expiredDoc.type}
+          expiryDate={expiredDoc.expiry}
+          onClose={() => setExpiredDoc(null)}
+          onContinue={() => {
+            setExpiredDoc(null)
+            onNext(clientData)
+          }}
+        />
+      )}
+
+      {/* Document-mismatch modal — shown when CIN and license names diverge.
+          Cancel resets both scans so the operator can re-scan; Continue
+          marks the warning acknowledged and lets handleContinue proceed. */}
+      {mismatch && !acknowledgedMismatch && (
+        <DocumentMismatchModal
+          cinLabel={extracted.cin?.docType === 'passport' ? 'Passport' : 'CIN'}
+          cinName={`${extracted.cin?.firstName || ''} ${extracted.cin?.lastName || ''}`.trim()}
+          licenseLabel="Permis"
+          licenseName={`${extracted.license?.firstName || ''} ${extracted.license?.lastName || ''}`.trim()}
+          reason={mismatch.reason}
+          onCancel={() => {
+            // Reset all client identity fields so the operator re-scans
+            // both documents from a clean slate.
+            setMismatch(null)
+            setAcknowledgedMismatch(false)
+            updateField('firstName', '')
+            updateField('lastName', '')
+            updateField('cinNumber', '')
+            updateField('cinExpiry', '')
+            updateField('drivingLicenseNumber', '')
+            updateField('licenseExpiry', '')
+          }}
+          onContinue={() => {
+            setAcknowledgedMismatch(true)
+            setMismatch(null)
+          }}
+        />
+      )}
     </div>
   )
 }
