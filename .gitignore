@@ -41,3 +41,6 @@ yarn-error.log*
 
 # Claude worktrees
 .claude/worktrees/
+
+# Local migration helpers (session-only, generated from supabase/migrations/)
+batch*.sql
