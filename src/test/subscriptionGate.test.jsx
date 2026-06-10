@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react'
-import { vi, describe, it, expect } from 'vitest'
+import { render, screen, waitFor, cleanup } from '@testing-library/react'
+import { vi, describe, it, expect, afterEach } from 'vitest'
 
 // react-i18next mock: t() returns the key so assertions are locale-independent
 vi.mock('react-i18next', () => ({
