@@ -12,7 +12,7 @@
     "schema:check": "node scripts/schemaCheck.js",
     "test:watch": "vitest",
     "prepare": "node scripts/install-git-hooks.mjs",
-    "graphify:update": "graphify --update .",
+    "graphify:update": "python -m graphify update .",
     "cleanup:pending": "node server/scripts/cleanupPendingDemands.js",
     "enforce:retention": "node server/scripts/enforceRetention.js",
     "migrate:clients-encrypt": "node server/scripts/migrateClientsEncryption.js"
