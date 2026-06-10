@@ -52,7 +52,11 @@ vi.mock('../../pages/legal/PrivacyPolicy', () => ({ default: () => null }))
 vi.mock('../../pages/Confidentialite',   () => ({ default: () => null }))
 vi.mock('../../components/Sidebar',      () => ({ default: () => null }))
 vi.mock('../../pages/PendingActivation', () => ({
-  default: ({ status }) => <div data-testid="pending-activation" data-status={status} />,
+  default: ({ status, onSignOut }) => (
+    <div data-testid="pending-activation" data-status={status}>
+      <button data-testid="pending-signout" onClick={onSignOut}>out</button>
+    </div>
+  ),
 }))
 vi.mock('@tanstack/react-query', () => ({
   QueryClientProvider: ({ children }) => children,
@@ -101,6 +105,14 @@ describe('App.jsx subscription gate', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByTestId('pending-activation')).toBeInTheDocument())
     expect(screen.getByTestId('pending-activation').dataset.status).toBe('blocked')
+  })
+
+  it('wires onSignOut to supabase.auth.signOut', async () => {
+    sessionWith({ id: 'agency-abc', name: 'A', subscription_status: 'pending' })
+    render(<App />)
+    await waitFor(() => expect(screen.getByTestId('pending-activation')).toBeInTheDocument())
+    screen.getByTestId('pending-signout').click()
+    expect(supabaseMock.auth.signOut).toHaveBeenCalled()
   })
 
   it('does NOT gate when the agency row could not be fetched (fail open on transient errors)', async () => {
