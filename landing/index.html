@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KiraFlow — Logiciel de gestion pour agences de location de voitures au Maroc</title>
+  <meta name="description" content="Contrats, signature électronique WhatsApp, gestion de flotte, leads IA et comptabilité marocaine — l'outil tout-en-un des agences de location de voitures.">
+  <link rel="alternate" hreflang="fr" href="https://kiraflow.ma/">
+  <link rel="alternate" hreflang="ar" href="https://kiraflow.ma/?lang=ar">
+  <meta property="og:title" content="KiraFlow — La location de voiture, version pro">
+  <meta property="og:description" content="L'outil tout-en-un des agences de location marocaines : contrats, flotte, leads WhatsApp, comptabilité.">
+  <meta property="og:image" content="https://kiraflow.ma/assets/og-image.png">
+  <meta property="og:url" content="https://kiraflow.ma/">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;700;800&family=Noto+Sans+Arabic:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module">
+    import { getSignRedirectUrl } from './sign-redirect.js'
+    const target = getSignRedirectUrl(window.location.search)
+    if (target) window.location.replace(target)
+  </script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="logo" href="/">Kira<span>Flow</span></a>
+    <div class="nav-links">
+      <a href="#features" data-anchor data-i18n="nav.features">Fonctionnalités</a>
+      <a href="#pricing" data-anchor data-i18n="nav.pricing">Tarifs</a>
+      <a href="#faq" data-anchor data-i18n="nav.faq">FAQ</a>
+      <button class="lang-toggle" id="langToggle" aria-label="Changer de langue">العربية</button>
+      <a class="btn btn-login" href="https://app.kiraflow.ma" data-i18n="nav.login">Se connecter</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <h1><span data-i18n="hero.line1">La location de voiture,</span><br><span class="accent" data-i18n="hero.line2">version pro.</span></h1>
+  <p data-i18n="hero.sub">Contrats, signature électronique WhatsApp, gestion de flotte, leads IA et comptabilité marocaine — tout votre métier dans un seul outil.</p>
+  <div class="hero-ctas">
+    <a class="btn btn-primary" href="https://app.kiraflow.ma" data-i18n="hero.ctaStart">Démarrer</a>
+    <a class="btn btn-outline" href="#pricing" data-i18n="hero.ctaPricing">Voir les tarifs</a>
+  </div>
+  <div class="hero-shot">
+    <div class="frame">
+      <div class="frame-bar"><i></i><i></i><i></i></div>
+      <div class="placeholder-shot" data-shot="dashboard" data-i18n="shots.dashboard">Tableau de bord — capture à venir</div>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="container">
+    <h2 class="section-title" data-i18n="features.title">Tout ce qu'une agence moderne attend</h2>
+    <p class="section-sub" data-i18n="features.sub">Conçu pour les agences de location marocaines, du premier contrat à la clôture comptable.</p>
+    <div class="features-grid">
+      <div class="feature"><span class="icon">📝</span><h3 data-i18n="features.contracts.title">Contrats &amp; signature électronique</h3><p data-i18n="features.contracts.desc">Générez le contrat en PDF et envoyez le lien de signature par WhatsApp. Le client signe sur son téléphone, vous êtes notifié instantanément.</p></div>
+      <div class="feature"><span class="icon">🚗</span><h3 data-i18n="features.fleet.title">Gestion de flotte</h3><p data-i18n="features.fleet.desc">Disponibilités, entretiens, réparations, amortissement — l'état de chaque véhicule en temps réel.</p></div>
+      <div class="feature"><span class="icon">🤖</span><h3 data-i18n="features.leads.title">Leads IA — WhatsApp &amp; Gmail</h3><p data-i18n="features.leads.desc">Les demandes entrantes sont triées par IA, les documents lus automatiquement, et chaque lead arrive prêt à convertir en contrat.</p></div>
+      <div class="feature"><span class="icon">📊</span><h3 data-i18n="features.accounting.title">Comptabilité marocaine</h3><p data-i18n="features.accounting.desc">Journal, plan comptable, cautions, compte de résultat — vos écritures générées automatiquement à chaque location.</p></div>
+      <div class="feature"><span class="icon">👥</span><h3 data-i18n="features.team.title">Multi-utilisateurs &amp; rôles</h3><p data-i18n="features.team.desc">Invitez votre équipe avec des rôles admin, manager ou staff — chacun voit ce qui le concerne.</p></div>
+      <div class="feature"><span class="icon">🔒</span><h3 data-i18n="features.law.title">Conforme Loi 09-08</h3><p data-i18n="features.law.desc">Données clients protégées : notice CNDP, droit à l'effacement, rétention automatique.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="screenshots">
+  <div class="container">
+    <h2 class="section-title" data-i18n="shots.title">L'outil en images</h2>
+    <p class="section-sub" data-i18n="shots.sub">Une interface claire, pensée pour le quotidien d'une agence.</p>
+    <div class="shots-grid">
+      <figure class="shot"><div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div><div class="placeholder-shot" data-shot="new-rental" data-i18n="shots.newRental">Nouveau contrat — capture à venir</div></div><figcaption data-i18n="shots.newRentalCap">Assistant nouvelle location : scan CIN + permis, contrat en 4 étapes</figcaption></figure>
+      <figure class="shot"><div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div><div class="placeholder-shot" data-shot="basket" data-i18n="shots.basket">Corbeille IA — capture à venir</div></div><figcaption data-i18n="shots.basketCap">Corbeille : vos leads WhatsApp et Gmail triés par IA</figcaption></figure>
+      <figure class="shot"><div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div><div class="placeholder-shot" data-shot="accounting" data-i18n="shots.accounting">Comptabilité — capture à venir</div></div><figcaption data-i18n="shots.accountingCap">Comptabilité : journal et compte de résultat automatiques</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="container">
+    <h2 class="section-title" data-i18n="pricing.title">Des tarifs à la taille de votre flotte</h2>
+    <p class="section-sub" data-i18n="pricing.sub">Activation sous 24h ouvrées. Sans engagement.</p>
+    <div class="pricing-grid">
+      <div class="plan">
+        <h3 data-i18n="pricing.t1.name">Essentiel</h3>
+        <div class="price">XXX <small data-i18n="pricing.perMonth">MAD/mois</small></div>
+        <ul>
+          <li data-i18n="pricing.t1.cars">Jusqu'à 5 voitures</li>
+          <li data-i18n="pricing.t1.users">3 utilisateurs + admin</li>
+          <li data-i18n="pricing.allFeatures">Toutes les fonctionnalités</li>
+        </ul>
+        <a class="btn btn-outline" href="https://app.kiraflow.ma" data-i18n="pricing.cta">Démarrer</a>
+      </div>
+      <div class="plan featured">
+        <span class="badge" data-i18n="pricing.popular">Le plus choisi</span>
+        <h3 data-i18n="pricing.t2.name">Croissance</h3>
+        <div class="price">XXX <small data-i18n="pricing.perMonth2">MAD/mois</small></div>
+        <ul>
+          <li data-i18n="pricing.t2.cars">De 5 à 20 voitures</li>
+          <li data-i18n="pricing.t2.users">5 utilisateurs + admin</li>
+          <li data-i18n="pricing.allFeatures2">Toutes les fonctionnalités</li>
+        </ul>
+        <a class="btn btn-primary" href="https://app.kiraflow.ma" data-i18n="pricing.cta2">Démarrer</a>
+      </div>
+      <div class="plan">
+        <h3 data-i18n="pricing.t3.name">Illimité</h3>
+        <div class="price">XXX <small data-i18n="pricing.perMonth3">MAD/mois</small></div>
+        <ul>
+          <li data-i18n="pricing.t3.cars">Plus de 20 voitures</li>
+          <li data-i18n="pricing.t3.users">10 utilisateurs + admin</li>
+          <li data-i18n="pricing.allFeatures3">Toutes les fonctionnalités</li>
+        </ul>
+        <a class="btn btn-outline" href="https://app.kiraflow.ma" data-i18n="pricing.cta3">Démarrer</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="container">
+    <h2 class="section-title" data-i18n="faq.title">Questions fréquentes</h2>
+    <p class="section-sub" data-i18n="faq.sub">Tout ce qu'il faut savoir avant de démarrer.</p>
+    <div class="faq">
+      <details><summary data-i18n="faq.q1">Comment mon compte est-il activé ?</summary><p data-i18n="faq.a1">Créez votre compte, configurez votre agence, puis notre équipe active votre accès sous 24h ouvrées. Contactez-nous sur WhatsApp pour accélérer.</p></details>
+      <details><summary data-i18n="faq.q2">Mes données sont-elles en sécurité ?</summary><p data-i18n="faq.a2">Oui. KiraFlow est conforme à la Loi 09-08 : données chiffrées, droit à l'effacement, notice CNDP et politique de rétention configurable.</p></details>
+      <details><summary data-i18n="faq.q3">L'application est-elle disponible en arabe ?</summary><p data-i18n="faq.a3">Oui — l'application fonctionne en français et en arabe (affichage de droite à gauche inclus), avec l'anglais en option.</p></details>
+      <details><summary data-i18n="faq.q4">Y a-t-il un engagement de durée ?</summary><p data-i18n="faq.a4">Non. L'abonnement est mensuel et sans engagement — vous arrêtez quand vous voulez.</p></details>
+      <details><summary data-i18n="faq.q5">Puis-je changer de formule plus tard ?</summary><p data-i18n="faq.a5">Oui, à tout moment. Contactez-nous et nous adaptons votre formule à la taille de votre flotte.</p></details>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <a href="https://wa.me/212600000000" data-i18n="footer.whatsapp">WhatsApp</a>
+      <a href="mailto:contact@kiraflow.ma">contact@kiraflow.ma</a>
+      <a href="https://app.kiraflow.ma/?page=confidentialite" data-i18n="footer.privacy">Confidentialité</a>
+    </div>
+    <div class="copyright">© 2026 KiraFlow</div>
+  </div>
+</footer>
+
+<script type="module" src="/i18n.js"></script>
+</body>
+</html>

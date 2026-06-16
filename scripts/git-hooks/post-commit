@@ -2,7 +2,7 @@
 # RentaFlow post-commit hook (v1.14.12+)
 #
 # When components/Sidebar.jsx version line changes (any v1.X.Y bump), run
-# `graphify --update .` to refresh the AST graph. Results are STAGED but
+# `python -m graphify update .` to refresh the AST graph. Results are STAGED but
 # NOT auto-committed — folding them into the version-bump commit is the
 # user's call (avoids surprise commits & post-commit hook recursion).
 #
@@ -24,14 +24,14 @@ fi
 NEW_VERSION=$(echo "$VERSION_DIFF" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 echo "[graphify-hook] Version bump detected ($NEW_VERSION) — incremental graph update…"
 
-if ! command -v graphify >/dev/null 2>&1; then
-  echo "[graphify-hook] 'graphify' CLI not on PATH — skipping (install: pip install graphifyy)"
+if ! python -m graphify --help >/dev/null 2>&1; then
+  echo "[graphify-hook] 'python -m graphify' unavailable — skipping (install: pip install graphifyy)"
   exit 0
 fi
 
-# --update is cheap: AST-only on changed files, no LLM
-if ! graphify --update . 2>&1 | sed 's/^/[graphify-hook] /'; then
-  echo "[graphify-hook] update failed (non-fatal) — manual rerun: graphify --update ."
+# update is cheap: AST-only on changed files, no LLM
+if ! python -m graphify update . 2>&1 | sed 's/^/[graphify-hook] /'; then
+  echo "[graphify-hook] update failed (non-fatal) — manual rerun: python -m graphify update ."
   exit 0
 fi
 

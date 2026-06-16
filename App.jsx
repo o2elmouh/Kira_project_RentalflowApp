@@ -24,6 +24,7 @@ import Network from './pages/Network'
 import PrivacyPolicy from './pages/legal/PrivacyPolicy'
 import Confidentialite from './pages/Confidentialite'
 import Reservations from './pages/Reservations'
+import PendingActivation from './pages/PendingActivation'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './src/lib/queryClient'
 
@@ -259,6 +260,19 @@ export default function App() {
       }
     }} />
   )
+
+  // Manual-activation gate: agency row present but not active → hold screen.
+  // profile.agencies absent (transient fetch failure) intentionally falls
+  // through — never lock out a working session on a network blip.
+  const subscriptionStatus = profile?.agencies?.subscription_status
+  if (profile?.agencies && subscriptionStatus !== 'active') {
+    return (
+      <PendingActivation
+        status={subscriptionStatus || 'pending'}
+        onSignOut={() => supabase.auth.signOut()}
+      />
+    )
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

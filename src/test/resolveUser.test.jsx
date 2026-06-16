@@ -55,7 +55,7 @@ const { default: App } = await import('../../App.jsx')
 
 const getMockUser    = (o = {}) => ({ id: 'user-123', email: 'test@example.com', ...o })
 const getMockProfile = (o = {}) => ({ id: 'user-123', full_name: 'Test User', email: 'test@example.com', phone: '0600000000', role: 'admin', agency_id: 'agency-abc', ...o })
-const getMockAgency  = (o = {}) => ({ id: 'agency-abc', name: 'Test Agency', ...o })
+const getMockAgency  = (o = {}) => ({ id: 'agency-abc', name: 'Test Agency', subscription_status: 'active', ...o })
 
 // ── Tests ─────────────────────────────────────────────────────
 
