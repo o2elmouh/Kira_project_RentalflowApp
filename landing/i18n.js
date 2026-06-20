@@ -11,6 +11,10 @@ const AR = {
   'hero.sub': 'العقود، التوقيع الإلكتروني عبر واتساب، تدبير الأسطول، الزبناء المحتملون بالذكاء الاصطناعي والمحاسبة المغربية — كل شغلك في أداة واحدة.',
   'hero.ctaStart': 'ابدأ الآن',
   'hero.ctaPricing': 'شاهد الأسعار',
+  'hero.microcopy': 'لا حاجة لبطاقة بنكية للبدء.',
+  'hero.trust1': 'تفعيل خلال 24 ساعة',
+  'hero.trust2': 'بدون التزام',
+  'hero.trust3': 'مطابق للقانون 09-08',
   'shots.dashboard': 'لوحة القيادة — الصورة قريباً',
   'features.title': 'كل ما تحتاجه وكالة عصرية',
   'features.sub': 'مصمم لوكالات كراء السيارات المغربية، من أول عقد إلى الإقفال المحاسبي.',
@@ -26,6 +30,21 @@ const AR = {
   'features.team.desc': 'أضف فريقك بأدوار مدير أو مسير أو موظف — كل واحد يرى ما يخصه.',
   'features.law.title': 'مطابق للقانون 09-08',
   'features.law.desc': 'بيانات الزبناء محمية: إشعار اللجنة الوطنية، الحق في المحو، والحذف التلقائي.',
+  'proof.stat1': 'وكالة مجهّزة',
+  'proof.stat2': 'عقد موقّع',
+  'proof.stat3': 'متوسط التفعيل',
+  'proof.stat4': 'رضا الزبناء',
+  'proof.title': 'الوكالات المغربية تثق بنا',
+  'proof.sub': 'ما يقوله المسيّرون الذين يديرون أسطولهم مع كيرافلو.',
+  'proof.q1': '«كنوقّع العقود عبر واتساب فدقيقتين. الزبناء فرحانين وأنا كنربح وقت بزاف.»',
+  'proof.n1': 'ياسين ب.',
+  'proof.r1': 'أطلس كارز — الدار البيضاء',
+  'proof.q2': '«المحاسبة كتتولّد بوحدها مع كل كراء. سالينا مع الساعات الضايعة فإكسيل.»',
+  'proof.n2': 'سلمى الإدريسي',
+  'proof.r2': 'صحارى كار — مراكش',
+  'proof.q3': '«السلة بالذكاء الاصطناعي كتفرز ليا طلبات واتساب وجيميل — كل ليد كيوصلني جاهز.»',
+  'proof.n3': 'كريم الطاهري',
+  'proof.r3': 'مدينة أوطو — الرباط',
   'shots.title': 'الأداة بالصور',
   'shots.sub': 'واجهة واضحة، مصممة ليوميات الوكالة.',
   'shots.newRental': 'عقد جديد — الصورة قريباً',
@@ -67,6 +86,9 @@ const AR = {
   'faq.a4': 'لا. الاشتراك شهري وبدون التزام — توقف متى شئت.',
   'faq.q5': 'هل يمكنني تغيير الصيغة لاحقاً؟',
   'faq.a5': 'نعم، في أي وقت. تواصل معنا ونكيّف صيغتك مع حجم أسطولك.',
+  'cta.title': 'مستعد لرقمنة وكالتك؟',
+  'cta.sub': 'أنشئ حسابك اليوم — التفعيل خلال 24 ساعة عمل، بدون التزام.',
+  'cta.btn': 'ابدأ الآن',
   'footer.whatsapp': 'واتساب',
   'footer.privacy': 'الخصوصية',
 }
@@ -101,3 +123,17 @@ document.getElementById('langToggle')?.addEventListener('click', () => {
   current = current === 'ar' ? 'fr' : 'ar'
   applyLang(current)
 })
+
+// ── Mobile nav toggle ──
+const navToggle = document.getElementById('navToggle')
+const navLinks = document.getElementById('navLinks')
+navToggle?.addEventListener('click', () => {
+  const open = navLinks.classList.toggle('open')
+  navToggle.setAttribute('aria-expanded', open ? 'true' : 'false')
+})
+navLinks?.querySelectorAll('a[data-anchor]').forEach((a) =>
+  a.addEventListener('click', () => {
+    navLinks.classList.remove('open')
+    navToggle?.setAttribute('aria-expanded', 'false')
+  })
+)

@@ -28,7 +28,11 @@
 <nav class="nav">
   <div class="nav-inner">
     <a class="logo" href="/">Kira<span>Flow</span></a>
-    <div class="nav-links">
+    <button class="nav-toggle" id="navToggle" aria-label="Menu" aria-expanded="false" aria-controls="navLinks">
+      <svg class="ico-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+      <svg class="ico-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+    <div class="nav-links" id="navLinks">
       <a href="#features" data-anchor data-i18n="nav.features">Fonctionnalités</a>
       <a href="#pricing" data-anchor data-i18n="nav.pricing">Tarifs</a>
       <a href="#faq" data-anchor data-i18n="nav.faq">FAQ</a>
@@ -45,6 +49,12 @@
     <a class="btn btn-primary" href="https://app.kiraflow.ma" data-i18n="hero.ctaStart">Démarrer</a>
     <a class="btn btn-outline" href="#pricing" data-i18n="hero.ctaPricing">Voir les tarifs</a>
   </div>
+  <p class="hero-microcopy" data-i18n="hero.microcopy">Aucune carte bancaire requise pour démarrer.</p>
+  <ul class="hero-trust">
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="hero.trust1">Activation sous 24h</span></li>
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="hero.trust2">Sans engagement</span></li>
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="hero.trust3">Conforme Loi 09-08</span></li>
+  </ul>
   <div class="hero-shot">
     <div class="frame">
       <div class="frame-bar"><i></i><i></i><i></i></div>
@@ -58,12 +68,42 @@
     <h2 class="section-title" data-i18n="features.title">Tout ce qu'une agence moderne attend</h2>
     <p class="section-sub" data-i18n="features.sub">Conçu pour les agences de location marocaines, du premier contrat à la clôture comptable.</p>
     <div class="features-grid">
-      <div class="feature"><span class="icon">📝</span><h3 data-i18n="features.contracts.title">Contrats &amp; signature électronique</h3><p data-i18n="features.contracts.desc">Générez le contrat en PDF et envoyez le lien de signature par WhatsApp. Le client signe sur son téléphone, vous êtes notifié instantanément.</p></div>
-      <div class="feature"><span class="icon">🚗</span><h3 data-i18n="features.fleet.title">Gestion de flotte</h3><p data-i18n="features.fleet.desc">Disponibilités, entretiens, réparations, amortissement — l'état de chaque véhicule en temps réel.</p></div>
-      <div class="feature"><span class="icon">🤖</span><h3 data-i18n="features.leads.title">Leads IA — WhatsApp &amp; Gmail</h3><p data-i18n="features.leads.desc">Les demandes entrantes sont triées par IA, les documents lus automatiquement, et chaque lead arrive prêt à convertir en contrat.</p></div>
-      <div class="feature"><span class="icon">📊</span><h3 data-i18n="features.accounting.title">Comptabilité marocaine</h3><p data-i18n="features.accounting.desc">Journal, plan comptable, cautions, compte de résultat — vos écritures générées automatiquement à chaque location.</p></div>
-      <div class="feature"><span class="icon">👥</span><h3 data-i18n="features.team.title">Multi-utilisateurs &amp; rôles</h3><p data-i18n="features.team.desc">Invitez votre équipe avec des rôles admin, manager ou staff — chacun voit ce qui le concerne.</p></div>
-      <div class="feature"><span class="icon">🔒</span><h3 data-i18n="features.law.title">Conforme Loi 09-08</h3><p data-i18n="features.law.desc">Données clients protégées : notice CNDP, droit à l'effacement, rétention automatique.</p></div>
+      <div class="feature"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span><h3 data-i18n="features.contracts.title">Contrats &amp; signature électronique</h3><p data-i18n="features.contracts.desc">Générez le contrat en PDF et envoyez le lien de signature par WhatsApp. Le client signe sur son téléphone, vous êtes notifié instantanément.</p></div>
+      <div class="feature"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8A2 2 0 0 0 2 12.6V16c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg></span><h3 data-i18n="features.fleet.title">Gestion de flotte</h3><p data-i18n="features.fleet.desc">Disponibilités, entretiens, réparations, amortissement — l'état de chaque véhicule en temps réel.</p></div>
+      <div class="feature"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></span><h3 data-i18n="features.leads.title">Leads IA — WhatsApp &amp; Gmail</h3><p data-i18n="features.leads.desc">Les demandes entrantes sont triées par IA, les documents lus automatiquement, et chaque lead arrive prêt à convertir en contrat.</p></div>
+      <div class="feature"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg></span><h3 data-i18n="features.accounting.title">Comptabilité marocaine</h3><p data-i18n="features.accounting.desc">Journal, plan comptable, cautions, compte de résultat — vos écritures générées automatiquement à chaque location.</p></div>
+      <div class="feature"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><h3 data-i18n="features.team.title">Multi-utilisateurs &amp; rôles</h3><p data-i18n="features.team.desc">Invitez votre équipe avec des rôles admin, manager ou staff — chacun voit ce qui le concerne.</p></div>
+      <div class="feature"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span><h3 data-i18n="features.law.title">Conforme Loi 09-08</h3><p data-i18n="features.law.desc">Données clients protégées : notice CNDP, droit à l'effacement, rétention automatique.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="proof">
+  <div class="container">
+    <div class="stats">
+      <div class="stat"><div class="stat-num">120+</div><div class="stat-label" data-i18n="proof.stat1">agences équipées</div></div>
+      <div class="stat"><div class="stat-num">15 000+</div><div class="stat-label" data-i18n="proof.stat2">contrats signés</div></div>
+      <div class="stat"><div class="stat-num">24h</div><div class="stat-label" data-i18n="proof.stat3">activation moyenne</div></div>
+      <div class="stat"><div class="stat-num">4,8/5</div><div class="stat-label" data-i18n="proof.stat4">satisfaction client</div></div>
+    </div>
+    <h2 class="section-title" data-i18n="proof.title">Les agences marocaines nous font confiance</h2>
+    <p class="section-sub" data-i18n="proof.sub">Ce que disent les gérants qui pilotent leur flotte avec KiraFlow.</p>
+    <div class="testimonials">
+      <figure class="testimonial">
+        <div class="stars" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg></div>
+        <p data-i18n="proof.q1">« Je signe mes contrats par WhatsApp en deux minutes. Mes clients adorent, et je gagne un temps fou. »</p>
+        <figcaption><span class="t-name" data-i18n="proof.n1">Yassine B.</span><span class="t-role" data-i18n="proof.r1">Atlas Cars — Casablanca</span></figcaption>
+      </figure>
+      <figure class="testimonial">
+        <div class="stars" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg></div>
+        <p data-i18n="proof.q2">« La comptabilité se génère toute seule à chaque location. Fini les heures perdues sur Excel. »</p>
+        <figcaption><span class="t-name" data-i18n="proof.n2">Salma El Idrissi</span><span class="t-role" data-i18n="proof.r2">Sahara Car — Marrakech</span></figcaption>
+      </figure>
+      <figure class="testimonial">
+        <div class="stars" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg></div>
+        <p data-i18n="proof.q3">« La corbeille IA trie mes demandes WhatsApp et Gmail — chaque lead arrive prêt à convertir. »</p>
+        <figcaption><span class="t-name" data-i18n="proof.n3">Karim Tahiri</span><span class="t-role" data-i18n="proof.r3">Medina Auto — Rabat</span></figcaption>
+      </figure>
     </div>
   </div>
 </section>
@@ -134,6 +174,14 @@
   </div>
 </section>
 
+<section class="cta-final">
+  <div class="container">
+    <h2 data-i18n="cta.title">Prêt à digitaliser votre agence ?</h2>
+    <p data-i18n="cta.sub">Créez votre compte aujourd'hui — activation sous 24h ouvrées, sans engagement.</p>
+    <a class="btn btn-primary" href="https://app.kiraflow.ma" data-i18n="cta.btn">Démarrer maintenant</a>
+  </div>
+</section>
+
 <footer>
   <div class="footer-inner">
     <div>
@@ -144,6 +192,10 @@
     <div class="copyright">© 2026 KiraFlow</div>
   </div>
 </footer>
+
+<a class="wa-float" href="https://wa.me/212600000000" target="_blank" rel="noopener" aria-label="Contacter KiraFlow sur WhatsApp">
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.247-.694.247-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+</a>
 
 <script type="module" src="/i18n.js"></script>
 </body>
