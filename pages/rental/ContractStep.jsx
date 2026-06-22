@@ -118,6 +118,7 @@ export default function ContractStep({
         clientId: c.clientId,
         clientName: `${client.firstName} ${client.lastName}`,
         vehicleName: `${rental.vehicle.make} ${rental.vehicle.model}`,
+        type: 'rental',
         totalHT: rental.totalHT,
         tva: rental.tva,
         totalTTC: rental.totalTTC,

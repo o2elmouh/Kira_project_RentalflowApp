@@ -634,9 +634,62 @@ async function _buildContractDoc(contract, client, vehicle, agency) {
 
 // ── Invoice ───────────────────────────────────────────────
 
-async function _buildInvoiceDoc(invoice, contract, client, vehicle, agency) {
-  const { defaultSignature } = (await getGeneralConfig()) || {}
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+// ── Invoice render model ──────────────────────────────────────────────────
+// Builds the banner title, line-item rows and totals from the invoice record
+// itself. Restitution invoices (end-of-rental surplus: fuel / extra km /
+// damages) carry their own persisted `items` + totals, so they render as a
+// distinct invoice instead of re-deriving the full rental total from the
+// contract. Legacy rental invoices fall back to contract-derived figures.
+export function invoiceRenderModel(invoice, contract = {}, vehicle = {}) {
+  const r2 = n => Math.round(Number(n || 0) * 100) / 100
+  const totalHT  = r2(invoice.totalHT  ?? contract.totalHT  ?? 0)
+  const tva      = r2(invoice.tva      ?? contract.tva      ?? 0)
+  const totalTTC = r2(invoice.totalTTC ?? contract.totalTTC ?? 0)
+  const isRestitution = invoice.type === 'restitution'
+
+  let body
+  if (Array.isArray(invoice.items) && invoice.items.length) {
+    body = invoice.items.map(it => {
+      const qty  = Number(it.qty ?? 1)
+      const unit = Number(it.unitPrice ?? 0)
+      return [String(it.label ?? ''), String(it.qty ?? 1), String(unit), String(r2(unit * qty))]
+    })
+  } else if (isRestitution) {
+    // Legacy/backfilled restitution invoice with no persisted line items: show a
+    // single generic line so it never renders as a rental, only its own total.
+    body = [[invoice.notes || 'Frais de restitution', '1', String(totalHT), String(totalHT)]]
+  } else {
+    body = [
+      [
+        `Location ${vehicle.make ?? ''} ${vehicle.model ?? ''} — ${displayPlate(vehicle.plate)}`.trim(),
+        `${contract.days ?? invoice.days ?? 0} j`,
+        String(vehicle.dailyRate ?? 0),
+        String(totalHT),
+      ],
+      ...(contract.pai ? [['Assurance PAI', '1', String(contract.paiRate || 50), String((contract.paiRate || 50) * contract.days)]] : []),
+      ...(contract.cdw ? [['Garantie CDW', '1', String(contract.cdwRate || 80), String((contract.cdwRate || 80) * contract.days)]] : []),
+      ...(contract.extras?.fuel   ? [['Supplément carburant', '1', String(contract.extras.fuelAmount || 0), String(contract.extras.fuelAmount || 0)]] : []),
+      ...(contract.extras?.driver ? [['Conducteur supplémentaire', '1', '100', String(100 * contract.days)]] : []),
+    ]
+  }
+
+  return {
+    title: isRestitution ? 'FACTURE — FRAIS DE RESTITUTION' : 'FACTURE DE LOCATION',
+    body,
+    foot: [
+      ['', '', 'Total HT',  `${totalHT} MAD`],
+      ['', '', 'TVA (20%)', `${tva} MAD`],
+      ['', '', 'TOTAL TTC', `${totalTTC} MAD`],
+    ],
+    totalTTC,
+  }
+}
+
+// Shared invoice renderer — draws the full invoice page (header → footer) onto
+// `doc`. Both the download (_buildInvoiceDoc) and preview/upload buffer
+// (generateInvoiceBuffer) variants call this so the two never drift apart again.
+function _renderInvoiceDoc(doc, invoice, contract, client, vehicle, agency, defaultSignature) {
+  const model = invoiceRenderModel(invoice, contract, vehicle)
 
   // ── Custom header for invoice (includes invoice number top-right prominently) ──
   doc.setFillColor(...DARK)
@@ -678,7 +731,7 @@ async function _buildInvoiceDoc(invoice, contract, client, vehicle, agency) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9)
   doc.setTextColor(255, 255, 255)
-  doc.text('FACTURE DE LOCATION', 105, 33.5, { align: 'center' })
+  doc.text(model.title, 105, 33.5, { align: 'center' })
 
   let y = 44
 
@@ -696,23 +749,8 @@ async function _buildInvoiceDoc(invoice, contract, client, vehicle, agency) {
     startY: y,
     margin: { left: 14, right: 14 },
     head: [['Description', 'Qté', 'P.U (MAD)', 'Total HT (MAD)']],
-    body: [
-      [
-        `Location ${vehicle.make ?? ''} ${vehicle.model ?? ''} — ${displayPlate(vehicle.plate)}`.trim(),
-        `${contract.days ?? 0} j`,
-        String(vehicle.dailyRate ?? 0),
-        String(contract.totalHT ?? 0),
-      ],
-      ...(contract.pai ? [['Assurance PAI', '1', String(contract.paiRate || 50), String((contract.paiRate || 50) * contract.days)]] : []),
-      ...(contract.cdw ? [['Garantie CDW', '1', String(contract.cdwRate || 80), String((contract.cdwRate || 80) * contract.days)]] : []),
-      ...(contract.extras?.fuel   ? [['Supplément carburant', '1', String(contract.extras.fuelAmount || 0), String(contract.extras.fuelAmount || 0)]] : []),
-      ...(contract.extras?.driver ? [['Conducteur supplémentaire', '1', '100', String(100 * contract.days)]] : []),
-    ],
-    foot: [
-      ['', '', 'Total HT',  `${contract.totalHT} MAD`],
-      ['', '', 'TVA (20%)', `${contract.tva} MAD`],
-      ['', '', 'TOTAL TTC', `${contract.totalTTC} MAD`],
-    ],
+    body: model.body,
+    foot: model.foot,
     headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' },
     footStyles: { fillColor: LIGHT, textColor: DARK, fontSize: 8, fontStyle: 'bold' },
     bodyStyles: { fontSize: 8, textColor: DARK },
@@ -727,8 +765,17 @@ async function _buildInvoiceDoc(invoice, contract, client, vehicle, agency) {
 
   y = doc.lastAutoTable.finalY + 8
 
+  // Notes (e.g. restitution reason)
+  if (invoice.notes) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...GRAY)
+    doc.text(String(invoice.notes), 14, y)
+    y += 6
+  }
+
   // Amount in words
-  const wordsLine = amountInWords(contract.totalTTC)
+  const wordsLine = amountInWords(model.totalTTC)
   doc.setFont('helvetica', 'italic')
   doc.setFontSize(8)
   doc.setTextColor(...DARK)
@@ -776,7 +823,12 @@ async function _buildInvoiceDoc(invoice, contract, client, vehicle, agency) {
     agency.patente   ? `Patente: ${agency.patente}` : null,
   ].filter(Boolean)
   doc.text(footerParts.join('  |  '), 105, footerY, { align: 'center' })
+}
 
+async function _buildInvoiceDoc(invoice, contract, client, vehicle, agency) {
+  const { defaultSignature } = (await getGeneralConfig()) || {}
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  _renderInvoiceDoc(doc, invoice, contract, client, vehicle, agency, defaultSignature)
   doc.save(`${invoice.invoiceNumber ?? 'facture'}.pdf`)
 }
 
@@ -968,121 +1020,7 @@ export async function generateContractBuffer(contract, client, vehicle, agency) 
 export async function generateInvoiceBuffer(invoice, contract, client, vehicle, agency) {
   const { defaultSignature } = (await getGeneralConfig()) || {}
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-
-  doc.setFillColor(...DARK)
-  doc.rect(0, 0, 210, 28, 'F')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(14)
-  doc.setTextColor(255, 255, 255)
-  doc.text(agency.name || 'Car Rental Agency', 14, 10)
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7.5)
-  doc.setTextColor(200, 195, 185)
-  const agencyLine1 = [agency.address, agency.phone, agency.email].filter(Boolean).join('  |  ')
-  const agencyLine2 = [
-    agency.ice       ? `ICE: ${agency.ice}`           : null,
-    agency.rc        ? `RC: ${agency.rc}`             : null,
-    agency.if_number ? `IF: ${agency.if_number}`      : null,
-    agency.patente   ? `Patente: ${agency.patente}`   : null,
-  ].filter(Boolean).join('  |  ')
-  doc.text(agencyLine1 || '', 14, 17)
-  doc.text(agencyLine2 || '', 14, 23)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(11)
-  doc.setTextColor(255, 255, 255)
-  doc.text(invoice.invoiceNumber ?? '', 196, 10, { align: 'right' })
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7.5)
-  doc.setTextColor(200, 195, 185)
-  doc.text(`Date: ${new Date().toLocaleDateString('fr-MA')}`, 196, 17, { align: 'right' })
-  doc.setFillColor(...ACCENT)
-  doc.rect(0, 28, 210, 8, 'F')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9)
-  doc.setTextColor(255, 255, 255)
-  doc.text('FACTURE DE LOCATION', 105, 33.5, { align: 'center' })
-
-  let y = 44
-  y = sectionTitle(doc, 'FACTURÉ À', y)
-  y = fieldRow(doc, 'Client:', `${client.firstName ?? ''} ${client.lastName ?? ''}`.trim(), 14, y)
-  y = fieldRow(doc, 'CIN:', client.cinNumber, 14, y)
-  y = fieldRow(doc, 'Tél:', client.phone, 14, y)
-  y = fieldRow(doc, 'Email:', client.email, 14, y)
-  y = fieldRow(doc, 'Réf. contrat:', contract.contractNumber, 14, y)
-  y += 4
-
-  autoTable(doc, {
-    startY: y,
-    margin: { left: 14, right: 14 },
-    head: [['Description', 'Qté', 'P.U (MAD)', 'Total HT (MAD)']],
-    body: [
-      [
-        `Location ${vehicle.make ?? ''} ${vehicle.model ?? ''} — ${displayPlate(vehicle.plate)}`.trim(),
-        `${contract.days ?? 0} j`,
-        String(vehicle.dailyRate ?? 0),
-        String(contract.totalHT ?? 0),
-      ],
-      ...(contract.pai ? [['Assurance PAI', '1', String(contract.paiRate || 50), String((contract.paiRate || 50) * contract.days)]] : []),
-      ...(contract.cdw ? [['Garantie CDW', '1', String(contract.cdwRate || 80), String((contract.cdwRate || 80) * contract.days)]] : []),
-      ...(contract.extras?.fuel   ? [['Supplément carburant', '1', String(contract.extras.fuelAmount || 0), String(contract.extras.fuelAmount || 0)]] : []),
-      ...(contract.extras?.driver ? [['Conducteur supplémentaire', '1', '100', String(100 * contract.days)]] : []),
-    ],
-    foot: [
-      ['', '', 'Total HT',  `${contract.totalHT} MAD`],
-      ['', '', 'TVA (20%)', `${contract.tva} MAD`],
-      ['', '', 'TOTAL TTC', `${contract.totalTTC} MAD`],
-    ],
-    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' },
-    footStyles: { fillColor: LIGHT, textColor: DARK, fontSize: 8, fontStyle: 'bold' },
-    bodyStyles: { fontSize: 8, textColor: DARK },
-    alternateRowStyles: { fillColor: [250, 249, 246] },
-    columnStyles: {
-      0: { cellWidth: 'auto' },
-      1: { cellWidth: 18, halign: 'center' },
-      2: { cellWidth: 30, halign: 'right' },
-      3: { cellWidth: 36, halign: 'right' },
-    },
-  })
-
-  y = doc.lastAutoTable.finalY + 8
-  const wordsLine = amountInWords(contract.totalTTC)
-  doc.setFont('helvetica', 'italic')
-  doc.setFontSize(8)
-  doc.setTextColor(...DARK)
-  const wordsWrapped = doc.splitTextToSize(`Arrêtée la présente facture à la somme de : ${wordsLine}`, 182)
-  doc.text(wordsWrapped, 14, y)
-  y += wordsWrapped.length * 5 + 6
-
-  const boxW = 60; const boxH = 25
-  const boxX = 196 - boxW
-  doc.setDrawColor(...GRAY)
-  doc.setLineWidth(0.4)
-  doc.rect(boxX, y, boxW, boxH)
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7.5)
-  doc.setTextColor(...GRAY)
-  doc.text('Cachet et signature', boxX + boxW / 2, y + 5, { align: 'center' })
-  if (defaultSignature) {
-    try { doc.addImage(defaultSignature, 'PNG', boxX + 10, y + 7, 40, 15) } catch (_) { /* skip */ }
-  }
-  y += boxH + 8
-  doc.setFont('helvetica', 'italic')
-  doc.setFontSize(7.5)
-  doc.setTextColor(...GRAY)
-  doc.text('Merci de votre confiance. Conservez cette facture comme justificatif de paiement.', 105, y, { align: 'center' })
-
-  const footerY = 285
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(6.5)
-  doc.setTextColor(...GRAY)
-  const footerParts = [
-    agency.ice       ? `ICE: ${agency.ice}`           : null,
-    agency.rc        ? `RC: ${agency.rc}`             : null,
-    agency.if_number ? `IF: ${agency.if_number}`      : null,
-    agency.patente   ? `Patente: ${agency.patente}`   : null,
-  ].filter(Boolean)
-  doc.text(footerParts.join('  |  '), 105, footerY, { align: 'center' })
-
+  _renderInvoiceDoc(doc, invoice, contract, client, vehicle, agency, defaultSignature)
   return doc.output('arraybuffer')
 }
 

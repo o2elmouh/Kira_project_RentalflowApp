@@ -106,6 +106,7 @@ export default function Step4Closure({ agency, contract, vehicle, returnDate, re
           contractId: contract.id,
           contractNumber: contract.contractNumber,
           vehicleName: contract.vehicleName,
+          type: 'restitution',
           items: invoiceItems,
           totalHT: totalExtraFees / 1.20,
           tva: totalExtraFees - totalExtraFees / 1.20,
