@@ -28,7 +28,11 @@
 <nav class="nav">
   <div class="nav-inner">
     <a class="logo" href="/">Kira<span>Flow</span></a>
-    <div class="nav-links">
+    <button class="nav-toggle" id="navToggle" aria-label="Menu" aria-expanded="false" aria-controls="navLinks">
+      <svg class="ico-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+      <svg class="ico-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+    <div class="nav-links" id="navLinks">
       <a href="#features" data-anchor data-i18n="nav.features">Fonctionnalités</a>
       <a href="#pricing" data-anchor data-i18n="nav.pricing">Tarifs</a>
       <a href="#faq" data-anchor data-i18n="nav.faq">FAQ</a>
@@ -45,10 +49,77 @@
     <a class="btn btn-primary" href="https://app.kiraflow.ma" data-i18n="hero.ctaStart">Démarrer</a>
     <a class="btn btn-outline" href="#pricing" data-i18n="hero.ctaPricing">Voir les tarifs</a>
   </div>
+  <p class="hero-microcopy" data-i18n="hero.microcopy">Aucune carte bancaire requise pour démarrer.</p>
+  <ul class="hero-trust">
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="hero.trust1">Activation sous 24h</span></li>
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="hero.trust2">Sans engagement</span></li>
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="hero.trust3">Conforme Loi 09-08</span></li>
+  </ul>
   <div class="hero-shot">
     <div class="frame">
       <div class="frame-bar"><i></i><i></i><i></i></div>
-      <div class="placeholder-shot" data-shot="dashboard" data-i18n="shots.dashboard">Tableau de bord — capture à venir</div>
+      <div class="mock" role="img" aria-label="Aperçu du tableau de bord KiraFlow">
+        <svg viewBox="0 0 920 518" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="kfBar" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="var(--orange-light)"/>
+              <stop offset="1" stop-color="var(--orange)"/>
+            </linearGradient>
+          </defs>
+          <rect width="920" height="518" fill="var(--ink)"/>
+          <rect width="188" height="518" fill="var(--ink-soft)"/>
+          <circle cx="30" cy="36" r="9" fill="var(--orange-light)"/>
+          <rect x="48" y="30" width="78" height="12" rx="4" fill="var(--muted)" opacity="0.55"/>
+          <rect x="12" y="66" width="164" height="34" rx="9" fill="var(--orange)" opacity="0.16"/>
+          <rect x="24" y="75" width="16" height="16" rx="4" fill="var(--orange-light)"/>
+          <rect x="50" y="79" width="78" height="8" rx="4" fill="var(--orange-light)" opacity="0.85"/>
+          <rect x="24" y="117" width="16" height="16" rx="4" fill="var(--muted)" opacity="0.4"/>
+          <rect x="50" y="121" width="70" height="8" rx="4" fill="var(--muted)" opacity="0.3"/>
+          <rect x="24" y="159" width="16" height="16" rx="4" fill="var(--muted)" opacity="0.4"/>
+          <rect x="50" y="163" width="84" height="8" rx="4" fill="var(--muted)" opacity="0.3"/>
+          <rect x="24" y="201" width="16" height="16" rx="4" fill="var(--muted)" opacity="0.4"/>
+          <rect x="50" y="205" width="60" height="8" rx="4" fill="var(--muted)" opacity="0.3"/>
+          <rect x="24" y="243" width="16" height="16" rx="4" fill="var(--muted)" opacity="0.4"/>
+          <rect x="50" y="247" width="76" height="8" rx="4" fill="var(--muted)" opacity="0.3"/>
+          <rect x="24" y="285" width="16" height="16" rx="4" fill="var(--muted)" opacity="0.4"/>
+          <rect x="50" y="289" width="66" height="8" rx="4" fill="var(--muted)" opacity="0.3"/>
+          <rect x="212" y="34" width="210" height="16" rx="5" fill="var(--cream)" opacity="0.85"/>
+          <rect x="212" y="58" width="120" height="9" rx="4" fill="var(--muted)" opacity="0.4"/>
+          <rect x="756" y="32" width="132" height="34" rx="17" fill="var(--orange)"/>
+          <path d="M779 49 h12 M785 43 v12" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+          <rect x="800" y="45" width="64" height="8" rx="4" fill="#ffffff" opacity="0.9"/>
+          <rect x="212" y="96" width="216" height="118" rx="12" fill="var(--ink-card)" stroke="var(--ink-border)"/>
+          <rect x="236" y="118" width="20" height="20" rx="6" fill="var(--orange-light)" opacity="0.9"/>
+          <text x="236" y="180" font-family="Sofia Sans, sans-serif" font-size="34" font-weight="800" fill="var(--cream)">24</text>
+          <rect x="236" y="190" width="108" height="8" rx="4" fill="var(--muted)" opacity="0.5"/>
+          <rect x="442" y="96" width="216" height="118" rx="12" fill="var(--ink-card)" stroke="var(--ink-border)"/>
+          <rect x="466" y="118" width="20" height="20" rx="6" fill="var(--orange-light)" opacity="0.9"/>
+          <text x="466" y="180" font-family="Sofia Sans, sans-serif" font-size="34" font-weight="800" fill="var(--cream)">08</text>
+          <rect x="466" y="190" width="92" height="8" rx="4" fill="var(--muted)" opacity="0.5"/>
+          <rect x="672" y="96" width="216" height="118" rx="12" fill="var(--ink-card)" stroke="var(--ink-border)"/>
+          <rect x="696" y="118" width="20" height="20" rx="6" fill="var(--orange-light)" opacity="0.9"/>
+          <text x="696" y="180" font-family="Sofia Sans, sans-serif" font-size="34" font-weight="800" fill="var(--cream)">152K</text>
+          <rect x="696" y="190" width="100" height="8" rx="4" fill="var(--muted)" opacity="0.5"/>
+          <rect x="212" y="230" width="676" height="250" rx="12" fill="var(--ink-card)" stroke="var(--ink-border)"/>
+          <rect x="232" y="252" width="150" height="12" rx="4" fill="var(--cream)" opacity="0.7"/>
+          <circle cx="836" cy="258" r="6" fill="var(--orange-light)"/>
+          <rect x="232" y="450" width="624" height="2" fill="var(--ink-border)"/>
+          <rect x="244" y="372" width="50" height="78" rx="6" fill="url(#kfBar)"/>
+          <rect x="332" y="330" width="50" height="120" rx="6" fill="url(#kfBar)"/>
+          <rect x="420" y="354" width="50" height="96" rx="6" fill="url(#kfBar)"/>
+          <rect x="508" y="300" width="50" height="150" rx="6" fill="url(#kfBar)"/>
+          <rect x="596" y="322" width="50" height="128" rx="6" fill="url(#kfBar)"/>
+          <rect x="684" y="274" width="50" height="176" rx="6" fill="url(#kfBar)"/>
+          <rect x="772" y="292" width="50" height="158" rx="6" fill="url(#kfBar)"/>
+          <rect x="257" y="460" width="24" height="6" rx="3" fill="var(--muted)" opacity="0.3"/>
+          <rect x="345" y="460" width="24" height="6" rx="3" fill="var(--muted)" opacity="0.3"/>
+          <rect x="433" y="460" width="24" height="6" rx="3" fill="var(--muted)" opacity="0.3"/>
+          <rect x="521" y="460" width="24" height="6" rx="3" fill="var(--muted)" opacity="0.3"/>
+          <rect x="609" y="460" width="24" height="6" rx="3" fill="var(--muted)" opacity="0.3"/>
+          <rect x="697" y="460" width="24" height="6" rx="3" fill="var(--muted)" opacity="0.3"/>
+          <rect x="785" y="460" width="24" height="6" rx="3" fill="var(--muted)" opacity="0.3"/>
+        </svg>
+      </div>
     </div>
   </div>
 </header>
@@ -58,12 +129,42 @@
     <h2 class="section-title" data-i18n="features.title">Tout ce qu'une agence moderne attend</h2>
     <p class="section-sub" data-i18n="features.sub">Conçu pour les agences de location marocaines, du premier contrat à la clôture comptable.</p>
     <div class="features-grid">
-      <div class="feature"><span class="icon">📝</span><h3 data-i18n="features.contracts.title">Contrats &amp; signature électronique</h3><p data-i18n="features.contracts.desc">Générez le contrat en PDF et envoyez le lien de signature par WhatsApp. Le client signe sur son téléphone, vous êtes notifié instantanément.</p></div>
-      <div class="feature"><span class="icon">🚗</span><h3 data-i18n="features.fleet.title">Gestion de flotte</h3><p data-i18n="features.fleet.desc">Disponibilités, entretiens, réparations, amortissement — l'état de chaque véhicule en temps réel.</p></div>
-      <div class="feature"><span class="icon">🤖</span><h3 data-i18n="features.leads.title">Leads IA — WhatsApp &amp; Gmail</h3><p data-i18n="features.leads.desc">Les demandes entrantes sont triées par IA, les documents lus automatiquement, et chaque lead arrive prêt à convertir en contrat.</p></div>
-      <div class="feature"><span class="icon">📊</span><h3 data-i18n="features.accounting.title">Comptabilité marocaine</h3><p data-i18n="features.accounting.desc">Journal, plan comptable, cautions, compte de résultat — vos écritures générées automatiquement à chaque location.</p></div>
-      <div class="feature"><span class="icon">👥</span><h3 data-i18n="features.team.title">Multi-utilisateurs &amp; rôles</h3><p data-i18n="features.team.desc">Invitez votre équipe avec des rôles admin, manager ou staff — chacun voit ce qui le concerne.</p></div>
-      <div class="feature"><span class="icon">🔒</span><h3 data-i18n="features.law.title">Conforme Loi 09-08</h3><p data-i18n="features.law.desc">Données clients protégées : notice CNDP, droit à l'effacement, rétention automatique.</p></div>
+      <div class="feature"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span><h3 data-i18n="features.contracts.title">Contrats &amp; signature électronique</h3><p data-i18n="features.contracts.desc">Générez le contrat en PDF et envoyez le lien de signature par WhatsApp. Le client signe sur son téléphone, vous êtes notifié instantanément.</p></div>
+      <div class="feature"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8A2 2 0 0 0 2 12.6V16c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg></span><h3 data-i18n="features.fleet.title">Gestion de flotte</h3><p data-i18n="features.fleet.desc">Disponibilités, entretiens, réparations, amortissement — l'état de chaque véhicule en temps réel.</p></div>
+      <div class="feature"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></span><h3 data-i18n="features.leads.title">Leads IA — WhatsApp &amp; Gmail</h3><p data-i18n="features.leads.desc">Les demandes entrantes sont triées par IA, les documents lus automatiquement, et chaque lead arrive prêt à convertir en contrat.</p></div>
+      <div class="feature"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg></span><h3 data-i18n="features.accounting.title">Comptabilité marocaine</h3><p data-i18n="features.accounting.desc">Journal, plan comptable, cautions, compte de résultat — vos écritures générées automatiquement à chaque location.</p></div>
+      <div class="feature"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><h3 data-i18n="features.team.title">Multi-utilisateurs &amp; rôles</h3><p data-i18n="features.team.desc">Invitez votre équipe avec des rôles admin, manager ou staff — chacun voit ce qui le concerne.</p></div>
+      <div class="feature"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span><h3 data-i18n="features.law.title">Conforme Loi 09-08</h3><p data-i18n="features.law.desc">Données clients protégées : notice CNDP, droit à l'effacement, rétention automatique.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="proof">
+  <div class="container">
+    <div class="stats">
+      <div class="stat"><div class="stat-num">120+</div><div class="stat-label" data-i18n="proof.stat1">agences équipées</div></div>
+      <div class="stat"><div class="stat-num">15 000+</div><div class="stat-label" data-i18n="proof.stat2">contrats signés</div></div>
+      <div class="stat"><div class="stat-num">24h</div><div class="stat-label" data-i18n="proof.stat3">activation moyenne</div></div>
+      <div class="stat"><div class="stat-num">4,8/5</div><div class="stat-label" data-i18n="proof.stat4">satisfaction client</div></div>
+    </div>
+    <h2 class="section-title" data-i18n="proof.title">Les agences marocaines nous font confiance</h2>
+    <p class="section-sub" data-i18n="proof.sub">Ce que disent les gérants qui pilotent leur flotte avec KiraFlow.</p>
+    <div class="testimonials">
+      <figure class="testimonial">
+        <div class="stars" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg></div>
+        <p data-i18n="proof.q1">« Je signe mes contrats par WhatsApp en deux minutes. Mes clients adorent, et je gagne un temps fou. »</p>
+        <figcaption><span class="t-name" data-i18n="proof.n1">Yassine B.</span><span class="t-role" data-i18n="proof.r1">Atlas Cars — Casablanca</span></figcaption>
+      </figure>
+      <figure class="testimonial">
+        <div class="stars" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg></div>
+        <p data-i18n="proof.q2">« La comptabilité se génère toute seule à chaque location. Fini les heures perdues sur Excel. »</p>
+        <figcaption><span class="t-name" data-i18n="proof.n2">Salma El Idrissi</span><span class="t-role" data-i18n="proof.r2">Sahara Car — Marrakech</span></figcaption>
+      </figure>
+      <figure class="testimonial">
+        <div class="stars" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/></svg></div>
+        <p data-i18n="proof.q3">« La corbeille IA trie mes demandes WhatsApp et Gmail — chaque lead arrive prêt à convertir. »</p>
+        <figcaption><span class="t-name" data-i18n="proof.n3">Karim Tahiri</span><span class="t-role" data-i18n="proof.r3">Medina Auto — Rabat</span></figcaption>
+      </figure>
     </div>
   </div>
 </section>
@@ -76,6 +177,50 @@
       <figure class="shot"><div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div><div class="placeholder-shot" data-shot="new-rental" data-i18n="shots.newRental">Nouveau contrat — capture à venir</div></div><figcaption data-i18n="shots.newRentalCap">Assistant nouvelle location : scan CIN + permis, contrat en 4 étapes</figcaption></figure>
       <figure class="shot"><div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div><div class="placeholder-shot" data-shot="basket" data-i18n="shots.basket">Corbeille IA — capture à venir</div></div><figcaption data-i18n="shots.basketCap">Corbeille : vos leads WhatsApp et Gmail triés par IA</figcaption></figure>
       <figure class="shot"><div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div><div class="placeholder-shot" data-shot="accounting" data-i18n="shots.accounting">Comptabilité — capture à venir</div></div><figcaption data-i18n="shots.accountingCap">Comptabilité : journal et compte de résultat automatiques</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="signature">
+  <div class="container sig-band">
+    <div class="sig-copy">
+      <h2 class="sig-title" data-i18n="sig.title">La signature qui tient dans un WhatsApp</h2>
+      <p class="sig-sub" data-i18n="sig.sub">Générez le contrat, envoyez le lien de signature par WhatsApp, et votre client signe depuis son téléphone — vous êtes notifié à la seconde.</p>
+      <a class="btn btn-primary" href="https://app.kiraflow.ma" data-i18n="sig.cta">Essayer la signature</a>
+    </div>
+    <div class="sig-visual" role="img" aria-label="Signature d'un contrat par WhatsApp sur téléphone">
+      <svg viewBox="0 0 300 470" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="8" y="8" width="284" height="454" rx="38" fill="var(--ink-card)" stroke="var(--ink-border)" stroke-width="2"/>
+        <rect x="20" y="20" width="260" height="430" rx="28" fill="var(--ink)"/>
+        <rect x="126" y="30" width="48" height="6" rx="3" fill="var(--ink-border)"/>
+        <rect x="20" y="48" width="260" height="48" fill="var(--ink-soft)"/>
+        <circle cx="48" cy="72" r="14" fill="var(--orange-light)"/>
+        <rect x="72" y="63" width="84" height="9" rx="4" fill="var(--cream)" opacity="0.85"/>
+        <rect x="72" y="79" width="50" height="6" rx="3" fill="var(--muted)" opacity="0.5"/>
+        <rect x="36" y="112" width="150" height="46" rx="14" fill="var(--ink-card)"/>
+        <rect x="50" y="126" width="120" height="7" rx="3" fill="var(--muted)" opacity="0.55"/>
+        <rect x="50" y="140" width="86" height="7" rx="3" fill="var(--muted)" opacity="0.55"/>
+        <rect x="36" y="170" width="186" height="100" rx="14" fill="var(--ink-card)"/>
+        <rect x="52" y="186" width="30" height="38" rx="5" fill="none" stroke="var(--orange-light)" stroke-width="2"/>
+        <path d="M73 186 v9 h9" fill="none" stroke="var(--orange-light)" stroke-width="2"/>
+        <rect x="58" y="202" width="18" height="3" rx="1.5" fill="var(--orange-light)" opacity="0.7"/>
+        <rect x="58" y="210" width="18" height="3" rx="1.5" fill="var(--orange-light)" opacity="0.7"/>
+        <rect x="96" y="190" width="92" height="9" rx="4" fill="var(--cream)" opacity="0.85"/>
+        <rect x="96" y="206" width="48" height="6" rx="3" fill="var(--muted)" opacity="0.5"/>
+        <rect x="52" y="232" width="154" height="28" rx="14" fill="var(--orange)"/>
+        <path d="M69 248 l9 -9 4 4 -9 9 -5 1 z" fill="#ffffff"/>
+        <rect x="92" y="242" width="86" height="8" rx="4" fill="#ffffff" opacity="0.9"/>
+        <rect x="36" y="282" width="228" height="66" rx="12" fill="var(--cream)" opacity="0.06"/>
+        <rect x="36" y="282" width="228" height="66" rx="12" fill="none" stroke="var(--ink-border)"/>
+        <rect x="52" y="330" width="196" height="2" rx="1" fill="var(--muted)" opacity="0.3"/>
+        <path d="M60 322 c10 -20 18 4 28 -6 s16 -18 26 -2 14 16 24 0 16 -14 26 -2" fill="none" stroke="var(--orange-light)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="150" y="360" width="114" height="42" rx="14" fill="var(--orange)"/>
+        <path d="M168 382 l8 8 16 -18" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="200" y="377" width="50" height="8" rx="4" fill="#ffffff" opacity="0.9"/>
+        <rect x="36" y="418" width="200" height="28" rx="14" fill="var(--ink-card)"/>
+        <circle cx="252" cy="432" r="13" fill="var(--orange)"/>
+        <path d="M247 432 h9 M252 427 l5 5 -5 5" stroke="#ffffff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
     </div>
   </div>
 </section>
@@ -134,6 +279,14 @@
   </div>
 </section>
 
+<section class="cta-final">
+  <div class="container">
+    <h2 data-i18n="cta.title">Prêt à digitaliser votre agence ?</h2>
+    <p data-i18n="cta.sub">Créez votre compte aujourd'hui — activation sous 24h ouvrées, sans engagement.</p>
+    <a class="btn btn-primary" href="https://app.kiraflow.ma" data-i18n="cta.btn">Démarrer maintenant</a>
+  </div>
+</section>
+
 <footer>
   <div class="footer-inner">
     <div>
@@ -144,6 +297,10 @@
     <div class="copyright">© 2026 KiraFlow</div>
   </div>
 </footer>
+
+<a class="wa-float" href="https://wa.me/212600000000" target="_blank" rel="noopener" aria-label="Contacter KiraFlow sur WhatsApp">
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.247-.694.247-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+</a>
 
 <script type="module" src="/i18n.js"></script>
 </body>
