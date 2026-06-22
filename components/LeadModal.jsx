@@ -303,7 +303,7 @@ export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) 
 
                         {showSmartQuote && vehicleConflicts.length > 0 && (
                           <SmartQuotePanel
-                            lead={lead}
+                            lead={{ ...lead, extracted_data: extracted }}
                             onSent={() => {
                               setShowSmartQuote(false)
                               Promise.resolve(onStatusChange(lead.id, 'offer_sent')).catch(() => {})
@@ -362,7 +362,7 @@ export default function LeadModal({ lead, onClose, onConvert, onStatusChange }) 
             {/* Smart Quote panel — shown when status is waiting or offer_sent */}
             {(localStatus === 'waiting' || localStatus === 'offer_sent') && (
               <SmartQuotePanel
-                lead={{ ...lead, status: localStatus }}
+                lead={{ ...lead, status: localStatus, extracted_data: extracted }}
                 onSent={() => setLocalStatus('offer_sent')}
               />
             )}

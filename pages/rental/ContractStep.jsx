@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { CheckCircle, AlertCircle, ArrowLeft, X, Edit3, FileSignature } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { getAgency, saveVehicle, saveContract, saveInvoice, getFleet } from '../../lib/db'
@@ -32,6 +33,7 @@ export default function ContractStep({
   onFinalized,
 }) {
   const { t } = useTranslation('contracts')
+  const qc = useQueryClient()
   const [agency, setAgency]       = useState({})
   const [contract, setContract]   = useState(null)
   const [, setInvoice]            = useState(null)
@@ -254,6 +256,13 @@ export default function ContractStep({
         // Endpoint may be unavailable in older deploys — don't block the wizard.
         console.warn('[ContractStep] finalize non-blocking:', finErr.message)
       }
+      // The whole rental flow writes through lib/db directly, so the TanStack
+      // caches that feed Calendar / Contracts / Dashboard / Fleet still hold the
+      // pre-rental snapshot. Without this, a freshly finalized contract (e.g. a
+      // future booking) does NOT appear on the calendar until the cache goes
+      // stale. Invalidate so every dependent view refetches immediately.
+      qc.invalidateQueries({ queryKey: ['contracts'] })
+      qc.invalidateQueries({ queryKey: ['fleet'] })
       // Navigate to success screen via App-level routing.
       if (onFinalized) onFinalized(c.id)
       else onDone()

@@ -7,8 +7,14 @@ export default function SmartQuotePanel({ lead, onSent }) {
   const [vehicleId, setVehicleId] = useState('')
   const [price, setPrice]         = useState('')
   const ex = lead?.extracted_data || {}
-  const [startDate, setStartDate] = useState(ex.start_date || '')
-  const [endDate, setEndDate]     = useState(ex.end_date || '')
+  // Extracted rental dates live under different keys depending on the lead source:
+  //   - text/audio routing leads  → ex.start_date / ex.end_date (snake_case)
+  //   - document/OCR vision leads  → ex.rentalIntent.startDate / .endDate (camelCase)
+  // Read all known shapes so the devis is always pre-filled when dates were extracted.
+  const exStart = ex.start_date || ex.startDate || ex.rentalIntent?.startDate || ''
+  const exEnd   = ex.end_date   || ex.endDate   || ex.rentalIntent?.endDate   || ''
+  const [startDate, setStartDate] = useState(exStart)
+  const [endDate, setEndDate]     = useState(exEnd)
   const [notes, setNotes]         = useState('')
   const [sending, setSending]     = useState(false)
   const [error, setError]         = useState(null)

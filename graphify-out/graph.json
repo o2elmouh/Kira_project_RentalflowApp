@@ -71,7 +71,7 @@
       "source_file": "main.jsx",
       "source_location": "L1",
       "id": "main_jsx",
-      "community": 125,
+      "community": 127,
       "norm_label": "main.jsx"
     },
     {
@@ -80,7 +80,7 @@
       "source_file": "vite.config.js",
       "source_location": "L1",
       "id": "vite_config_js",
-      "community": 126,
+      "community": 128,
       "norm_label": "vite.config.js"
     },
     {
@@ -89,7 +89,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\components\\AlertCard.jsx",
       "source_location": "L1",
       "id": "c_users_otman_downloads_01_rentaflow_saas_rental_flow_app_saas_components_alertcard_jsx",
-      "community": 7,
+      "community": 8,
       "norm_label": "alertcard.jsx"
     },
     {
@@ -98,7 +98,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\components\\AlertCard.jsx",
       "source_location": "L5",
       "id": "alertcard_timeago",
-      "community": 7,
+      "community": 8,
       "norm_label": "timeago()"
     },
     {
@@ -107,7 +107,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\components\\AlertCard.jsx",
       "source_location": "L16",
       "id": "alertcard_alertcard",
-      "community": 7,
+      "community": 8,
       "norm_label": "alertcard()"
     },
     {
@@ -134,7 +134,7 @@
       "source_file": "components\\CarPhotoGuide.jsx",
       "source_location": "L1",
       "id": "components_carphotoguide_jsx",
-      "community": 16,
+      "community": 15,
       "norm_label": "carphotoguide.jsx"
     },
     {
@@ -143,7 +143,7 @@
       "source_file": "components\\CarPhotoGuide.jsx",
       "source_location": "L15",
       "id": "carphotoguide_wheel",
-      "community": 16,
+      "community": 15,
       "norm_label": "wheel()"
     },
     {
@@ -152,7 +152,7 @@
       "source_file": "components\\CarPhotoGuide.jsx",
       "source_location": "L32",
       "id": "carphotoguide_frontview",
-      "community": 16,
+      "community": 15,
       "norm_label": "frontview()"
     },
     {
@@ -161,7 +161,7 @@
       "source_file": "components\\CarPhotoGuide.jsx",
       "source_location": "L71",
       "id": "carphotoguide_rearview",
-      "community": 16,
+      "community": 15,
       "norm_label": "rearview()"
     },
     {
@@ -170,7 +170,7 @@
       "source_file": "components\\CarPhotoGuide.jsx",
       "source_location": "L109",
       "id": "carphotoguide_sideview",
-      "community": 16,
+      "community": 15,
       "norm_label": "sideview()"
     },
     {
@@ -179,7 +179,7 @@
       "source_file": "components\\CarPhotoGuide.jsx",
       "source_location": "L155",
       "id": "carphotoguide_interiorview",
-      "community": 16,
+      "community": 15,
       "norm_label": "interiorview()"
     },
     {
@@ -188,7 +188,7 @@
       "source_file": "components\\CarPhotoGuide.jsx",
       "source_location": "L201",
       "id": "carphotoguide_damageview",
-      "community": 16,
+      "community": 15,
       "norm_label": "damageview()"
     },
     {
@@ -197,7 +197,7 @@
       "source_file": "components\\CarPhotoGuide.jsx",
       "source_location": "L236",
       "id": "carphotoguide_carphotoguide",
-      "community": 16,
+      "community": 15,
       "norm_label": "carphotoguide()"
     },
     {
@@ -305,7 +305,7 @@
       "source_file": "components\\LeadModal.jsx",
       "source_location": "L1",
       "id": "components_leadmodal_jsx",
-      "community": 7,
+      "community": 8,
       "norm_label": "leadmodal.jsx"
     },
     {
@@ -314,7 +314,7 @@
       "source_file": "components\\LeadModal.jsx",
       "source_location": "L10",
       "id": "leadmodal_adddaysiso",
-      "community": 7,
+      "community": 8,
       "norm_label": "adddaysiso()"
     },
     {
@@ -323,7 +323,7 @@
       "source_file": "components\\LeadModal.jsx",
       "source_location": "L18",
       "id": "leadmodal_conf_color",
-      "community": 7,
+      "community": 8,
       "norm_label": "conf_color()"
     },
     {
@@ -332,7 +332,7 @@
       "source_file": "components\\LeadModal.jsx",
       "source_location": "L26",
       "id": "leadmodal_confbadge",
-      "community": 7,
+      "community": 8,
       "norm_label": "confbadge()"
     },
     {
@@ -341,7 +341,7 @@
       "source_file": "components\\LeadModal.jsx",
       "source_location": "L45",
       "id": "leadmodal_fieldrow",
-      "community": 7,
+      "community": 8,
       "norm_label": "fieldrow()"
     },
     {
@@ -350,7 +350,7 @@
       "source_file": "components\\LeadModal.jsx",
       "source_location": "L71",
       "id": "leadmodal_leadmodal",
-      "community": 7,
+      "community": 8,
       "norm_label": "leadmodal()"
     },
     {
@@ -377,7 +377,7 @@
       "source_file": "components\\ProlongationDialog.jsx",
       "source_location": "L1",
       "id": "components_prolongationdialog_jsx",
-      "community": 5,
+      "community": 6,
       "norm_label": "prolongationdialog.jsx"
     },
     {
@@ -386,7 +386,7 @@
       "source_file": "components\\ProlongationDialog.jsx",
       "source_location": "L5",
       "id": "prolongationdialog_daysbetween",
-      "community": 5,
+      "community": 6,
       "norm_label": "daysbetween()"
     },
     {
@@ -395,7 +395,7 @@
       "source_file": "components\\ProlongationDialog.jsx",
       "source_location": "L21",
       "id": "prolongationdialog_prolongationdialog",
-      "community": 5,
+      "community": 6,
       "norm_label": "prolongationdialog()"
     },
     {
@@ -440,7 +440,7 @@
       "source_file": "hooks\\useLeads.js",
       "source_location": "L1",
       "id": "hooks_useleads_js",
-      "community": 7,
+      "community": 8,
       "norm_label": "useleads.js"
     },
     {
@@ -449,7 +449,7 @@
       "source_file": "hooks\\useLeads.js",
       "source_location": "L5",
       "id": "useleads_useleads",
-      "community": 7,
+      "community": 8,
       "norm_label": "useleads()"
     },
     {
@@ -1259,7 +1259,7 @@
       "source_file": "lib\\newRentalDraft.js",
       "source_location": "L1",
       "id": "lib_newrentaldraft_js",
-      "community": 14,
+      "community": 12,
       "norm_label": "newrentaldraft.js"
     },
     {
@@ -1268,7 +1268,7 @@
       "source_file": "lib\\newRentalDraft.js",
       "source_location": "L7",
       "id": "newrentaldraft_getstoragekey",
-      "community": 14,
+      "community": 12,
       "norm_label": "getstoragekey()"
     },
     {
@@ -1277,7 +1277,7 @@
       "source_file": "lib\\newRentalDraft.js",
       "source_location": "L11",
       "id": "newrentaldraft_safeparse",
-      "community": 14,
+      "community": 12,
       "norm_label": "safeparse()"
     },
     {
@@ -1286,7 +1286,7 @@
       "source_file": "lib\\newRentalDraft.js",
       "source_location": "L22",
       "id": "newrentaldraft_strippiifromclient",
-      "community": 14,
+      "community": 12,
       "norm_label": "strippiifromclient()"
     },
     {
@@ -1295,7 +1295,7 @@
       "source_file": "lib\\newRentalDraft.js",
       "source_location": "L32",
       "id": "newrentaldraft_sanitizelegacypii",
-      "community": 14,
+      "community": 12,
       "norm_label": "sanitizelegacypii()"
     },
     {
@@ -1304,7 +1304,7 @@
       "source_file": "lib\\newRentalDraft.js",
       "source_location": "L43",
       "id": "newrentaldraft_loaddrafts",
-      "community": 14,
+      "community": 12,
       "norm_label": "loaddrafts()"
     },
     {
@@ -1313,7 +1313,7 @@
       "source_file": "lib\\newRentalDraft.js",
       "source_location": "L60",
       "id": "newrentaldraft_savedraft",
-      "community": 14,
+      "community": 12,
       "norm_label": "savedraft()"
     },
     {
@@ -1322,7 +1322,7 @@
       "source_file": "lib\\newRentalDraft.js",
       "source_location": "L91",
       "id": "newrentaldraft_getdraft",
-      "community": 14,
+      "community": 12,
       "norm_label": "getdraft()"
     },
     {
@@ -1331,7 +1331,7 @@
       "source_file": "lib\\newRentalDraft.js",
       "source_location": "L99",
       "id": "newrentaldraft_deletedraft",
-      "community": 14,
+      "community": 12,
       "norm_label": "deletedraft()"
     },
     {
@@ -1340,7 +1340,7 @@
       "source_file": "lib\\newRentalDraft.js",
       "source_location": "L108",
       "id": "newrentaldraft_cleardrafts",
-      "community": 14,
+      "community": 12,
       "norm_label": "cleardrafts()"
     },
     {
@@ -1349,7 +1349,7 @@
       "source_file": "lib\\newRentalDraft.js",
       "source_location": "L117",
       "id": "newrentaldraft_getdraftlabel",
-      "community": 14,
+      "community": 12,
       "norm_label": "getdraftlabel()"
     },
     {
@@ -1358,7 +1358,7 @@
       "source_file": "lib\\ocr.js",
       "source_location": "L1",
       "id": "lib_ocr_js",
-      "community": 17,
+      "community": 16,
       "norm_label": "ocr.js"
     },
     {
@@ -1367,7 +1367,7 @@
       "source_file": "lib\\ocr.js",
       "source_location": "L18",
       "id": "ocr_normalisedate",
-      "community": 17,
+      "community": 16,
       "norm_label": "normalisedate()"
     },
     {
@@ -1376,7 +1376,7 @@
       "source_file": "lib\\ocr.js",
       "source_location": "L37",
       "id": "ocr_capitalise",
-      "community": 17,
+      "community": 16,
       "norm_label": "capitalise()"
     },
     {
@@ -1385,7 +1385,7 @@
       "source_file": "lib\\ocr.js",
       "source_location": "L48",
       "id": "ocr_parsemrz",
-      "community": 17,
+      "community": 16,
       "norm_label": "parsemrz()"
     },
     {
@@ -1394,7 +1394,7 @@
       "source_file": "lib\\ocr.js",
       "source_location": "L103",
       "id": "ocr_parsecin",
-      "community": 17,
+      "community": 16,
       "norm_label": "parsecin()"
     },
     {
@@ -1403,7 +1403,7 @@
       "source_file": "lib\\ocr.js",
       "source_location": "L155",
       "id": "ocr_parselicence",
-      "community": 17,
+      "community": 16,
       "norm_label": "parselicence()"
     },
     {
@@ -1412,7 +1412,7 @@
       "source_file": "lib\\ocr.js",
       "source_location": "L186",
       "id": "ocr_runocr",
-      "community": 17,
+      "community": 16,
       "norm_label": "runocr()"
     },
     {
@@ -1421,7 +1421,7 @@
       "source_file": "lib\\signing.js",
       "source_location": "L1",
       "id": "lib_signing_js",
-      "community": 1,
+      "community": 17,
       "norm_label": "signing.js"
     },
     {
@@ -1430,7 +1430,7 @@
       "source_file": "lib\\signing.js",
       "source_location": "L14",
       "id": "signing_loadtokens",
-      "community": 1,
+      "community": 17,
       "norm_label": "loadtokens()"
     },
     {
@@ -1439,7 +1439,7 @@
       "source_file": "lib\\signing.js",
       "source_location": "L22",
       "id": "signing_savetokens",
-      "community": 1,
+      "community": 17,
       "norm_label": "savetokens()"
     },
     {
@@ -1448,7 +1448,7 @@
       "source_file": "lib\\signing.js",
       "source_location": "L30",
       "id": "signing_createsigningtoken",
-      "community": 1,
+      "community": 17,
       "norm_label": "createsigningtoken()"
     },
     {
@@ -1457,7 +1457,7 @@
       "source_file": "lib\\signing.js",
       "source_location": "L46",
       "id": "signing_getcontractfortoken",
-      "community": 1,
+      "community": 17,
       "norm_label": "getcontractfortoken()"
     },
     {
@@ -1466,7 +1466,7 @@
       "source_file": "lib\\signing.js",
       "source_location": "L62",
       "id": "signing_saveclientsignature",
-      "community": 1,
+      "community": 17,
       "norm_label": "saveclientsignature()"
     },
     {
@@ -1475,7 +1475,7 @@
       "source_file": "lib\\signing.js",
       "source_location": "L88",
       "id": "signing_getsigningurl",
-      "community": 1,
+      "community": 17,
       "norm_label": "getsigningurl()"
     },
     {
@@ -1484,7 +1484,7 @@
       "source_file": "lib\\supabase.js",
       "source_location": "L1",
       "id": "lib_supabase_js",
-      "community": 127,
+      "community": 129,
       "norm_label": "supabase.js"
     },
     {
@@ -1610,7 +1610,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\pages\\Basket.jsx",
       "source_location": "L1",
       "id": "c_users_otman_downloads_01_rentaflow_saas_rental_flow_app_saas_pages_basket_jsx",
-      "community": 7,
+      "community": 8,
       "norm_label": "basket.jsx"
     },
     {
@@ -1619,7 +1619,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\pages\\Basket.jsx",
       "source_location": "L29",
       "id": "basket_confbadge",
-      "community": 7,
+      "community": 8,
       "norm_label": "confbadge()"
     },
     {
@@ -1628,7 +1628,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\pages\\Basket.jsx",
       "source_location": "L41",
       "id": "basket_leadcard",
-      "community": 7,
+      "community": 8,
       "norm_label": "leadcard()"
     },
     {
@@ -1637,7 +1637,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\pages\\Basket.jsx",
       "source_location": "L136",
       "id": "basket_basket",
-      "community": 7,
+      "community": 8,
       "norm_label": "basket()"
     },
     {
@@ -2069,7 +2069,7 @@
       "source_file": "pages\\OtherPages.jsx",
       "source_location": "L1",
       "id": "pages_otherpages_jsx",
-      "community": 128,
+      "community": 130,
       "norm_label": "otherpages.jsx"
     },
     {
@@ -2510,7 +2510,7 @@
       "source_file": "pages\\fleet\\constants.js",
       "source_location": "L1",
       "id": "pages_fleet_constants_js",
-      "community": 12,
+      "community": 5,
       "norm_label": "constants.js"
     },
     {
@@ -2519,7 +2519,7 @@
       "source_file": "pages\\fleet\\constants.js",
       "source_location": "L57",
       "id": "constants_parseplate",
-      "community": 12,
+      "community": 5,
       "norm_label": "parseplate()"
     },
     {
@@ -2528,7 +2528,7 @@
       "source_file": "pages\\fleet\\constants.js",
       "source_location": "L62",
       "id": "constants_buildplate",
-      "community": 12,
+      "community": 5,
       "norm_label": "buildplate()"
     },
     {
@@ -2537,7 +2537,7 @@
       "source_file": "pages\\fleet\\constants.js",
       "source_location": "L64",
       "id": "constants_displayplate",
-      "community": 12,
+      "community": 5,
       "norm_label": "displayplate()"
     },
     {
@@ -2546,7 +2546,7 @@
       "source_file": "pages\\fleet\\constants.js",
       "source_location": "L70",
       "id": "constants_computedeadlinesfromconfig",
-      "community": 12,
+      "community": 5,
       "norm_label": "computedeadlinesfromconfig()"
     },
     {
@@ -2573,7 +2573,7 @@
       "source_file": "pages\\fleet\\DeadlinesTab.jsx",
       "source_location": "L1",
       "id": "pages_fleet_deadlinestab_jsx",
-      "community": 12,
+      "community": 5,
       "norm_label": "deadlinestab.jsx"
     },
     {
@@ -2582,7 +2582,7 @@
       "source_file": "pages\\fleet\\DeadlinesTab.jsx",
       "source_location": "L7",
       "id": "deadlinestab_deadlinestab",
-      "community": 12,
+      "community": 5,
       "norm_label": "deadlinestab()"
     },
     {
@@ -2609,7 +2609,7 @@
       "source_file": "pages\\fleet\\PlateInput.jsx",
       "source_location": "L1",
       "id": "pages_fleet_plateinput_jsx",
-      "community": 12,
+      "community": 5,
       "norm_label": "plateinput.jsx"
     },
     {
@@ -2618,7 +2618,7 @@
       "source_file": "pages\\fleet\\PlateInput.jsx",
       "source_location": "L3",
       "id": "plateinput_plateinput",
-      "community": 12,
+      "community": 5,
       "norm_label": "plateinput()"
     },
     {
@@ -2681,7 +2681,7 @@
       "source_file": "pages\\fleet\\VehicleDetail.jsx",
       "source_location": "L1",
       "id": "pages_fleet_vehicledetail_jsx",
-      "community": 12,
+      "community": 5,
       "norm_label": "vehicledetail.jsx"
     },
     {
@@ -2690,7 +2690,7 @@
       "source_file": "pages\\fleet\\VehicleDetail.jsx",
       "source_location": "L10",
       "id": "vehicledetail_vehicledetail",
-      "community": 12,
+      "community": 5,
       "norm_label": "vehicledetail()"
     },
     {
@@ -2787,7 +2787,7 @@
       "label": "derivePhase()",
       "file_type": "code",
       "source_file": "pages\\rental\\ContractStep.jsx",
-      "source_location": "L21",
+      "source_location": "L22",
       "id": "contractstep_derivephase",
       "community": 45,
       "norm_label": "derivephase()"
@@ -2796,7 +2796,7 @@
       "label": "ContractStep()",
       "file_type": "code",
       "source_file": "pages\\rental\\ContractStep.jsx",
-      "source_location": "L28",
+      "source_location": "L29",
       "id": "contractstep_contractstep",
       "community": 45,
       "norm_label": "contractstep()"
@@ -2843,7 +2843,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\pages\\rental\\ScanStep.jsx",
       "source_location": "L1",
       "id": "c_users_otman_downloads_01_rentaflow_saas_rental_flow_app_saas_pages_rental_scanstep_jsx",
-      "community": 6,
+      "community": 7,
       "norm_label": "scanstep.jsx"
     },
     {
@@ -2852,7 +2852,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\pages\\rental\\ScanStep.jsx",
       "source_location": "L15",
       "id": "scanstep_normalizename",
-      "community": 6,
+      "community": 7,
       "norm_label": "normalizename()"
     },
     {
@@ -2861,7 +2861,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\pages\\rental\\ScanStep.jsx",
       "source_location": "L26",
       "id": "scanstep_detectidentitymismatch",
-      "community": 6,
+      "community": 7,
       "norm_label": "detectidentitymismatch()"
     },
     {
@@ -2870,7 +2870,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\pages\\rental\\ScanStep.jsx",
       "source_location": "L50",
       "id": "scanstep_scanstep",
-      "community": 6,
+      "community": 7,
       "norm_label": "scanstep()"
     },
     {
@@ -3365,7 +3365,7 @@
       "source_file": "scripts\\install-git-hooks.mjs",
       "source_location": "L1",
       "id": "scripts_install_git_hooks_mjs",
-      "community": 129,
+      "community": 131,
       "norm_label": "install-git-hooks.mjs"
     },
     {
@@ -3428,7 +3428,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\server\\index.js",
       "source_location": "L1",
       "id": "c_users_otman_downloads_01_rentaflow_saas_rental_flow_app_saas_server_index_js",
-      "community": 130,
+      "community": 132,
       "norm_label": "index.js"
     },
     {
@@ -3437,7 +3437,7 @@
       "source_file": "server\\lib\\anonymize.js",
       "source_location": "L1",
       "id": "server_lib_anonymize_js",
-      "community": 36,
+      "community": 37,
       "norm_label": "anonymize.js"
     },
     {
@@ -3446,7 +3446,7 @@
       "source_file": "server\\lib\\anonymize.js",
       "source_location": "L29",
       "id": "anonymize_anonymizeclient",
-      "community": 36,
+      "community": 37,
       "norm_label": "anonymizeclient()"
     },
     {
@@ -3581,7 +3581,7 @@
       "source_file": "server\\lib\\encryption.test.js",
       "source_location": "L1",
       "id": "server_lib_encryption_test_js",
-      "community": 131,
+      "community": 133,
       "norm_label": "encryption.test.js"
     },
     {
@@ -3608,7 +3608,7 @@
       "source_file": "server\\lib\\identityResolver.js",
       "source_location": "L1",
       "id": "server_lib_identityresolver_js",
-      "community": 6,
+      "community": 7,
       "norm_label": "identityresolver.js"
     },
     {
@@ -3617,7 +3617,7 @@
       "source_file": "server\\lib\\identityResolver.js",
       "source_location": "L42",
       "id": "identityresolver_applyidentitypriority",
-      "community": 6,
+      "community": 7,
       "norm_label": "applyidentitypriority()"
     },
     {
@@ -3626,7 +3626,7 @@
       "source_file": "server\\lib\\identityResolver.js",
       "source_location": "L70",
       "id": "identityresolver_normalizename",
-      "community": 6,
+      "community": 7,
       "norm_label": "normalizename()"
     },
     {
@@ -3635,7 +3635,7 @@
       "source_file": "server\\lib\\identityResolver.js",
       "source_location": "L81",
       "id": "identityresolver_namesagree",
-      "community": 6,
+      "community": 7,
       "norm_label": "namesagree()"
     },
     {
@@ -3644,7 +3644,7 @@
       "source_file": "server\\lib\\identityResolver.js",
       "source_location": "L98",
       "id": "identityresolver_datesagree",
-      "community": 6,
+      "community": 7,
       "norm_label": "datesagree()"
     },
     {
@@ -3653,7 +3653,7 @@
       "source_file": "server\\lib\\identityResolver.js",
       "source_location": "L113",
       "id": "identityresolver_detectidentitymismatch",
-      "community": 6,
+      "community": 7,
       "norm_label": "detectidentitymismatch()"
     },
     {
@@ -3662,7 +3662,7 @@
       "source_file": "server\\lib\\identityResolver.js",
       "source_location": "L136",
       "id": "identityresolver_resolveidentity",
-      "community": 6,
+      "community": 7,
       "norm_label": "resolveidentity()"
     },
     {
@@ -3671,7 +3671,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\server\\lib\\inboundPipeline.js",
       "source_location": "L1",
       "id": "c_users_otman_downloads_01_rentaflow_saas_rental_flow_app_saas_server_lib_inboundpipeline_js",
-      "community": 6,
+      "community": 7,
       "norm_label": "inboundpipeline.js"
     },
     {
@@ -3680,7 +3680,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\server\\lib\\inboundPipeline.js",
       "source_location": "L25",
       "id": "inboundpipeline_getclient",
-      "community": 6,
+      "community": 7,
       "norm_label": "getclient()"
     },
     {
@@ -3689,7 +3689,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\server\\lib\\inboundPipeline.js",
       "source_location": "L97",
       "id": "inboundpipeline_normalisejidtophone",
-      "community": 6,
+      "community": 7,
       "norm_label": "normalisejidtophone()"
     },
     {
@@ -3698,7 +3698,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\server\\lib\\inboundPipeline.js",
       "source_location": "L104",
       "id": "inboundpipeline_levenshtein",
-      "community": 6,
+      "community": 7,
       "norm_label": "levenshtein()"
     },
     {
@@ -3707,7 +3707,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\server\\lib\\inboundPipeline.js",
       "source_location": "L118",
       "id": "inboundpipeline_normalisename",
-      "community": 6,
+      "community": 7,
       "norm_label": "normalisename()"
     },
     {
@@ -3716,7 +3716,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\server\\lib\\inboundPipeline.js",
       "source_location": "L125",
       "id": "inboundpipeline_namematchscore",
-      "community": 6,
+      "community": 7,
       "norm_label": "namematchscore()"
     },
     {
@@ -3725,7 +3725,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\server\\lib\\inboundPipeline.js",
       "source_location": "L134",
       "id": "inboundpipeline_findmatchingdemand",
-      "community": 6,
+      "community": 7,
       "norm_label": "findmatchingdemand()"
     },
     {
@@ -3734,7 +3734,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\server\\lib\\inboundPipeline.js",
       "source_location": "L172",
       "id": "inboundpipeline_getclientstatus",
-      "community": 6,
+      "community": 7,
       "norm_label": "getclientstatus()"
     },
     {
@@ -3743,7 +3743,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\server\\lib\\inboundPipeline.js",
       "source_location": "L203",
       "id": "inboundpipeline_extractwithclaude",
-      "community": 6,
+      "community": 7,
       "norm_label": "extractwithclaude()"
     },
     {
@@ -3752,7 +3752,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\server\\lib\\inboundPipeline.js",
       "source_location": "L235",
       "id": "inboundpipeline_classifytextmessage",
-      "community": 6,
+      "community": 7,
       "norm_label": "classifytextmessage()"
     },
     {
@@ -3887,7 +3887,7 @@
       "source_file": "server\\lib\\reservationSchema.js",
       "source_location": "L1",
       "id": "server_lib_reservationschema_js",
-      "community": 132,
+      "community": 134,
       "norm_label": "reservationschema.js"
     },
     {
@@ -3896,7 +3896,7 @@
       "source_file": "server\\lib\\supabaseAdmin.js",
       "source_location": "L1",
       "id": "server_lib_supabaseadmin_js",
-      "community": 133,
+      "community": 135,
       "norm_label": "supabaseadmin.js"
     },
     {
@@ -3905,7 +3905,7 @@
       "source_file": "server\\lib\\transcribe.js",
       "source_location": "L1",
       "id": "server_lib_transcribe_js",
-      "community": 37,
+      "community": 36,
       "norm_label": "transcribe.js"
     },
     {
@@ -3914,7 +3914,7 @@
       "source_file": "server\\lib\\transcribe.js",
       "source_location": "L18",
       "id": "transcribe_getclient",
-      "community": 37,
+      "community": 36,
       "norm_label": "getclient()"
     },
     {
@@ -3923,7 +3923,7 @@
       "source_file": "server\\lib\\transcribe.js",
       "source_location": "L30",
       "id": "transcribe_transcribeaudio",
-      "community": 37,
+      "community": 36,
       "norm_label": "transcribeaudio()"
     },
     {
@@ -3932,7 +3932,7 @@
       "source_file": "server\\lib\\transcribe.js",
       "source_location": "L57",
       "id": "transcribe_pickextension",
-      "community": 37,
+      "community": 36,
       "norm_label": "pickextension()"
     },
     {
@@ -4022,7 +4022,7 @@
       "source_file": "server\\lib\\triage.test.js",
       "source_location": "L1",
       "id": "server_lib_triage_test_js",
-      "community": 134,
+      "community": 136,
       "norm_label": "triage.test.js"
     },
     {
@@ -4319,7 +4319,7 @@
       "source_file": "server\\routes\\admin.js",
       "source_location": "L1",
       "id": "server_routes_admin_js",
-      "community": 135,
+      "community": 137,
       "norm_label": "admin.js"
     },
     {
@@ -4391,7 +4391,7 @@
       "source_file": "server\\routes\\ai.js",
       "source_location": "L1",
       "id": "server_routes_ai_js",
-      "community": 136,
+      "community": 138,
       "norm_label": "ai.js"
     },
     {
@@ -4454,7 +4454,7 @@
       "source_file": "server\\routes\\email.js",
       "source_location": "L1",
       "id": "server_routes_email_js",
-      "community": 137,
+      "community": 139,
       "norm_label": "email.js"
     },
     {
@@ -4490,7 +4490,7 @@
       "source_file": "server\\routes\\health.js",
       "source_location": "L1",
       "id": "server_routes_health_js",
-      "community": 138,
+      "community": 140,
       "norm_label": "health.js"
     },
     {
@@ -4517,7 +4517,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\server\\routes\\leads.js",
       "source_location": "L85",
       "id": "leads_normalisename",
-      "community": 3,
+      "community": 7,
       "norm_label": "normalisename()"
     },
     {
@@ -4706,7 +4706,7 @@
       "source_file": "server\\routes\\ocr.js",
       "source_location": "L1",
       "id": "server_routes_ocr_js",
-      "community": 139,
+      "community": 141,
       "norm_label": "ocr.js"
     },
     {
@@ -4715,7 +4715,7 @@
       "source_file": "server\\routes\\reservations.js",
       "source_location": "L1",
       "id": "server_routes_reservations_js",
-      "community": 140,
+      "community": 142,
       "norm_label": "reservations.js"
     },
     {
@@ -4724,7 +4724,7 @@
       "source_file": "server\\routes\\team.js",
       "source_location": "L1",
       "id": "server_routes_team_js",
-      "community": 141,
+      "community": 143,
       "norm_label": "team.js"
     },
     {
@@ -4778,7 +4778,7 @@
       "source_file": "server\\routes\\whatsapp.js",
       "source_location": "L1",
       "id": "server_routes_whatsapp_js",
-      "community": 142,
+      "community": 144,
       "norm_label": "whatsapp.js"
     },
     {
@@ -4841,7 +4841,7 @@
       "source_file": "server\\scripts\\enforceRetention.js",
       "source_location": "L1",
       "id": "server_scripts_enforceretention_js",
-      "community": 36,
+      "community": 37,
       "norm_label": "enforceretention.js"
     },
     {
@@ -4850,7 +4850,7 @@
       "source_file": "server\\scripts\\enforceRetention.js",
       "source_location": "L20",
       "id": "enforceretention_enforceretention",
-      "community": 36,
+      "community": 37,
       "norm_label": "enforceretention()"
     },
     {
@@ -4976,7 +4976,7 @@
       "source_file": "server\\__tests__\\baileysLinkPreview.test.js",
       "source_location": "L1",
       "id": "server_tests_baileyslinkpreview_test_js",
-      "community": 143,
+      "community": 145,
       "norm_label": "baileyslinkpreview.test.js"
     },
     {
@@ -5039,7 +5039,7 @@
       "source_file": "server\\__tests__\\contractSigning.test.js",
       "source_location": "L1",
       "id": "server_tests_contractsigning_test_js",
-      "community": 144,
+      "community": 146,
       "norm_label": "contractsigning.test.js"
     },
     {
@@ -5048,7 +5048,7 @@
       "source_file": "server\\__tests__\\detectMissingDocs.test.js",
       "source_location": "L1",
       "id": "server_tests_detectmissingdocs_test_js",
-      "community": 145,
+      "community": 147,
       "norm_label": "detectmissingdocs.test.js"
     },
     {
@@ -5084,7 +5084,7 @@
       "source_file": "server\\__tests__\\formatApiError.test.js",
       "source_location": "L1",
       "id": "server_tests_formatapierror_test_js",
-      "community": 146,
+      "community": 148,
       "norm_label": "formatapierror.test.js"
     },
     {
@@ -5129,7 +5129,7 @@
       "source_file": "server\\__tests__\\identityResolver.test.js",
       "source_location": "L1",
       "id": "server_tests_identityresolver_test_js",
-      "community": 147,
+      "community": 149,
       "norm_label": "identityresolver.test.js"
     },
     {
@@ -5138,7 +5138,7 @@
       "source_file": "server\\__tests__\\normalizeExtractedDocument.test.js",
       "source_location": "L1",
       "id": "server_tests_normalizeextracteddocument_test_js",
-      "community": 148,
+      "community": 150,
       "norm_label": "normalizeextracteddocument.test.js"
     },
     {
@@ -5147,7 +5147,7 @@
       "source_file": "server\\__tests__\\offerMessage.test.js",
       "source_location": "L1",
       "id": "server_tests_offermessage_test_js",
-      "community": 149,
+      "community": 151,
       "norm_label": "offermessage.test.js"
     },
     {
@@ -5273,7 +5273,7 @@
       "source_file": "server\\__tests__\\purgeSignedPdfs.test.js",
       "source_location": "L1",
       "id": "server_tests_purgesignedpdfs_test_js",
-      "community": 150,
+      "community": 152,
       "norm_label": "purgesignedpdfs.test.js"
     },
     {
@@ -5282,7 +5282,7 @@
       "source_file": "server\\__tests__\\reservationSchema.test.js",
       "source_location": "L1",
       "id": "server_tests_reservationschema_test_js",
-      "community": 151,
+      "community": 153,
       "norm_label": "reservationschema.test.js"
     },
     {
@@ -5372,7 +5372,7 @@
       "source_file": "server\\__tests__\\twilioClient.test.js",
       "source_location": "L1",
       "id": "server_tests_twilioclient_test_js",
-      "community": 152,
+      "community": 154,
       "norm_label": "twilioclient.test.js"
     },
     {
@@ -5381,7 +5381,7 @@
       "source_file": "server\\__tests__\\whatsappSender.test.js",
       "source_location": "L1",
       "id": "server_tests_whatsappsender_test_js",
-      "community": 153,
+      "community": 155,
       "norm_label": "whatsappsender.test.js"
     },
     {
@@ -5390,7 +5390,7 @@
       "source_file": "src\\core\\schemas\\identity.schema.ts",
       "source_location": "L1",
       "id": "src_core_schemas_identity_schema_ts",
-      "community": 154,
+      "community": 156,
       "norm_label": "identity.schema.ts"
     },
     {
@@ -5597,7 +5597,7 @@
       "source_file": "src\\hooks\\useScannerFlow.ts",
       "source_location": "L1",
       "id": "src_hooks_usescannerflow_ts",
-      "community": 6,
+      "community": 7,
       "norm_label": "usescannerflow.ts"
     },
     {
@@ -5606,7 +5606,7 @@
       "source_file": "src\\hooks\\useScannerFlow.ts",
       "source_location": "L121",
       "id": "usescannerflow_resolvenationality",
-      "community": 6,
+      "community": 7,
       "norm_label": "resolvenationality()"
     },
     {
@@ -5615,7 +5615,7 @@
       "source_file": "src\\hooks\\useScannerFlow.ts",
       "source_location": "L127",
       "id": "usescannerflow_maptoclientfields",
-      "community": 6,
+      "community": 7,
       "norm_label": "maptoclientfields()"
     },
     {
@@ -5624,7 +5624,7 @@
       "source_file": "src\\hooks\\useScannerFlow.ts",
       "source_location": "L159",
       "id": "usescannerflow_usescannerflow",
-      "community": 6,
+      "community": 7,
       "norm_label": "usescannerflow()"
     },
     {
@@ -5651,7 +5651,7 @@
       "source_file": "src\\lib\\queryClient.js",
       "source_location": "L1",
       "id": "src_lib_queryclient_js",
-      "community": 155,
+      "community": 157,
       "norm_label": "queryclient.js"
     },
     {
@@ -5750,7 +5750,7 @@
       "source_file": "src\\services\\scanner\\scanner.interface.ts",
       "source_location": "L1",
       "id": "src_services_scanner_scanner_interface_ts",
-      "community": 156,
+      "community": 158,
       "norm_label": "scanner.interface.ts"
     },
     {
@@ -5759,7 +5759,7 @@
       "source_file": "src\\test\\accounting.test.js",
       "source_location": "L1",
       "id": "src_test_accounting_test_js",
-      "community": 157,
+      "community": 159,
       "norm_label": "accounting.test.js"
     },
     {
@@ -5768,7 +5768,7 @@
       "source_file": "src\\test\\agedReceivables.test.jsx",
       "source_location": "L1",
       "id": "src_test_agedreceivables_test_jsx",
-      "community": 158,
+      "community": 160,
       "norm_label": "agedreceivables.test.jsx"
     },
     {
@@ -5777,7 +5777,7 @@
       "source_file": "src\\test\\alerts.test.jsx",
       "source_location": "L1",
       "id": "src_test_alerts_test_jsx",
-      "community": 159,
+      "community": 161,
       "norm_label": "alerts.test.jsx"
     },
     {
@@ -5813,7 +5813,7 @@
       "source_file": "src\\test\\basketConvertGuard.test.js",
       "source_location": "L1",
       "id": "src_test_basketconvertguard_test_js",
-      "community": 7,
+      "community": 8,
       "norm_label": "basketconvertguard.test.js"
     },
     {
@@ -5822,8 +5822,26 @@
       "source_file": "src\\test\\basketConvertGuard.test.js",
       "source_location": "L13",
       "id": "basketconvertguard_test_buildhandleconvert",
-      "community": 7,
+      "community": 8,
       "norm_label": "buildhandleconvert()"
+    },
+    {
+      "label": "calendarFutureContracts.test.jsx",
+      "file_type": "code",
+      "source_file": "src\\test\\calendarFutureContracts.test.jsx",
+      "source_location": "L1",
+      "id": "src_test_calendarfuturecontracts_test_jsx",
+      "community": 117,
+      "norm_label": "calendarfuturecontracts.test.jsx"
+    },
+    {
+      "label": "iso()",
+      "file_type": "code",
+      "source_file": "src\\test\\calendarFutureContracts.test.jsx",
+      "source_location": "L18",
+      "id": "calendarfuturecontracts_test_iso",
+      "community": 117,
+      "norm_label": "iso()"
     },
     {
       "label": "contractActions.test.js",
@@ -5831,7 +5849,7 @@
       "source_file": "src\\test\\contractActions.test.js",
       "source_location": "L1",
       "id": "src_test_contractactions_test_js",
-      "community": 160,
+      "community": 162,
       "norm_label": "contractactions.test.js"
     },
     {
@@ -5840,7 +5858,7 @@
       "source_file": "src\\test\\contractSuccess.test.js",
       "source_location": "L1",
       "id": "src_test_contractsuccess_test_js",
-      "community": 161,
+      "community": 163,
       "norm_label": "contractsuccess.test.js"
     },
     {
@@ -5912,7 +5930,7 @@
       "source_file": "src\\test\\inboundPipeline.test.js",
       "source_location": "L1",
       "id": "src_test_inboundpipeline_test_js",
-      "community": 162,
+      "community": 164,
       "norm_label": "inboundpipeline.test.js"
     },
     {
@@ -5921,7 +5939,7 @@
       "source_file": "src\\test\\invoiceRenderModel.test.js",
       "source_location": "L1",
       "id": "src_test_invoicerendermodel_test_js",
-      "community": 163,
+      "community": 165,
       "norm_label": "invoicerendermodel.test.js"
     },
     {
@@ -5930,7 +5948,7 @@
       "source_file": "src\\test\\landingSignRedirect.test.js",
       "source_location": "L1",
       "id": "src_test_landingsignredirect_test_js",
-      "community": 164,
+      "community": 166,
       "norm_label": "landingsignredirect.test.js"
     },
     {
@@ -5939,7 +5957,7 @@
       "source_file": "src\\test\\leadModal.test.jsx",
       "source_location": "L1",
       "id": "src_test_leadmodal_test_jsx",
-      "community": 165,
+      "community": 167,
       "norm_label": "leadmodal.test.jsx"
     },
     {
@@ -5948,7 +5966,7 @@
       "source_file": "src\\test\\leadModalProlongation.test.jsx",
       "source_location": "L1",
       "id": "src_test_leadmodalprolongation_test_jsx",
-      "community": 166,
+      "community": 168,
       "norm_label": "leadmodalprolongation.test.jsx"
     },
     {
@@ -5957,7 +5975,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\src\\test\\leadToRental.test.js",
       "source_location": "L1",
       "id": "c_users_otman_downloads_01_rentaflow_saas_rental_flow_app_saas_src_test_leadtorental_test_js",
-      "community": 167,
+      "community": 169,
       "norm_label": "leadtorental.test.js"
     },
     {
@@ -5966,7 +5984,7 @@
       "source_file": "src\\test\\newRentalDraft.test.js",
       "source_location": "L1",
       "id": "src_test_newrentaldraft_test_js",
-      "community": 168,
+      "community": 170,
       "norm_label": "newrentaldraft.test.js"
     },
     {
@@ -5975,7 +5993,7 @@
       "source_file": "src\\test\\phoneFormat.test.js",
       "source_location": "L1",
       "id": "src_test_phoneformat_test_js",
-      "community": 169,
+      "community": 171,
       "norm_label": "phoneformat.test.js"
     },
     {
@@ -5984,7 +6002,7 @@
       "source_file": "src\\test\\prolongationDialog.test.jsx",
       "source_location": "L1",
       "id": "src_test_prolongationdialog_test_jsx",
-      "community": 170,
+      "community": 172,
       "norm_label": "prolongationdialog.test.jsx"
     },
     {
@@ -6020,7 +6038,7 @@
       "source_file": "src\\test\\reservationPayload.test.js",
       "source_location": "L1",
       "id": "src_test_reservationpayload_test_js",
-      "community": 171,
+      "community": 173,
       "norm_label": "reservationpayload.test.js"
     },
     {
@@ -6110,8 +6128,26 @@
       "source_file": "src\\test\\setup.js",
       "source_location": "L1",
       "id": "src_test_setup_js",
-      "community": 172,
+      "community": 174,
       "norm_label": "setup.js"
+    },
+    {
+      "label": "smartQuoteDates.test.jsx",
+      "file_type": "code",
+      "source_file": "src\\test\\smartQuoteDates.test.jsx",
+      "source_location": "L1",
+      "id": "src_test_smartquotedates_test_jsx",
+      "community": 118,
+      "norm_label": "smartquotedates.test.jsx"
+    },
+    {
+      "label": "dateInputs()",
+      "file_type": "code",
+      "source_file": "src\\test\\smartQuoteDates.test.jsx",
+      "source_location": "L10",
+      "id": "smartquotedates_test_dateinputs",
+      "community": 118,
+      "norm_label": "dateinputs()"
     },
     {
       "label": "subscriptionGate.test.jsx",
@@ -6119,7 +6155,7 @@
       "source_file": "src\\test\\subscriptionGate.test.jsx",
       "source_location": "L1",
       "id": "src_test_subscriptiongate_test_jsx",
-      "community": 173,
+      "community": 175,
       "norm_label": "subscriptiongate.test.jsx"
     },
     {
@@ -6128,7 +6164,7 @@
       "source_file": "src\\test\\triage.test.js",
       "source_location": "L1",
       "id": "src_test_triage_test_js",
-      "community": 174,
+      "community": 176,
       "norm_label": "triage.test.js"
     },
     {
@@ -6137,7 +6173,7 @@
       "source_file": "src\\test\\vehicleMapper.test.js",
       "source_location": "L1",
       "id": "src_test_vehiclemapper_test_js",
-      "community": 175,
+      "community": 177,
       "norm_label": "vehiclemapper.test.js"
     },
     {
@@ -6146,7 +6182,7 @@
       "source_file": "src\\test\\hooks\\useAccounting.test.jsx",
       "source_location": "L1",
       "id": "src_test_hooks_useaccounting_test_jsx",
-      "community": 117,
+      "community": 119,
       "norm_label": "useaccounting.test.jsx"
     },
     {
@@ -6155,7 +6191,7 @@
       "source_file": "src\\test\\hooks\\useAccounting.test.jsx",
       "source_location": "L13",
       "id": "useaccounting_test_wrap",
-      "community": 117,
+      "community": 119,
       "norm_label": "wrap()"
     },
     {
@@ -6164,7 +6200,7 @@
       "source_file": "src\\test\\hooks\\useAgency.test.jsx",
       "source_location": "L1",
       "id": "src_test_hooks_useagency_test_jsx",
-      "community": 118,
+      "community": 120,
       "norm_label": "useagency.test.jsx"
     },
     {
@@ -6173,7 +6209,7 @@
       "source_file": "src\\test\\hooks\\useAgency.test.jsx",
       "source_location": "L8",
       "id": "useagency_test_wrap",
-      "community": 118,
+      "community": 120,
       "norm_label": "wrap()"
     },
     {
@@ -6182,7 +6218,7 @@
       "source_file": "src\\test\\hooks\\useClients.test.jsx",
       "source_location": "L1",
       "id": "src_test_hooks_useclients_test_jsx",
-      "community": 119,
+      "community": 121,
       "norm_label": "useclients.test.jsx"
     },
     {
@@ -6191,7 +6227,7 @@
       "source_file": "src\\test\\hooks\\useClients.test.jsx",
       "source_location": "L11",
       "id": "useclients_test_wrap",
-      "community": 119,
+      "community": 121,
       "norm_label": "wrap()"
     },
     {
@@ -6200,7 +6236,7 @@
       "source_file": "src\\test\\hooks\\useLeads.test.jsx",
       "source_location": "L1",
       "id": "src_test_hooks_useleads_test_jsx",
-      "community": 120,
+      "community": 122,
       "norm_label": "useleads.test.jsx"
     },
     {
@@ -6209,7 +6245,7 @@
       "source_file": "src\\test\\hooks\\useLeads.test.jsx",
       "source_location": "L20",
       "id": "useleads_test_wrap",
-      "community": 120,
+      "community": 122,
       "norm_label": "wrap()"
     },
     {
@@ -6218,7 +6254,7 @@
       "source_file": "src\\test\\hooks\\useSidebarCounts.test.jsx",
       "source_location": "L1",
       "id": "src_test_hooks_usesidebarcounts_test_jsx",
-      "community": 121,
+      "community": 123,
       "norm_label": "usesidebarcounts.test.jsx"
     },
     {
@@ -6227,7 +6263,7 @@
       "source_file": "src\\test\\hooks\\useSidebarCounts.test.jsx",
       "source_location": "L17",
       "id": "usesidebarcounts_test_wrap",
-      "community": 121,
+      "community": 123,
       "norm_label": "wrap()"
     },
     {
@@ -6425,7 +6461,7 @@
       "source_file": "utils\\contractActions.js",
       "source_location": "L1",
       "id": "utils_contractactions_js",
-      "community": 122,
+      "community": 124,
       "norm_label": "contractactions.js"
     },
     {
@@ -6434,7 +6470,7 @@
       "source_file": "utils\\contractActions.js",
       "source_location": "L17",
       "id": "contractactions_acceptprolongationleadsforcontract",
-      "community": 122,
+      "community": 124,
       "norm_label": "acceptprolongationleadsforcontract()"
     },
     {
@@ -6551,7 +6587,7 @@
       "source_file": "utils\\imageUtils.js",
       "source_location": "L1",
       "id": "utils_imageutils_js",
-      "community": 123,
+      "community": 125,
       "norm_label": "imageutils.js"
     },
     {
@@ -6560,7 +6596,7 @@
       "source_file": "utils\\imageUtils.js",
       "source_location": "L3",
       "id": "imageutils_compressimage",
-      "community": 123,
+      "community": 125,
       "norm_label": "compressimage()"
     },
     {
@@ -6569,7 +6605,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\utils\\leadToRental.js",
       "source_location": "L1",
       "id": "c_users_otman_downloads_01_rentaflow_saas_rental_flow_app_saas_utils_leadtorental_js",
-      "community": 7,
+      "community": 8,
       "norm_label": "leadtorental.js"
     },
     {
@@ -6578,7 +6614,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\utils\\leadToRental.js",
       "source_location": "L18",
       "id": "leadtorental_iscintype",
-      "community": 7,
+      "community": 8,
       "norm_label": "iscintype()"
     },
     {
@@ -6587,7 +6623,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\utils\\leadToRental.js",
       "source_location": "L19",
       "id": "leadtorental_islicensetype",
-      "community": 7,
+      "community": 8,
       "norm_label": "islicensetype()"
     },
     {
@@ -6596,7 +6632,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\utils\\leadToRental.js",
       "source_location": "L20",
       "id": "leadtorental_ispassporttype",
-      "community": 7,
+      "community": 8,
       "norm_label": "ispassporttype()"
     },
     {
@@ -6605,7 +6641,7 @@
       "source_file": "C:\\Users\\otman\\Downloads\\01-RentaFlow-SAAS\\Rental flow app SAAS\\utils\\leadToRental.js",
       "source_location": "L22",
       "id": "leadtorental_buildrentalprefill",
-      "community": 7,
+      "community": 8,
       "norm_label": "buildrentalprefill()"
     },
     {
@@ -6614,7 +6650,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L1",
       "id": "utils_pdf_js",
-      "community": 8,
+      "community": 5,
       "norm_label": "pdf.js"
     },
     {
@@ -6623,7 +6659,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L19",
       "id": "pdf_displayplate",
-      "community": 8,
+      "community": 5,
       "norm_label": "displayplate()"
     },
     {
@@ -6632,7 +6668,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L36",
       "id": "pdf_belowhundred",
-      "community": 8,
+      "community": 5,
       "norm_label": "belowhundred()"
     },
     {
@@ -6641,7 +6677,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L54",
       "id": "pdf_belowthousand",
-      "community": 8,
+      "community": 5,
       "norm_label": "belowthousand()"
     },
     {
@@ -6650,7 +6686,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L69",
       "id": "pdf_amountinwords",
-      "community": 8,
+      "community": 5,
       "norm_label": "amountinwords()"
     },
     {
@@ -6659,7 +6695,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L109",
       "id": "pdf_header",
-      "community": 8,
+      "community": 5,
       "norm_label": "header()"
     },
     {
@@ -6668,7 +6704,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L139",
       "id": "pdf_sectiontitle",
-      "community": 8,
+      "community": 5,
       "norm_label": "sectiontitle()"
     },
     {
@@ -6677,7 +6713,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L149",
       "id": "pdf_fieldrow",
-      "community": 8,
+      "community": 5,
       "norm_label": "fieldrow()"
     },
     {
@@ -6686,7 +6722,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L164",
       "id": "pdf_drawfuelgauge",
-      "community": 8,
+      "community": 5,
       "norm_label": "drawfuelgauge()"
     },
     {
@@ -6695,7 +6731,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L202",
       "id": "pdf_drawcardiagram",
-      "community": 8,
+      "community": 5,
       "norm_label": "drawcardiagram()"
     },
     {
@@ -6704,7 +6740,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L262",
       "id": "pdf_generatecontract",
-      "community": 8,
+      "community": 5,
       "norm_label": "generatecontract()"
     },
     {
@@ -6713,7 +6749,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L463",
       "id": "pdf_buildcontractdoc",
-      "community": 8,
+      "community": 5,
       "norm_label": "_buildcontractdoc()"
     },
     {
@@ -6722,7 +6758,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L643",
       "id": "pdf_invoicerendermodel",
-      "community": 8,
+      "community": 5,
       "norm_label": "invoicerendermodel()"
     },
     {
@@ -6731,7 +6767,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L691",
       "id": "pdf_renderinvoicedoc",
-      "community": 8,
+      "community": 5,
       "norm_label": "_renderinvoicedoc()"
     },
     {
@@ -6740,7 +6776,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L828",
       "id": "pdf_buildinvoicedoc",
-      "community": 8,
+      "community": 5,
       "norm_label": "_buildinvoicedoc()"
     },
     {
@@ -6749,7 +6785,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L835",
       "id": "pdf_generateinvoice",
-      "community": 8,
+      "community": 5,
       "norm_label": "generateinvoice()"
     },
     {
@@ -6758,7 +6794,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L845",
       "id": "pdf_generatecontractbuffer",
-      "community": 8,
+      "community": 5,
       "norm_label": "generatecontractbuffer()"
     },
     {
@@ -6767,7 +6803,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L1020",
       "id": "pdf_generateinvoicebuffer",
-      "community": 8,
+      "community": 5,
       "norm_label": "generateinvoicebuffer()"
     },
     {
@@ -6776,7 +6812,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L1031",
       "id": "pdf_generaterestitutionpdfbuffer",
-      "community": 8,
+      "community": 5,
       "norm_label": "generaterestitutionpdfbuffer()"
     },
     {
@@ -6785,7 +6821,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L1136",
       "id": "pdf_generatedamagereport",
-      "community": 8,
+      "community": 5,
       "norm_label": "generatedamagereport()"
     },
     {
@@ -6794,7 +6830,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L1300",
       "id": "pdf_generatedisputepackage",
-      "community": 8,
+      "community": 5,
       "norm_label": "generatedisputepackage()"
     },
     {
@@ -6803,7 +6839,7 @@
       "source_file": "utils\\pdf.js",
       "source_location": "L1688",
       "id": "pdf_viewinvoice",
-      "community": 8,
+      "community": 5,
       "norm_label": "viewinvoice()"
     },
     {
@@ -6812,7 +6848,7 @@
       "source_file": "utils\\phoneFormat.js",
       "source_location": "L1",
       "id": "utils_phoneformat_js",
-      "community": 7,
+      "community": 8,
       "norm_label": "phoneformat.js"
     },
     {
@@ -6821,7 +6857,7 @@
       "source_file": "utils\\phoneFormat.js",
       "source_location": "L63",
       "id": "phoneformat_islidjid",
-      "community": 7,
+      "community": 8,
       "norm_label": "islidjid()"
     },
     {
@@ -6830,7 +6866,7 @@
       "source_file": "utils\\phoneFormat.js",
       "source_location": "L67",
       "id": "phoneformat_formatphone",
-      "community": 7,
+      "community": 8,
       "norm_label": "formatphone()"
     },
     {
@@ -6839,7 +6875,7 @@
       "source_file": "utils\\rentalOptions.js",
       "source_location": "L1",
       "id": "utils_rentaloptions_js",
-      "community": 8,
+      "community": 5,
       "norm_label": "rentaloptions.js"
     },
     {
@@ -6848,7 +6884,7 @@
       "source_file": "utils\\rentalOptions.js",
       "source_location": "L10",
       "id": "rentaloptions_getrentaloptions",
-      "community": 8,
+      "community": 5,
       "norm_label": "getrentaloptions()"
     },
     {
@@ -6857,7 +6893,7 @@
       "source_file": "utils\\reservationPayload.js",
       "source_location": "L1",
       "id": "utils_reservationpayload_js",
-      "community": 124,
+      "community": 126,
       "norm_label": "reservationpayload.js"
     },
     {
@@ -6866,7 +6902,7 @@
       "source_file": "utils\\reservationPayload.js",
       "source_location": "L9",
       "id": "reservationpayload_buildreservationpayload",
-      "community": 124,
+      "community": 126,
       "norm_label": "buildreservationpayload()"
     },
     {
@@ -7019,7 +7055,7 @@
       "source_file": "utils\\storage.js",
       "source_location": "L27",
       "id": "storage_getgeneralconfig",
-      "community": 8,
+      "community": 5,
       "norm_label": "getgeneralconfig()"
     },
     {
@@ -7181,7 +7217,7 @@
       "source_file": "utils\\storage.js",
       "source_location": "L160",
       "id": "storage_getfleetconfig",
-      "community": 12,
+      "community": 5,
       "norm_label": "getfleetconfig()"
     },
     {
@@ -7208,7 +7244,7 @@
       "source_file": "utils\\storage.js",
       "source_location": "L166",
       "id": "storage_getfleetconfigformake",
-      "community": 12,
+      "community": 5,
       "norm_label": "getfleetconfigformake()"
     },
     {
@@ -7424,7 +7460,7 @@
       "source_file": "utils\\telemetry.js",
       "source_location": "L1",
       "id": "utils_telemetry_js",
-      "community": 6,
+      "community": 7,
       "norm_label": "telemetry.js"
     },
     {
@@ -7433,7 +7469,7 @@
       "source_file": "utils\\telemetry.js",
       "source_location": "L6",
       "id": "telemetry_normalize",
-      "community": 6,
+      "community": 7,
       "norm_label": "normalize()"
     },
     {
@@ -7442,7 +7478,7 @@
       "source_file": "utils\\telemetry.js",
       "source_location": "L7",
       "id": "telemetry_computedeltas",
-      "community": 6,
+      "community": 7,
       "norm_label": "computedeltas()"
     },
     {
@@ -7451,7 +7487,7 @@
       "source_file": "utils\\telemetry.js",
       "source_location": "L8",
       "id": "telemetry_hascriticaldtc",
-      "community": 6,
+      "community": 7,
       "norm_label": "hascriticaldtc()"
     },
     {
@@ -7463,7 +7499,7 @@
       "captured_at": null,
       "author": "otman / Claude session",
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "prolongation flow feature",
       "id": "prolongation_flow_feature"
     },
@@ -7476,7 +7512,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "prolongation flow implementation plan",
       "id": "prolongation_flow_plan"
     },
@@ -7489,7 +7525,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "detection layer a problem",
       "id": "problem_detection_layer_a"
     },
@@ -7502,7 +7538,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "resolution layer b problem",
       "id": "problem_resolution_layer_b"
     },
@@ -7515,7 +7551,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "gmail webhook hardcoded client status",
       "id": "gmail_webhook_hardcoded_status"
     },
@@ -7528,7 +7564,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "classifytextmessage function",
       "id": "classifyTextMessage_function"
     },
@@ -7541,7 +7577,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "getclientstatus for whatsapp",
       "id": "getClientStatus_whatsapp"
     },
@@ -7554,7 +7590,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "pending_demands database table",
       "id": "pending_demands_table"
     },
@@ -7567,7 +7603,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "prolongation_target_contract_id column",
       "id": "prolongation_target_contract_id_column"
     },
@@ -7580,7 +7616,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "contracts database table",
       "id": "contracts_table"
     },
@@ -7593,7 +7629,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "decision matrix for layer a",
       "id": "decision_matrix_layer_a"
     },
@@ -7606,7 +7642,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "findactivecontractsforclient function",
       "id": "findActiveContractsForClient_function"
     },
@@ -7619,7 +7655,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "corbeille / basket component",
       "id": "corbeille_basket_component"
     },
@@ -7632,7 +7668,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "leadmodal component",
       "id": "lead_modal_component"
     },
@@ -7645,7 +7681,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "prolongationdialog component",
       "id": "prolongation_dialog_component"
     },
@@ -7658,7 +7694,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "contracts page",
       "id": "contracts_page"
     },
@@ -7671,7 +7707,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "contract banner spec (prolongationbanner)",
       "id": "contract_banner_spec"
     },
@@ -7684,7 +7720,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "corbeille card prolongation variant spec",
       "id": "corbeille_card_spec_prolongation"
     },
@@ -7697,7 +7733,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "i18n localization",
       "id": "i18n_localization"
     },
@@ -7710,7 +7746,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "phase 1: schema migration",
       "id": "phase_1_schema_migration"
     },
@@ -7723,7 +7759,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "phase 2: backend detection",
       "id": "phase_2_backend_detection"
     },
@@ -7736,7 +7772,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "version v1.13.8",
       "id": "version_v1_13_8"
     },
@@ -7749,7 +7785,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "version v1.14.0",
       "id": "version_v1_14_0"
     },
@@ -7762,7 +7798,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "getclientstatusbyemail function",
       "id": "getClientStatusByEmail_function"
     },
@@ -7775,7 +7811,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "server/routes/leads.js",
       "id": "leads_js_file"
     },
@@ -7788,7 +7824,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "updatecontract function",
       "id": "updateContract_function"
     },
@@ -7801,7 +7837,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "saveinvoice function",
       "id": "saveInvoice_function"
     },
@@ -7814,7 +7850,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "existing manual prolongation flow",
       "id": "existing_manual_prolongation_flow"
     },
@@ -7827,7 +7863,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "confirmprolongation function",
       "id": "confirmProlongation_function"
     },
@@ -7840,7 +7876,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "pending_demands status lifecycle",
       "id": "pending_demands_status_lifecycle"
     },
@@ -7853,7 +7889,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "testing strategy",
       "id": "testing_strategy"
     },
@@ -7866,7 +7902,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "rollout strategy",
       "id": "rollout_strategy"
     },
@@ -7875,7 +7911,7 @@
       "file_type": "document",
       "source_file": "docs/superpowers/plans/2026-05-28-prolongation-flow.md",
       "source_location": null,
-      "community": 176,
+      "community": 178,
       "norm_label": "2026 05 28 prolongation flow",
       "id": "doc_2026_05_28_prolongation_flow"
     },
@@ -7884,7 +7920,7 @@
       "file_type": "document",
       "source_file": "docs/superpowers/specs/2026-05-28-prolongation-flow-design.md",
       "source_location": null,
-      "community": 177,
+      "community": 179,
       "norm_label": "2026 05 28 prolongation flow design",
       "id": "doc_2026_05_28_prolongation_flow_design"
     },
@@ -7897,7 +7933,7 @@
       "captured_at": null,
       "author": "otman / Claude session",
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "prolongation flow design spec (2026-05-28)",
       "id": "spec_prolongation_flow_design"
     },
@@ -7910,7 +7946,7 @@
       "captured_at": null,
       "author": "otman / Claude session",
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "prolongation flow implementation plan (2026-05-28)",
       "id": "plan_prolongation_flow"
     },
@@ -7936,7 +7972,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 15,
+      "community": 14,
       "norm_label": "function reference index (spec appendix)",
       "id": "function_reference_index"
     },
@@ -7949,7 +7985,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 15,
+      "community": 14,
       "norm_label": "migration: prolongation_target_contract_id on pending_demands",
       "id": "schema_migration_prolongation"
     },
@@ -7962,7 +7998,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 15,
+      "community": 14,
       "norm_label": "test: prolongationmatching.test.js",
       "id": "test_prolongation_matching"
     },
@@ -7975,7 +8011,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 15,
+      "community": 14,
       "norm_label": "test: leadmodalprolongation.test.jsx",
       "id": "test_lead_modal_prolongation"
     },
@@ -7988,7 +8024,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 15,
+      "community": 14,
       "norm_label": "test: prolongationdialog.test.jsx",
       "id": "test_prolongation_dialog"
     },
@@ -8001,7 +8037,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 15,
+      "community": 14,
       "norm_label": "test: contractactions.test.js",
       "id": "test_contract_actions"
     },
@@ -8014,7 +8050,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 15,
+      "community": 14,
       "norm_label": "test: offerresponsetriagegate.test.js",
       "id": "test_offer_response_triage_gate"
     },
@@ -8027,7 +8063,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 15,
+      "community": 14,
       "norm_label": "acceptprolongationleadsforcontract (utils/contractactions.js)",
       "id": "accept_prolongation_leads_helper"
     },
@@ -8040,7 +8076,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 178,
+      "community": 180,
       "norm_label": "describesignaturestate (utils/contractsuccess.js)",
       "id": "describe_signature_state_helper"
     },
@@ -8079,7 +8115,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 6,
       "norm_label": "corbeille card spec \u2014 prolongation variant",
       "id": "corbeille_prolongation_card_spec"
     },
@@ -8092,7 +8128,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 179,
+      "community": 181,
       "norm_label": "prolongationdialog component spec",
       "id": "prolongation_dialog_spec"
     },
@@ -8118,7 +8154,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 15,
+      "community": 14,
       "norm_label": "plan phase 1 \u2014 schema migration (v1.13.8)",
       "id": "phase1_schema_plan"
     },
@@ -8131,7 +8167,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 180,
+      "community": 182,
       "norm_label": "plan phase 2 \u2014 backend detection (v1.13.9)",
       "id": "phase2_backend_detection_plan"
     }
@@ -12985,7 +13021,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "pages\\rental\\ContractStep.jsx",
-      "source_location": "L21",
+      "source_location": "L22",
       "weight": 1.0,
       "_src": "pages_rental_contractstep_jsx",
       "_tgt": "contractstep_derivephase",
@@ -12997,7 +13033,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "pages\\rental\\ContractStep.jsx",
-      "source_location": "L28",
+      "source_location": "L29",
       "weight": 1.0,
       "_src": "pages_rental_contractstep_jsx",
       "_tgt": "contractstep_contractstep",
@@ -16954,6 +16990,18 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src\\test\\calendarFutureContracts.test.jsx",
+      "source_location": "L18",
+      "weight": 1.0,
+      "_src": "src_test_calendarfuturecontracts_test_jsx",
+      "_tgt": "calendarfuturecontracts_test_iso",
+      "source": "src_test_calendarfuturecontracts_test_jsx",
+      "target": "calendarfuturecontracts_test_iso",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src\\test\\findVehicleConflicts.test.js",
       "source_location": "L11",
       "weight": 1.0,
@@ -17117,6 +17165,18 @@
       "_tgt": "restitutionutils_test_getmockcontract",
       "source": "src_test_restitutionutils_test_js",
       "target": "restitutionutils_test_getmockcontract",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\test\\smartQuoteDates.test.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_src": "src_test_smartquotedates_test_jsx",
+      "_tgt": "smartquotedates_test_dateinputs",
+      "source": "src_test_smartquotedates_test_jsx",
+      "target": "smartquotedates_test_dateinputs",
       "confidence_score": 1.0
     },
     {
