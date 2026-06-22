@@ -27,6 +27,8 @@
 
 - [x] **Step 7 — social-proof band** (#5): stat strip (120+ / 15 000+ / 24h / 4,8/5) + 3 testimonial cards with star ratings after Features (FR + AR, RTL-safe; numbers forced LTR). _All copy is **placeholder** — swap in real stats/testimonials later._
 
+- [x] **Step 8 — graphics (2)**: (1) hero dashboard SVG mockup replacing the empty "capture à venir" frame (sidebar + 3 stat cards + bar chart); (2) WhatsApp signature phone SVG in a new `#signature` band before pricing (contract → "Signer" button → signature pad → "Signé ✓"). Both pure SVG, palette-locked; signature band copy in FR + AR. Verified via `preview_inspect` (screenshot tool unresponsive this session).
+
 ### 🔄 In progress
 - _(none — all no-asset UX/UI steps complete)_
 

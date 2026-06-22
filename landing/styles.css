@@ -113,6 +113,8 @@ body {
 .frame img { display: block; width: 100%; }
 .frame .placeholder-shot { aspect-ratio: 16/9; display: flex; align-items: center;
   justify-content: center; color: var(--muted); font-size: 14px; }
+.frame .mock { width: 100%; aspect-ratio: 16/9; display: block; }
+.frame .mock svg { width: 100%; height: 100%; display: block; }
 
 /* ── Sections ── */
 section { padding: 72px 0; }
@@ -155,6 +157,19 @@ section { padding: 72px 0; }
 /* ── Screenshots band ── */
 .shots-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
 .shot figcaption { color: var(--muted); font-size: 13px; text-align: center; margin-top: 10px; }
+
+/* ── Signature band ── */
+.sig-band { display: grid; grid-template-columns: 1fr 320px; gap: 56px; align-items: center; }
+.sig-title { font-size: clamp(26px, 4vw, 38px); font-weight: 800; letter-spacing: -0.5px; line-height: 1.15; }
+.sig-sub { color: var(--muted); font-size: 16px; margin: 18px 0 28px; max-width: 460px; }
+.sig-visual { display: flex; justify-content: center; }
+.sig-visual svg { width: 280px; max-width: 100%; height: auto;
+  filter: drop-shadow(0 24px 50px rgba(0, 0, 0, .55)); }
+@media (max-width: 760px) {
+  .sig-band { grid-template-columns: 1fr; gap: 36px; text-align: center; }
+  .sig-sub { margin-inline: auto; }
+  .sig-visual { order: -1; }
+}
 
 /* ── Pricing ── */
 .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; align-items: stretch; }
