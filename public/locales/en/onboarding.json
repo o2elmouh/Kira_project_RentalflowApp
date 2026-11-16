@@ -30,5 +30,9 @@
     "rc": "Business Register (RC)",
     "rcPlaceholder": "123456"
   },
+  "staleInvite": {
+    "title": "Invitation expired",
+    "body": "This invitation is no longer valid. Ask your agency administrator to invite you again."
+  },
   "loggedInAs": "Logged in as {{email}} ·"
 }

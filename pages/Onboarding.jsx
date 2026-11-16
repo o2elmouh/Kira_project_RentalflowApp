@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import { seedFleetConfig } from '../lib/db'
+import { api } from '../lib/api'
 import LanguageSelector from '../components/LanguageSelector'
 
 function Field({ label, children }) {
@@ -29,7 +30,12 @@ export default function OnboardingPage({ user, onDone }) {
   // Invited users land here authenticated via magic link without a
   // password set. We block the silent agency join behind a password
   // setup form so they leave with a credential they can re-use.
-  const isInvitedUser = !!user?.user_metadata?.agency_id
+  // The invitation of record is in app_metadata (server-written, read-only
+  // for the user). user_metadata.agency_id alone means an invitation sent
+  // before invitations moved server-side: it can no longer be accepted, and
+  // showing the create-agency form to that person would be a trap.
+  const isInvitedUser = !!user?.app_metadata?.invited_agency_id
+  const hasStaleInvite = !isInvitedUser && !!user?.user_metadata?.agency_id
   const [passwordSet, setPasswordSet] = useState(false)
   const [staffPwd, setStaffPwd]             = useState('')
   const [staffPwdConfirm, setStaffPwdConfirm] = useState('')
@@ -53,33 +59,21 @@ export default function OnboardingPage({ user, onDone }) {
     }
   }
 
-  // ── Detect invited user (has agency_id in user_metadata) ─────────────
-  // When admin invites via supabaseAdmin.auth.admin.inviteUserByEmail,
-  // user_metadata contains { agency_id, role, invited_by }.
+  // ── Invited user: join the inviting agency ───────────────────────────
   // For invited users we must NOT call onboard_new_agency (which would
-  // create a new agency and could orphan/overwrite the inviter's data).
-  // Instead we just upsert the profile to link them to the existing agency.
+  // create a new agency). The backend creates the profile from the
+  // invitation it recorded at invite time — the browser cannot write
+  // role / agency_id on profiles.
   // Gated behind passwordSet so the user always sets a credential first.
   useEffect(() => {
-    const invitedAgencyId = user?.user_metadata?.agency_id
-    const invitedRole     = user?.user_metadata?.role
-    if (!invitedAgencyId || !user?.id) return
+    if (!isInvitedUser || !user?.id) return
     if (!passwordSet) return // wait for staff to set their password
 
     let cancelled = false
     const joinExistingAgency = async () => {
       setJoiningAgency(true)
       try {
-        const { error: upsertErr } = await supabase
-          .from('profiles')
-          .upsert({
-            id:        user.id,
-            email:     user.email,
-            full_name: user.user_metadata?.full_name || user.email.split('@')[0],
-            agency_id: invitedAgencyId,
-            role:      invitedRole || 'staff',
-          }, { onConflict: 'id' })
-        if (upsertErr) throw upsertErr
+        await api.acceptInvite({ full_name: user.user_metadata?.full_name || '' })
         if (!cancelled) {
           if (typeof onDone === 'function') onDone(); else window.location.reload()
         }
@@ -196,6 +190,27 @@ export default function OnboardingPage({ user, onDone }) {
             </button>
           </div>
         </form>
+      </div>
+    )
+  }
+
+  // Invitation sent before invitations moved server-side — ask for a new one.
+  if (hasStaleInvite) {
+    return (
+      <div className="auth-shell">
+        <div className="auth-brand">
+          <div className="auth-logo">RF</div>
+          <span>RentaFlow</span>
+        </div>
+        <div className="auth-form" style={{ textAlign: 'center', padding: 32 }}>
+          <h2>{t('staleInvite.title')}</h2>
+          <p className="auth-subtitle" style={{ marginTop: 8 }}>{t('staleInvite.body')}</p>
+          <div className="auth-actions">
+            <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => supabase.auth.signOut()}>
+              {t('signOut', { ns: 'common' })}
+            </button>
+          </div>
+        </div>
       </div>
     )
   }

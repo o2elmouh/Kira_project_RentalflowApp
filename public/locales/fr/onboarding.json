@@ -30,5 +30,9 @@
     "rc": "Registre de commerce (RC)",
     "rcPlaceholder": "123456"
   },
+  "staleInvite": {
+    "title": "Invitation expirée",
+    "body": "Cette invitation n'est plus valable. Demandez à l'administrateur de votre agence de vous inviter à nouveau."
+  },
   "loggedInAs": "Connecté en tant que {{email}} ·"
 }
